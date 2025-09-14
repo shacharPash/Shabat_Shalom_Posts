@@ -8,6 +8,7 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 from jewcal import JewCal
 from jewcal.models.zmanim import Location
+import pytz
 
 # ========= CONFIG =========
 TZID = "Asia/Jerusalem"
@@ -117,10 +118,19 @@ def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offs
         "action": jewcal.events.action if jewcal.has_events() else None
     }
 
-def get_parsha_from_hebcal(start_dt: date) -> str:
-    """Get parsha information from Hebcal API."""
-    start_str = (start_dt - timedelta(days=1)).isoformat()
-    end_str   = (start_dt + timedelta(days=2)).isoformat()
+def get_parsha_from_hebcal(target_date: date) -> str:
+    """Get parsha information from Hebcal API for the week containing target_date."""
+
+    # Find the Saturday of the week containing target_date
+    days_until_saturday = (5 - target_date.weekday()) % 7  # Saturday is weekday 5
+    if days_until_saturday == 0 and target_date.weekday() == 5:  # If target_date is Saturday
+        saturday = target_date
+    else:
+        saturday = target_date + timedelta(days=days_until_saturday)
+
+    # Create date range around the Saturday
+    start_str = (saturday - timedelta(days=3)).isoformat()
+    end_str = (saturday + timedelta(days=3)).isoformat()
 
     url = (
         "https://www.hebcal.com/shabbat"
@@ -137,20 +147,33 @@ def get_parsha_from_hebcal(start_dt: date) -> str:
             if item.get("category") == "parashat":
                 parsha = item.get("title")
                 if parsha:
+                    # Clean up the parsha name and translate to Hebrew
+                    parsha_clean = parsha.replace("Parashat ", "").strip()
                     for eng, heb in PARASHA_TRANSLATION.items():
-                        if eng in parsha:
+                        if eng.lower() == parsha_clean.lower() or eng in parsha_clean:
                             return f"פרשת {heb}"
-                return parsha
+                    return f"פרשת {parsha_clean}"
     except Exception as e:
-        print(f"Warning: Could not fetch parsha information: {e}")
+        print(f"Warning: Could not fetch parsha information for {target_date}: {e}")
 
     return None
 
 def iso_to_hhmm(iso_str: str) -> str:
     if not iso_str:
         return "--:--"
+
+    # Parse the datetime string
     dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-    return dt.strftime("%H:%M")
+
+    # Convert to Israel timezone
+    israel_tz = pytz.timezone('Asia/Jerusalem')
+    if dt.tzinfo is None:
+        # If no timezone info, assume UTC
+        dt = pytz.utc.localize(dt)
+
+    # Convert to Israel time
+    israel_time = dt.astimezone(israel_tz)
+    return israel_time.strftime("%H:%M")
 
 # ========= IMAGE HELPERS =========
 def fit_background(image_path: str, size=(1080,1080)) -> Image.Image:
@@ -223,20 +246,54 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     if event_type == "yomtov" and event_name:
         # Translate common Yom Tov names to Hebrew
         yomtov_translations = {
+            # Rosh Hashana
+            "Erev Rosh Hashana": "ערב ראש השנה",
             "Rosh Hashana 1": "ראש השנה א'",
             "Rosh Hashana 2": "ראש השנה ב'",
-            "Yom Kippur": "יום כפור",
+            "Rosh Hashana": "ראש השנה",
+
+            # Yom Kippur
+            "Erev Yom Kippur": "ערב יום כיפור",
+            "Yom Kippur": "יום כיפור",
+
+            # Sukkot
+            "Erev Sukkos": "ערב סוכות",
+            "Erev Sukkot": "ערב סוכות",
             "Sukkos 1": "סוכות א'",
             "Sukkos 2": "סוכות ב'",
+            "Sukkot 1": "סוכות א'",
+            "Sukkot": "סוכות",
+            "Sukkos": "סוכות",
+            "Hoshana Rabba": "הושענא רבה",
             "Shmini Atzeres": "שמיני עצרת",
+            "Shmini Atzeret": "שמיני עצרת",
             "Simchas Tora": "שמחת תורה",
+            "Simchat Tora": "שמחת תורה",
+            "Shmini Atzeret / Simchat Tora": "שמיני עצרת / שמחת תורה",
+
+            # Pesach
+            "Erev Pesach": "ערב פסח",
             "Pesach 1": "פסח א'",
             "Pesach 2": "פסח ב'",
-            "Pesach 7": "פסח ז'",
+            "Pesach 7": "שביעי של פסח",
             "Pesach 8": "פסח ח'",
+            "Pesach": "פסח",
+
+            # Shavuos
+            "Erev Shavuos": "ערב שבועות",
+            "Erev Shavut": "ערב שבועות",
             "Shavuos 1": "שבועות א'",
             "Shavuos 2": "שבועות ב'",
-            "Shavuos": "שבועות"
+            "Shavuos": "שבועות",
+            "Shavut": "שבועות",
+
+            # Chol HaMoed
+            "Chol HaMoed": "חול המועד",
+            "Chol HaMoed 1": "חול המועד",
+            "Chol HaMoed 2": "חול המועד",
+            "Chol HaMoed 3": "חול המועד",
+            "Chol HaMoed 4": "חול המועד",
+            "Chol HaMoed 5": "חול המועד",
         }
         hebrew_event = yomtov_translations.get(event_name, event_name)
         if parsha_txt:
