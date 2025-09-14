@@ -6,6 +6,8 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import arabic_reshaper
 from bidi.algorithm import get_display
+import hdate
+import pytz
 
 # ========= CONFIG =========
 TZID = "Asia/Jerusalem"
@@ -58,42 +60,65 @@ def load_font(size: int, bold=False) -> ImageFont.FreeTypeFont:
                 continue
     return ImageFont.load_default()
 
-# ========= DATA FROM HEBCAL =========
-def hebcal_shabbat_for_week(lat: float, lon: float, start_dt: date, candle_offset: int) -> dict:
+# ========= DATA FROM HDATE =========
+def hdate_shabbat_for_week(lat: float, lon: float, start_dt: date, candle_offset: int) -> dict:
+    """Calculate Shabbat times using hdate library for more accurate local calculations."""
+
+    # Create location object with custom candle lighting offset
+    location = hdate.Location(
+        name="Custom Location",
+        latitude=lat,
+        longitude=lon,
+        timezone=TZID,
+        altitude=0
+    )
+
+    # Get Zmanim for the Friday
+    friday_zmanim = hdate.Zmanim(date=start_dt, location=location, candle_lighting_offset=candle_offset)
+
+    # Get candle lighting time (hdate calculates this automatically with the offset)
+    candle_time = friday_zmanim.candle_lighting
+    candle_iso = candle_time.isoformat() if candle_time else None
+
+    # Get Havdalah time for Saturday (hdate calculates this automatically)
+    saturday = start_dt + timedelta(days=1)
+    saturday_zmanim = hdate.Zmanim(date=saturday, location=location)
+    havdalah_time = saturday_zmanim.havdalah
+    havdalah_iso = havdalah_time.isoformat() if havdalah_time else None
+
+    # Get parsha information from Hebcal (still using API for parsha as hdate doesn't provide this)
+    parsha = get_parsha_from_hebcal(start_dt)
+
+    return {"parsha": parsha, "candle": candle_iso, "havdalah": havdalah_iso}
+
+def get_parsha_from_hebcal(start_dt: date) -> str:
+    """Get parsha information from Hebcal API."""
     start_str = (start_dt - timedelta(days=1)).isoformat()
     end_str   = (start_dt + timedelta(days=2)).isoformat()
 
     url = (
         "https://www.hebcal.com/shabbat"
-        f"?cfg=json&latitude={lat}&longitude={lon}"
+        f"?cfg=json&latitude=31.7683&longitude=35.2137"  # Jerusalem coordinates for parsha
         f"&tzid={TZID}&start={start_str}&end={end_str}"
-        f"&b={candle_offset}"   # candle-lighting offset in minutes before sunset
-        "&m=42"                 # havdalah 42 minutes after sunset (can be changed)
     )
 
-    r = requests.get(url, timeout=20)
-    r.raise_for_status()
-    data = r.json()
+    try:
+        r = requests.get(url, timeout=20)
+        r.raise_for_status()
+        data = r.json()
 
-    parsha = None
-    candle = None
-    havdalah = None
-    for item in data.get("items", []):
-        cat = item.get("category")
-        if cat == "parashat":
-            parsha = item.get("title")
-        elif cat == "candles" and candle is None:
-            candle = item.get("date")
-        elif cat == "havdalah" and havdalah is None:
-            havdalah = item.get("date")
+        for item in data.get("items", []):
+            if item.get("category") == "parashat":
+                parsha = item.get("title")
+                if parsha:
+                    for eng, heb in PARASHA_TRANSLATION.items():
+                        if eng in parsha:
+                            return f"פרשת {heb}"
+                return parsha
+    except Exception as e:
+        print(f"Warning: Could not fetch parsha information: {e}")
 
-    if parsha:
-        for eng, heb in PARASHA_TRANSLATION.items():
-            if eng in parsha:
-                parsha = f"פרשת {heb}"
-                break
-
-    return {"parsha": parsha, "candle": candle, "havdalah": havdalah}
+    return None
 
 def iso_to_hhmm(iso_str: str) -> str:
     if not iso_str:
@@ -205,7 +230,7 @@ def main():
         rows = []
         parsha_name = None
         for city in CITIES:
-            info = hebcal_shabbat_for_week(city["lat"], city["lon"], friday, city["candle_offset"])
+            info = hdate_shabbat_for_week(city["lat"], city["lon"], friday, city["candle_offset"])
             if not parsha_name and info.get("parsha"):
                 parsha_name = info["parsha"]
             candle_hhmm = iso_to_hhmm(info.get("candle"))
