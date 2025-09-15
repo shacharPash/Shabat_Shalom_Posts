@@ -81,42 +81,26 @@ def load_font(size: int, bold=False) -> ImageFont.FreeTypeFont:
                 continue
     return ImageFont.load_default()
 
-def draw_candle_icon(draw, x, y, size=20):
-    """ציור אייקון נר פשוט"""
-    # גוף הנר (מלבן)
-    candle_width = size // 3
-    candle_height = size
-    draw.rectangle([x, y, x + candle_width, y + candle_height], fill="gold", outline="orange", width=1)
+def load_and_resize_icon(icon_path: str, size: int) -> Image.Image:
+    """טוען ומשנה גודל של אייקון"""
+    try:
+        icon = Image.open(icon_path)
+        # המרה ל-RGBA אם צריך (לתמיכה בשקיפות)
+        if icon.mode != 'RGBA':
+            icon = icon.convert('RGBA')
+        # שינוי גודל תוך שמירה על יחס גובה-רוחב
+        icon = icon.resize((size, size), Image.Resampling.LANCZOS)
+        return icon
+    except Exception as e:
+        print(f"שגיאה בטעינת אייקון {icon_path}: {e}")
+        return None
 
-    # להבה (אליפסה)
-    flame_size = size // 3
-    flame_x = x + candle_width // 2 - flame_size // 2
-    flame_y = y - flame_size
-    draw.ellipse([flame_x, flame_y, flame_x + flame_size, flame_y + flame_size], fill="orange")
-
-def draw_wine_cup_icon(draw, x, y, size=20):
-    """ציור אייקון כוס יין פשוט"""
-    # כוס (טרפז)
-    cup_width = size
-    cup_height = size // 2
-
-    # ציור כוס כמלבן עם קווים
-    draw.rectangle([x, y, x + cup_width, y + cup_height], fill="purple", outline="darkviolet", width=1)
-
-    # רגל הכוס
-    stem_width = size // 6
-    stem_height = size // 3
-    stem_x = x + cup_width // 2 - stem_width // 2
-    draw.rectangle([stem_x, y + cup_height, stem_x + stem_width, y + cup_height + stem_height],
-                  fill="purple")
-
-    # בסיס
-    base_width = size // 2
-    base_height = size // 8
-    base_x = x + cup_width // 2 - base_width // 2
-    draw.rectangle([base_x, y + cup_height + stem_height,
-                   base_x + base_width, y + cup_height + stem_height + base_height],
-                  fill="purple")
+def paste_icon(img: Image.Image, icon_path: str, x: int, y: int, size: int):
+    """מדביק אייקון על התמונה"""
+    icon = load_and_resize_icon(icon_path, size)
+    if icon:
+        # מדביק עם שקיפות
+        img.paste(icon, (x, y), icon)
 
 # ========= DATA FROM JEWCAL =========
 def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
@@ -609,22 +593,25 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
 
     draw_text_with_stroke(draw, (col_city_x, y), "עיר", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
 
+    # גודל האייקונים
+    icon_size = row_font.size - 5
+
     if event_type == "yomtov":
-        # ציור אייקון נר
-        draw_candle_icon(draw, col_candle_x + 10, y + 5, size=row_font.size - 10)
-        draw_text_with_stroke(draw, (col_candle_x - 30, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        # הדבקת אייקון נרות
+        paste_icon(img, "icons/candles.png", col_candle_x + 10, y, icon_size)
+        draw_text_with_stroke(draw, (col_candle_x - 40, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
 
-        # ציור אייקון כוס יין
-        draw_wine_cup_icon(draw, col_hav_x + 10, y + 5, size=row_font.size - 10)
-        draw_text_with_stroke(draw, (col_hav_x - 30, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        # הדבקת אייקון כוס יין
+        paste_icon(img, "icons/wine_glass.png", col_hav_x + 10, y, icon_size)
+        draw_text_with_stroke(draw, (col_hav_x - 40, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
     else:
-        # ציור אייקון נר
-        draw_candle_icon(draw, col_candle_x + 10, y + 5, size=row_font.size - 10)
-        draw_text_with_stroke(draw, (col_candle_x - 30, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        # הדבקת אייקון נרות
+        paste_icon(img, "icons/candles.png", col_candle_x + 10, y, icon_size)
+        draw_text_with_stroke(draw, (col_candle_x - 40, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
 
-        # ציור אייקון כוס יין
-        draw_wine_cup_icon(draw, col_hav_x + 10, y + 5, size=row_font.size - 10)
-        draw_text_with_stroke(draw, (col_hav_x - 30, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        # הדבקת אייקון כוס יין
+        paste_icon(img, "icons/wine_glass.png", col_hav_x + 10, y, icon_size)
+        draw_text_with_stroke(draw, (col_hav_x - 40, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
     y += row_font.size + 30
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
