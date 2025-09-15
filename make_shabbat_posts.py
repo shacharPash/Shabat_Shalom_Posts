@@ -141,6 +141,18 @@ def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offs
 def get_parsha_from_hebcal(target_date: date) -> str:
     """Get parsha information from Hebcal API for the week containing target_date."""
 
+    # Special cases for Torah reading during holidays
+    from jewcal import JewCal
+    jewcal = JewCal(gregorian_date=target_date, diaspora=False)
+    if jewcal.has_events() and jewcal.events.yomtov:
+        event_name = jewcal.events.yomtov
+        # Simchat Torah, Hoshana Rabba, and Chol HaMoed Sukkot read "Vezot Haberakhah"
+        if ("Simchat Tora" in event_name or
+            "Shmini Atzeret / Simchat Tora" in event_name or
+            "Hoshana Rabba" in event_name or
+            "Chol HaMoed" in event_name):
+            return "פרשת וזאת הברכה"
+
     # Find the Saturday of the week containing target_date
     days_until_saturday = (5 - target_date.weekday()) % 7  # Saturday is weekday 5
     if days_until_saturday == 0 and target_date.weekday() == 5:  # If target_date is Saturday
@@ -367,6 +379,12 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
             "Chol HaMoed 3": "חול המועד",
             "Chol HaMoed 4": "חול המועד",
             "Chol HaMoed 5": "חול המועד",
+            "Chol HaMoed 1 (Sukkot 2)": "חול המועד סוכות",
+            "Chol HaMoed 2 (Sukkot 3)": "חול המועד סוכות",
+            "Chol HaMoed 3 (Sukkot 4)": "חול המועד סוכות",
+            "Chol HaMoed 4 (Sukkot 5)": "חול המועד סוכות",
+            "Chol HaMoed 5 (Sukkot 6)": "חול המועד סוכות",
+            "Hoshana Rabba (Sukkot 7)": "הושענא רבה",
         }
         hebrew_event = yomtov_translations.get(event_name, event_name)
         if parsha_txt:
