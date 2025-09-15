@@ -81,33 +81,42 @@ def load_font(size: int, bold=False) -> ImageFont.FreeTypeFont:
                 continue
     return ImageFont.load_default()
 
-def load_emoji_font(size: int) -> ImageFont.FreeTypeFont:
-    """טוען פונט שתומך באימוג'ים"""
-    # פונטים שתומכים באימוג'ים במערכות שונות
-    emoji_candidates = [
-        # macOS
-        "/System/Library/Fonts/Apple Color Emoji.ttc",
-        "/Library/Fonts/Apple Color Emoji.ttc",
-        # Windows
-        "C:/Windows/Fonts/seguiemj.ttf",
-        "C:/Windows/Fonts/NotoColorEmoji.ttf",
-        # Linux
-        "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
-        "/usr/share/fonts/TTF/NotoColorEmoji.ttf",
-        # Fallback - פונטים רגילים שעשויים לתמוך באימוג'ים
-        "DejaVuSans.ttf",
-        "Arial.ttf",
-    ]
+def draw_candle_icon(draw, x, y, size=20):
+    """ציור אייקון נר פשוט"""
+    # גוף הנר (מלבן)
+    candle_width = size // 3
+    candle_height = size
+    draw.rectangle([x, y, x + candle_width, y + candle_height], fill="gold", outline="orange", width=1)
 
-    for path in emoji_candidates:
-        if os.path.isfile(path):
-            try:
-                return ImageFont.truetype(path, size=size)
-            except Exception:
-                continue
+    # להבה (אליפסה)
+    flame_size = size // 3
+    flame_x = x + candle_width // 2 - flame_size // 2
+    flame_y = y - flame_size
+    draw.ellipse([flame_x, flame_y, flame_x + flame_size, flame_y + flame_size], fill="orange")
 
-    # אם לא מצאנו פונט אימוג'ים, נחזיר פונט רגיל
-    return load_font(size)
+def draw_wine_cup_icon(draw, x, y, size=20):
+    """ציור אייקון כוס יין פשוט"""
+    # כוס (טרפז)
+    cup_width = size
+    cup_height = size // 2
+
+    # ציור כוס כמלבן עם קווים
+    draw.rectangle([x, y, x + cup_width, y + cup_height], fill="purple", outline="darkviolet", width=1)
+
+    # רגל הכוס
+    stem_width = size // 6
+    stem_height = size // 3
+    stem_x = x + cup_width // 2 - stem_width // 2
+    draw.rectangle([stem_x, y + cup_height, stem_x + stem_width, y + cup_height + stem_height],
+                  fill="purple")
+
+    # בסיס
+    base_width = size // 2
+    base_height = size // 8
+    base_x = x + cup_width // 2 - base_width // 2
+    draw.rectangle([base_x, y + cup_height + stem_height,
+                   base_x + base_width, y + cup_height + stem_height + base_height],
+                  fill="purple")
 
 # ========= DATA FROM JEWCAL =========
 def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
@@ -601,19 +610,21 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     draw_text_with_stroke(draw, (col_city_x, y), "עיר", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
 
     if event_type == "yomtov":
-        # סמלים יוניקוד פשוטים שעובדים בכל פונט
-        draw_text_with_stroke(draw, (col_candle_x + 20, y), "●", row_font, "gold", stroke, stroke_w, anchor="ra")
-        draw_text_with_stroke(draw, (col_candle_x - 20, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        # ציור אייקון נר
+        draw_candle_icon(draw, col_candle_x + 10, y + 5, size=row_font.size - 10)
+        draw_text_with_stroke(draw, (col_candle_x - 30, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
 
-        draw_text_with_stroke(draw, (col_hav_x + 20, y), "◆", row_font, "purple", stroke, stroke_w, anchor="ra")
-        draw_text_with_stroke(draw, (col_hav_x - 20, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        # ציור אייקון כוס יין
+        draw_wine_cup_icon(draw, col_hav_x + 10, y + 5, size=row_font.size - 10)
+        draw_text_with_stroke(draw, (col_hav_x - 30, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
     else:
-        # סמלים יוניקוד פשוטים שעובדים בכל פונט
-        draw_text_with_stroke(draw, (col_candle_x + 20, y), "●", row_font, "gold", stroke, stroke_w, anchor="ra")
-        draw_text_with_stroke(draw, (col_candle_x - 20, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        # ציור אייקון נר
+        draw_candle_icon(draw, col_candle_x + 10, y + 5, size=row_font.size - 10)
+        draw_text_with_stroke(draw, (col_candle_x - 30, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
 
-        draw_text_with_stroke(draw, (col_hav_x + 20, y), "◆", row_font, "purple", stroke, stroke_w, anchor="ra")
-        draw_text_with_stroke(draw, (col_hav_x - 20, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        # ציור אייקון כוס יין
+        draw_wine_cup_icon(draw, col_hav_x + 10, y + 5, size=row_font.size - 10)
+        draw_text_with_stroke(draw, (col_hav_x - 30, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
     y += row_font.size + 30
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
