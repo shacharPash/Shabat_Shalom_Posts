@@ -456,10 +456,18 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
 
     draw_text_with_stroke(draw, (W//2, 100), title, title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    # Create subtitle with parsha and date
+    # Create subtitle with parsha and date range
     parsha_txt = week_info.get("parsha") or ""
-    event_date = week_info.get("event_date")
-    date_str = event_date.strftime("%d.%m.%Y") if event_date else ""
+    seq_start = week_info.get("seq_start")
+    seq_end = week_info.get("seq_end")
+
+    if seq_start and seq_end:
+        if seq_start == seq_end:
+            date_str = seq_start.strftime("%d.%m.%Y")
+        else:
+            date_str = f"{seq_start.strftime('%d.%m')} - {seq_end.strftime('%d.%m.%Y')}"
+    else:
+        date_str = ""
 
     # Add event name for Yom Tov
     if event_type == "yomtov" and event_name:
@@ -575,6 +583,29 @@ def next_friday(d: date) -> date:
         days_ahead = 7
     return d + timedelta(days=days_ahead)
 
+def find_next_sequence(start_base: date) -> tuple[date, date, str, str]:
+    """Find the next event sequence starting from start_base.
+    Returns: (start_date, end_date, event_type, event_name)
+    """
+    current_date = start_base
+
+    # Check up to 14 days ahead to find the next event
+    for i in range(14):
+        check_date = current_date + timedelta(days=i)
+
+        # Create a temporary jewcal object to check for events
+        temp_jewcal = JewCal(gregorian_date=check_date, diaspora=False)
+
+        if temp_jewcal.has_events():
+            # Check if this is an event that requires candle lighting (prioritize Yom Tov)
+            if temp_jewcal.events.action in ["Candles", "Havdalah"]:
+                # Found an event, now find the complete sequence
+                return find_event_sequence(check_date)
+
+    # Fallback to next Friday if no special events found
+    next_friday_date = next_friday(start_base)
+    return find_event_sequence(next_friday_date)
+
 def find_next_event_date(start_base: date) -> tuple[date, str, str]:
     """Find the next Shabbat or Yom Tov event starting from start_base."""
     current_date = start_base
@@ -611,9 +642,7 @@ def main():
     else:
         start_base = date.today()
 
-    # Find the next event (Shabbat or Yom Tov)
-    first_event_date, event_type, event_name = find_next_event_date(start_base)
-
+    # Find event sequences instead of individual events
     exts = {".jpg", ".jpeg", ".png", ".webp"}
     images = [os.path.join(args.images_dir, f) for f in sorted(os.listdir(args.images_dir))]
     images = [p for p in images if os.path.splitext(p)[1].lower() in exts]
@@ -621,22 +650,27 @@ def main():
         raise SystemExit("No images found in input folder.")
 
     current_search_date = start_base
+    processed_sequences = []  # Track which sequences we've already processed
 
     for i, img_path in enumerate(images):
-        # For subsequent images, find the next event after the previous one
-        if i == 0:
-            event_date = first_event_date
-        else:
-            # Search for the next event starting from the day after the previous event
-            current_search_date = event_date + timedelta(days=1)
-            event_date, event_type, event_name = find_next_event_date(current_search_date)
+        # Find the next sequence
+        seq_start, seq_end, event_type, event_name = find_next_sequence(current_search_date)
+
+        # Skip if we've already processed this sequence
+        if any(seq_start <= existing_end and seq_end >= existing_start
+               for existing_start, existing_end in processed_sequences):
+            # Move search date past this sequence
+            current_search_date = seq_end + timedelta(days=1)
+            seq_start, seq_end, event_type, event_name = find_next_sequence(current_search_date)
+
+        processed_sequences.append((seq_start, seq_end))
 
         rows = []
         parsha_name = None
         event_info = None
 
         for city in CITIES:
-            info = jewcal_times_for_date(city["lat"], city["lon"], event_date, city["candle_offset"])
+            info = jewcal_times_for_sequence(city["lat"], city["lon"], seq_start, seq_end, city["candle_offset"])
             if not parsha_name and info.get("parsha"):
                 parsha_name = info["parsha"]
             if not event_info:
@@ -652,14 +686,21 @@ def main():
         bg = fit_background(img_path, IMG_SIZE)
         week_info = {
             "parsha": parsha_name,
-            "event_date": event_date,
+            "seq_start": seq_start,
+            "seq_end": seq_end,
             "event_info": event_info
         }
 
-        # Create filename based on event type
+        # Create filename based on event type and sequence
         event_type_str = event_info.get("event_type", "shabbos")
-        out_name = f"output/{event_type_str}_{event_date.isoformat()}_cities.png"
+        if seq_start == seq_end:
+            out_name = f"output/{event_type_str}_{seq_start.isoformat()}_cities.png"
+        else:
+            out_name = f"output/{event_type_str}_{seq_start.isoformat()}_to_{seq_end.isoformat()}_cities.png"
         compose_poster(bg, week_info, rows, out_name)
+
+        # Move to next sequence
+        current_search_date = seq_end + timedelta(days=1)
 
 if __name__ == "__main__":
     main()
