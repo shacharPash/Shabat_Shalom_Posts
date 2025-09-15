@@ -465,7 +465,12 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
         if seq_start == seq_end:
             date_str = seq_start.strftime("%d.%m.%Y")
         else:
-            date_str = f"{seq_start.strftime('%d.%m')} - {seq_end.strftime('%d.%m.%Y')}"
+            # Format: 22-24.09.2025 (day range with single month.year)
+            if seq_start.month == seq_end.month and seq_start.year == seq_end.year:
+                date_str = f"{seq_start.day}-{seq_end.day}.{seq_end.month:02d}.{seq_end.year}"
+            else:
+                # Different months: 30.09-02.10.2025
+                date_str = f"{seq_start.strftime('%d.%m')}-{seq_end.strftime('%d.%m.%Y')}"
     else:
         date_str = ""
 
