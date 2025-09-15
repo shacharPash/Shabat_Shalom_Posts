@@ -82,6 +82,21 @@ def load_font(size: int, bold=False) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 # ========= DATA FROM JEWCAL =========
+def is_end_of_holiday_sequence(target_date: date) -> bool:
+    """Check if target_date is the end of a holiday sequence (should have havdalah)."""
+    from jewcal import JewCal
+
+    # Check if the next day also has a holiday/shabbat
+    next_day = target_date + timedelta(days=1)
+    next_jewcal = JewCal(gregorian_date=next_day, diaspora=False)
+
+    # If next day has events that require candle lighting, current day is not the end
+    if (next_jewcal.has_events() and
+        next_jewcal.events.action in ["Candles", "Havdalah"]):
+        return False
+
+    return True
+
 def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offset: int) -> dict:
     """Calculate Shabbat/Yom Tov times using jewcal library for accurate local calculations."""
 
@@ -120,14 +135,18 @@ def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offs
             if zmanim_dict.get('hadlokas_haneiros'):
                 candle_time = zmanim_dict['hadlokas_haneiros']
 
-            # Get havdalah time (prefer stars over fixed minutes)
-            if zmanim_dict.get('tzeis_hakochavim'):
-                havdalah_time = zmanim_dict['tzeis_hakochavim']
-            elif zmanim_dict.get('tzeis_minutes'):
-                havdalah_time = zmanim_dict['tzeis_minutes']
+            # Get havdalah time only if this is the end of a holiday sequence
+            if is_end_of_holiday_sequence(target_date):
+                if zmanim_dict.get('tzeis_hakochavim'):
+                    havdalah_time = zmanim_dict['tzeis_hakochavim']
+                elif zmanim_dict.get('tzeis_minutes'):
+                    havdalah_time = zmanim_dict['tzeis_minutes']
 
-    # Get parsha information from Hebcal (jewcal doesn't provide this)
-    parsha = get_parsha_from_hebcal(target_date)
+    # Get parsha information only if this involves Shabbat
+    parsha = None
+    if (event_type == "shabbos" or
+        (event_type == "yomtov" and target_date.weekday() == 5)):  # Friday = 4, Saturday = 5
+        parsha = get_parsha_from_hebcal(target_date)
 
     return {
         "parsha": parsha,
