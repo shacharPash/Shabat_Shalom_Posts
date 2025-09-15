@@ -486,12 +486,16 @@ def main():
     if not images:
         raise SystemExit("No images found in input folder.")
 
+    current_search_date = start_base
+
     for i, img_path in enumerate(images):
-        # For subsequent images, find the next event after the current one
+        # For subsequent images, find the next event after the previous one
         if i == 0:
             event_date = first_event_date
         else:
-            event_date, event_type, event_name = find_next_event_date(first_event_date + timedelta(days=7*i))
+            # Search for the next event starting from the day after the previous event
+            current_search_date = event_date + timedelta(days=1)
+            event_date, event_type, event_name = find_next_event_date(current_search_date)
 
         rows = []
         parsha_name = None
