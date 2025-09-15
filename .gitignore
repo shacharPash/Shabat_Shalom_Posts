@@ -1,0 +1,27 @@
+# תיקיית פלט - קבצים שנוצרים אוטומטית
+output/
+
+# קבצי Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# קבצי IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# קבצי מערכת הפעלה
+.DS_Store
+Thumbs.db
+
+# קבצי סביבה
+.env
+.venv
+env/
+venv/
+
+# קבצי לוג
+*.log
