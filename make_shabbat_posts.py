@@ -82,6 +82,59 @@ def load_font(size: int, bold=False) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 # ========= DATA FROM JEWCAL =========
+def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
+    """Find a complete event sequence (Shabbat or holiday sequence).
+    Returns: (start_date, end_date, event_type, event_name)
+    """
+    from jewcal import JewCal
+
+    current_date = start_date
+    sequence_start = start_date
+    sequence_end = start_date
+    main_event_type = None
+    main_event_name = None
+
+    # Find the start of the sequence (if we're in the middle)
+    while True:
+        prev_day = current_date - timedelta(days=1)
+        prev_jewcal = JewCal(gregorian_date=prev_day, diaspora=False)
+
+        if (prev_jewcal.has_events() and
+            prev_jewcal.events.action in ["Candles", "Havdalah"]):
+            current_date = prev_day
+            sequence_start = prev_day
+        else:
+            break
+
+    # Find the end of the sequence
+    current_date = start_date
+    while True:
+        jewcal = JewCal(gregorian_date=current_date, diaspora=False)
+
+        if jewcal.has_events():
+            if jewcal.events.yomtov:
+                main_event_type = "yomtov"
+                main_event_name = jewcal.events.yomtov
+            elif jewcal.events.shabbos:
+                main_event_type = "shabbos"
+                main_event_name = jewcal.events.shabbos
+
+            sequence_end = current_date
+
+            # Check if sequence continues
+            next_day = current_date + timedelta(days=1)
+            next_jewcal = JewCal(gregorian_date=next_day, diaspora=False)
+
+            if (next_jewcal.has_events() and
+                next_jewcal.events.action in ["Candles", "Havdalah"]):
+                current_date = next_day
+            else:
+                break
+        else:
+            break
+
+    return sequence_start, sequence_end, main_event_type, main_event_name
+
 def is_end_of_holiday_sequence(target_date: date) -> bool:
     """Check if target_date is the end of a holiday sequence (should have havdalah)."""
     from jewcal import JewCal
@@ -96,6 +149,66 @@ def is_end_of_holiday_sequence(target_date: date) -> bool:
         return False
 
     return True
+
+def jewcal_times_for_sequence(lat: float, lon: float, start_date: date, end_date: date, candle_offset: int) -> dict:
+    """Calculate times for a complete event sequence (Shabbat or holiday sequence)."""
+
+    # Create location object
+    location = Location(
+        latitude=lat,
+        longitude=lon,
+        use_tzeis_hakochavim=True,
+        hadlokas_haneiros_minutes=candle_offset,
+        tzeis_minutes=42
+    )
+
+    # Get candle lighting time from the start of the sequence
+    start_jewcal = JewCal(gregorian_date=start_date, diaspora=False, location=location)
+    candle_time = None
+    if start_jewcal.zmanim:
+        start_zmanim = start_jewcal.zmanim.to_dict()
+        if start_zmanim.get('hadlokas_haneiros'):
+            candle_time = start_zmanim['hadlokas_haneiros']
+
+    # Get havdalah time from the end of the sequence
+    end_jewcal = JewCal(gregorian_date=end_date, diaspora=False, location=location)
+    havdalah_time = None
+    if end_jewcal.zmanim:
+        end_zmanim = end_jewcal.zmanim.to_dict()
+        if end_zmanim.get('tzeis_hakochavim'):
+            havdalah_time = end_zmanim['tzeis_hakochavim']
+        elif end_zmanim.get('tzeis_minutes'):
+            havdalah_time = end_zmanim['tzeis_minutes']
+
+    # Determine event type and name
+    event_name = None
+    event_type = None
+
+    if start_jewcal.has_events():
+        if start_jewcal.events.yomtov:
+            event_type = "yomtov"
+            event_name = start_jewcal.events.yomtov
+        elif start_jewcal.events.shabbos:
+            event_type = "shabbos"
+            event_name = start_jewcal.events.shabbos
+
+    # Get parsha information only if sequence involves Shabbat
+    parsha = None
+    if (event_type == "shabbos" or
+        any((start_date + timedelta(days=i)).weekday() == 5
+            for i in range((end_date - start_date).days + 1))):
+        parsha = get_parsha_from_hebcal(start_date)
+
+    return {
+        "parsha": parsha,
+        "event_name": event_name,
+        "event_type": event_type,
+        "candle": candle_time if candle_time else None,
+        "havdalah": havdalah_time if havdalah_time else None,
+        "start_date": start_date,
+        "end_date": end_date,
+        "action": start_jewcal.events.action if start_jewcal.has_events() else None
+    }
 
 def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offset: int) -> dict:
     """Calculate Shabbat/Yom Tov times using jewcal library for accurate local calculations."""
@@ -131,12 +244,14 @@ def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offs
         if jewcal.zmanim:
             zmanim_dict = jewcal.zmanim.to_dict()
 
-            # Get candle lighting time
-            if zmanim_dict.get('hadlokas_haneiros'):
-                candle_time = zmanim_dict['hadlokas_haneiros']
+            # Get candle lighting time for Shabbat or Yom Tov with candles
+            if (event_type == "shabbos" or jewcal.events.action == "Candles"):
+                if zmanim_dict.get('hadlokas_haneiros'):
+                    candle_time = zmanim_dict['hadlokas_haneiros']
 
-            # Get havdalah time only if this is the end of a holiday sequence
-            if is_end_of_holiday_sequence(target_date):
+            # Get havdalah time for regular Shabbat or end of holiday sequence
+            if (event_type == "shabbos" or
+                (event_type == "yomtov" and is_end_of_holiday_sequence(target_date))):
                 if zmanim_dict.get('tzeis_hakochavim'):
                     havdalah_time = zmanim_dict['tzeis_hakochavim']
                 elif zmanim_dict.get('tzeis_minutes'):
