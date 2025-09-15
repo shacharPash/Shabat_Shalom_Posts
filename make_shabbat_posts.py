@@ -545,7 +545,19 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
 
     table_top = 300
     table_height = (len(all_cities_rows)+1) * (row_font.size+20) + 60
-    overlay = Image.new("RGBA", (W-100, table_height), (0,0,0,150))
+
+    # יצירת רקע עגול במקום ריבוע
+    overlay = Image.new("RGBA", (W-100, table_height), (0,0,0,0))
+    overlay_draw = ImageDraw.Draw(overlay)
+
+    # ציור ריבוע עגול עם פינות מעוגלות
+    corner_radius = 30
+    overlay_draw.rounded_rectangle(
+        [0, 0, W-100, table_height],
+        radius=corner_radius,
+        fill=(0, 0, 0, 150)
+    )
+
     img.paste(overlay, (50, table_top), overlay)
 
     draw = ImageDraw.Draw(img)
@@ -561,11 +573,11 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     draw_text_with_stroke(draw, (col_city_x, y), "עיר", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
 
     if event_type == "yomtov":
-        draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-        draw_text_with_stroke(draw, (col_hav_x, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), "🕯️ הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "🍷 צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
     else:
-        draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-        draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), "🕯️ כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "🍷 צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
     y += row_font.size + 30
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
