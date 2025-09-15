@@ -81,26 +81,7 @@ def load_font(size: int, bold=False) -> ImageFont.FreeTypeFont:
                 continue
     return ImageFont.load_default()
 
-def load_and_resize_icon(icon_path: str, size: int) -> Image.Image:
-    """טוען ומשנה גודל של אייקון"""
-    try:
-        icon = Image.open(icon_path)
-        # המרה ל-RGBA אם צריך (לתמיכה בשקיפות)
-        if icon.mode != 'RGBA':
-            icon = icon.convert('RGBA')
-        # שינוי גודל תוך שמירה על יחס גובה-רוחב
-        icon = icon.resize((size, size), Image.Resampling.LANCZOS)
-        return icon
-    except Exception as e:
-        print(f"שגיאה בטעינת אייקון {icon_path}: {e}")
-        return None
 
-def paste_icon(img: Image.Image, icon_path: str, x: int, y: int, size: int):
-    """מדביק אייקון על התמונה"""
-    icon = load_and_resize_icon(icon_path, size)
-    if icon:
-        # מדביק עם שקיפות
-        img.paste(icon, (x, y), icon)
 
 # ========= DATA FROM JEWCAL =========
 def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
@@ -593,25 +574,12 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
 
     draw_text_with_stroke(draw, (col_city_x, y), "עיר", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
 
-    # גודל האייקונים
-    icon_size = row_font.size - 5
-
     if event_type == "yomtov":
-        # הדבקת אייקון נרות
-        paste_icon(img, "icons/candles.png", col_candle_x + 10, y, icon_size)
-        draw_text_with_stroke(draw, (col_candle_x - 40, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-
-        # הדבקת אייקון כוס יין
-        paste_icon(img, "icons/wine_glass.png", col_hav_x + 10, y, icon_size)
-        draw_text_with_stroke(draw, (col_hav_x - 40, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
     else:
-        # הדבקת אייקון נרות
-        paste_icon(img, "icons/candles.png", col_candle_x + 10, y, icon_size)
-        draw_text_with_stroke(draw, (col_candle_x - 40, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-
-        # הדבקת אייקון כוס יין
-        paste_icon(img, "icons/wine_glass.png", col_hav_x + 10, y, icon_size)
-        draw_text_with_stroke(draw, (col_hav_x - 40, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
     y += row_font.size + 30
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
