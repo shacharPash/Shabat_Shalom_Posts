@@ -24,21 +24,41 @@ IMG_SIZE = (1080, 1080)  # WhatsApp square
 
 # ========= FULL PARASHA TRANSLATION =========
 PARASHA_TRANSLATION = {
+    # ספר בראשית
     "Bereshit": "בראשית", "Noach": "נח", "Lech-Lecha": "לך לך", "Vayera": "וירא",
     "Chayei Sara": "חיי שרה", "Toldot": "תולדות", "Vayetzei": "ויצא",
     "Vayishlach": "וישלח", "Vayeshev": "וישב", "Miketz": "מקץ", "Vayigash": "ויגש",
-    "Vayechi": "ויחי", "Shemot": "שמות", "Vaera": "וארא", "Bo": "בא",
+    "Vayechi": "ויחי",
+
+    # ספר שמות
+    "Shemot": "שמות", "Vaera": "וארא", "Bo": "בא",
     "Beshalach": "בשלח", "Yitro": "יתרו", "Mishpatim": "משפטים", "Terumah": "תרומה",
     "Tetzaveh": "תצוה", "Ki Tisa": "כי תשא", "Vayakhel": "ויקהל", "Pekudei": "פקודי",
+
+    # ספר ויקרא
     "Vayikra": "ויקרא", "Tzav": "צו", "Shemini": "שמיני", "Tazria": "תזריע",
     "Metzora": "מצורע", "Achrei Mot": "אחרי מות", "Kedoshim": "קדושים",
-    "Emor": "אמור", "Behar": "בהר", "Bechukotai": "בחוקותי", "Bamidbar": "במדבר",
-    "Nasso": "נשא", "Beha'alotcha": "בהעלותך", "Shelach": "שלח", "Korach": "קרח",
-    "Chukat": "חוקת", "Balak": "בלק", "Pinchas": "פנחס", "Matot": "מטות",
-    "Masei": "מסעי", "Devarim": "דברים", "Vaetchanan": "ואתחנן", "Ekev": "עקב",
+    "Emor": "אמור", "Behar": "בהר", "Bechukotai": "בחוקותי",
+
+    # ספר במדבר
+    "Bamidbar": "במדבר", "Nasso": "נשא", "Beha'alotcha": "בהעלותך", "Shelach": "שלח",
+    "Korach": "קרח", "Chukat": "חוקת", "Balak": "בלק", "Pinchas": "פנחס",
+    "Matot": "מטות", "Masei": "מסעי",
+
+    # ספר דברים
+    "Devarim": "דברים", "Vaetchanan": "ואתחנן", "Ekev": "עקב",
     "Re'eh": "ראה", "Shoftim": "שופטים", "Ki Tetzei": "כי תצא", "Ki Tavo": "כי תבוא",
     "Nitzavim": "נצבים", "Vayelech": "וילך", "Ha'Azinu": "האזינו",
     "Vezot Haberakhah": "וזאת הברכה",
+
+    # וריאציות נוספות שעלולות להופיע ב-API
+    "Lech Lecha": "לך לך", "Chayei Sarah": "חיי שרה", "Vayeitzei": "ויצא",
+    "Ki Sisa": "כי תשא", "Acharei Mot": "אחרי מות", "Bechukosai": "בחוקותי",
+    "Beha'aloscha": "בהעלותך", "Shlach": "שלח", "Chukas": "חוקת",
+    "Matos": "מטות", "Mas'ei": "מסעי", "Va'eschanan": "ואתחנן",
+    "Re'e": "ראה", "Ki Seitzei": "כי תצא", "Ki Savo": "כי תבוא",
+    "Vayeilech": "וילך", "Haazinu": "האזינו", "Ha'azinu": "האזינו", "Ha'Azinu": "האזינו", "Ha'azinu": "האזינו",
+    "V'Zot HaBerachah": "וזאת הברכה", "Vzot Haberachah": "וזאת הברכה",
 }
 
 # ========= TEXT HELPERS =========
@@ -128,31 +148,84 @@ def get_parsha_from_hebcal(target_date: date) -> str:
     else:
         saturday = target_date + timedelta(days=days_until_saturday)
 
-    # Create date range around the Saturday
-    start_str = (saturday - timedelta(days=3)).isoformat()
-    end_str = (saturday + timedelta(days=3)).isoformat()
-
+    # Use the general Hebcal API to get the year's events and find the right parsha
+    year = saturday.year
     url = (
-        "https://www.hebcal.com/shabbat"
-        f"?cfg=json&latitude=31.778117828230577&longitude=35.23599222120022"  # Jerusalem coordinates for parsha
-        f"&tzid={TZID}&start={start_str}&end={end_str}"
+        f"https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on&mod=on&nx=on"
+        f"&year={year}&month=x&ss=on&mf=on&c=on&geo=pos"
+        f"&latitude=31.778117828230577&longitude=35.23599222120022"
+        f"&tzid={TZID}&s=on"
     )
 
     try:
-        r = requests.get(url, timeout=20)
+        r = requests.get(url, timeout=30)
         r.raise_for_status()
         data = r.json()
 
+        # Find the parsha for our specific Saturday
+        target_date_str = saturday.isoformat()
+
         for item in data.get("items", []):
             if item.get("category") == "parashat":
-                parsha = item.get("title")
-                if parsha:
-                    # Clean up the parsha name and translate to Hebrew
-                    parsha_clean = parsha.replace("Parashat ", "").strip()
-                    for eng, heb in PARASHA_TRANSLATION.items():
-                        if eng.lower() == parsha_clean.lower() or eng in parsha_clean:
-                            return f"פרשת {heb}"
-                    return f"פרשת {parsha_clean}"
+                item_date = item.get("date", "")
+                # Check if this is the parsha for our Saturday
+                if item_date == target_date_str:
+                    parsha = item.get("title")
+                    if parsha:
+                        # Clean up the parsha name and translate to Hebrew
+                        parsha_clean = parsha.replace("Parashat ", "").strip()
+                        # Normalize different types of apostrophes
+                        parsha_clean = parsha_clean.replace("\u2019", "'").replace("\u2018", "'")
+
+
+                        # Try exact match first
+                        for eng, heb in PARASHA_TRANSLATION.items():
+                            if eng.lower() == parsha_clean.lower():
+                                return f"פרשת {heb}"
+
+                        # Try partial match (for cases like "Ha'azinu" vs "Ha'Azinu")
+                        for eng, heb in PARASHA_TRANSLATION.items():
+                            if eng.lower().replace("'", "").replace("-", "") == parsha_clean.lower().replace("'", "").replace("-", ""):
+                                # print(f"DEBUG: Found partial match: {eng} -> {heb}")
+                                return f"פרשת {heb}"
+
+
+                        return f"פרשת {parsha_clean}"
+
+        # If exact match not found, find the closest Saturday before our target
+        closest_parsha = None
+        closest_date = None
+
+        for item in data.get("items", []):
+            if item.get("category") == "parashat":
+                item_date_str = item.get("date", "")
+                if item_date_str:
+                    try:
+                        item_date = date.fromisoformat(item_date_str)
+                        # Find the parsha for the Saturday closest to but not after our target
+                        if item_date <= saturday:
+                            if closest_date is None or item_date > closest_date:
+                                closest_date = item_date
+                                closest_parsha = item.get("title")
+                    except:
+                        continue
+
+        if closest_parsha:
+            parsha_clean = closest_parsha.replace("Parashat ", "").strip()
+            # Normalize different types of apostrophes
+            parsha_clean = parsha_clean.replace("'", "'").replace("'", "'")
+            # Try exact match first
+            for eng, heb in PARASHA_TRANSLATION.items():
+                if eng.lower() == parsha_clean.lower():
+                    return f"פרשת {heb}"
+
+            # Try partial match
+            for eng, heb in PARASHA_TRANSLATION.items():
+                if eng.lower().replace("'", "").replace("-", "") == parsha_clean.lower().replace("'", "").replace("-", ""):
+                    return f"פרשת {heb}"
+
+            return f"פרשת {parsha_clean}"
+
     except Exception as e:
         print(f"Warning: Could not fetch parsha information for {target_date}: {e}")
 
