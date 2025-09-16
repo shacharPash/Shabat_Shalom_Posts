@@ -19,7 +19,7 @@ CITIES = [
     {"name": "מורשת", "lat": 32.825819, "lon": 35.233452, "candle_offset": 20},
 ]
 
-IMG_SIZE = (1350, 1080)  # Wider rectangle (5:4 ratio)
+IMG_SIZE = (1080, 1080)  # Wider rectangle (5:4 ratio)
 
 # ========= FULL PARASHA TRANSLATION =========
 PARASHA_TRANSLATION = {
@@ -396,9 +396,29 @@ def iso_to_hhmm(iso_str: str) -> str:
     return israel_time.strftime("%H:%M")
 
 # ========= IMAGE HELPERS =========
+def fix_image_orientation(img):
+    """Fix image orientation based on EXIF data."""
+    try:
+        exif = img._getexif()
+        if exif is not None:
+            orientation = exif.get(274)  # 274 is the EXIF orientation tag
+            if orientation == 3:
+                img = img.rotate(180, expand=True)
+            elif orientation == 6:
+                img = img.rotate(270, expand=True)
+            elif orientation == 8:
+                img = img.rotate(90, expand=True)
+    except (AttributeError, KeyError, TypeError):
+        pass
+    return img
+
 def fit_background(image_path: str, size=(1080,1080)) -> Image.Image:
     base_w, base_h = size
     img = Image.open(image_path).convert("RGB")
+
+    # Fix orientation based on EXIF data
+    img = fix_image_orientation(img)
+
     scale = max(base_w / img.width, base_h / img.height)
     new_w = int(img.width * scale)
     new_h = int(img.height * scale)
