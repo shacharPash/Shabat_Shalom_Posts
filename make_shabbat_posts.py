@@ -456,7 +456,7 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         title = "שבת שלום"  # Shabbat greeting
 
-    draw_text_with_stroke(draw, (W//2, 60), title, title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    draw_text_with_stroke(draw, (W//2, 40), title, title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # Create subtitle with parsha and date range
     parsha_txt = week_info.get("parsha") or ""
@@ -543,12 +543,12 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         sub_line = f"{parsha_txt} | {date_str}" if parsha_txt else date_str
 
-    draw_text_with_stroke(draw, (W//2, 180), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    draw_text_with_stroke(draw, (W//2, 140), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # הזזת הטבלה למטה ושינוי גודל
-    table_top = H - 500  # מתחיל 500 פיקסלים מהתחתית (יותר מקום לטקסטים למטה)
-    table_height = (len(all_cities_rows)+1) * (row_font.size+15) + 80  # גובה יותר גדול כדי שלא ייחתך
-    table_width = W - 100  # רוחב יותר גדול לטקסט
+    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית
+    table_height = (len(all_cities_rows)+1) * (row_font.size+12) + 60  # קטן יותר
+    table_width = W - 150  # רוחב קטן יותר
 
     # יצירת רקע עגול קטן יותר
     overlay = Image.new("RGBA", (table_width, table_height), (0,0,0,0))
@@ -585,17 +585,17 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
         draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-    y += row_font.size + 20
+    y += row_font.size + 15
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
         draw_text_with_stroke(draw, (col_city_x, y), name, row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
         draw_text_with_stroke(draw, (col_candle_x, y), candle_hhmm, row_font, fill, stroke, stroke_w, anchor="ra")
         draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ra")
-        y += row_font.size + 15
+        y += row_font.size + 12
 
-    # הזזת הטקסטים מתחת לטבלה
-    blessing_y = table_top + table_height + 30
-    dedication_y = table_top + table_height + 70
+    # הזזת הטקסטים מתחת לטבלה - במיקום קבוע למטה
+    blessing_y = H - 120
+    dedication_y = H - 70
 
     draw_text_with_stroke(draw, (W//2, blessing_y), "\"לחיי שמחות קטנות וגדולות\"", bless_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
     draw_text_with_stroke(draw, (W//2, dedication_y), 'זמני השבת לע"נ אורי בורנשטיין הי"ד', small_font, fill, stroke, 3, anchor="ma", rtl=True)
