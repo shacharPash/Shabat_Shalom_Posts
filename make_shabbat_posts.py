@@ -543,10 +543,10 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         sub_line = f"{parsha_txt} | {date_str}" if parsha_txt else date_str
 
-    draw_text_with_stroke(draw, (W//2, 140), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    draw_text_with_stroke(draw, (W//2, 180), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # הזזת הטבלה למטה ושינוי גודל
-    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית
+    table_top = H - 500  # מתחיל 500 פיקסלים מהתחתית (יותר מקום לטקסטים למטה)
     table_height = (len(all_cities_rows)+1) * (row_font.size+15) + 80  # גובה יותר גדול כדי שלא ייחתך
     table_width = W - 100  # רוחב יותר גדול לטקסט
 
