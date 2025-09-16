@@ -426,7 +426,7 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
 
     title_font = load_font(100, bold=True)
     sub_font   = load_font(54)
-    row_font   = load_font(50)
+    row_font   = load_font(42)  # קטן יותר לטבלה
     bless_font = load_font(60, bold=True)
     small_font = load_font(36)
 
@@ -545,10 +545,10 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
 
     draw_text_with_stroke(draw, (W//2, 140), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    # הזזת הטבלה למטה ושינוי גודל
-    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית
-    table_height = (len(all_cities_rows)+1) * (row_font.size+12) + 60  # קטן יותר
-    table_width = W - 150  # רוחב קטן יותר
+    # הזזת הטבלה למטה ושינוי גודל - קטן יותר ויותר למעלה
+    table_top = H - 320  # מתחיל 320 פיקסלים מהתחתית (יותר למעלה)
+    table_height = (len(all_cities_rows)+1) * (row_font.size+10) + 40  # הרבה יותר קטן
+    table_width = W - 200  # רוחב קטן יותר
 
     # יצירת רקע עגול קטן יותר
     overlay = Image.new("RGBA", (table_width, table_height), (0,0,0,0))
@@ -567,11 +567,11 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     img.paste(overlay, (table_left, table_top), overlay)
 
     draw = ImageDraw.Draw(img)
-    # מיקומי עמודות עם רווחים טובים יותר
-    col_city_x   = table_left + table_width - 80   # עיר
-    col_candle_x = table_left + table_width - 350  # זמן כניסה
-    col_hav_x    = table_left + table_width - 620  # זמן יציאה
-    y = table_top + 40
+    # מיקומי עמודות עם רווחים טובים יותר - מותאם לטבלה קטנה
+    col_city_x   = table_left + table_width - 60   # עיר
+    col_candle_x = table_left + table_width - 280  # זמן כניסה
+    col_hav_x    = table_left + table_width - 500  # זמן יציאה
+    y = table_top + 30
 
     # Update column headers based on event type
     event_info = week_info.get("event_info", {})
@@ -585,13 +585,13 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
         draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-    y += row_font.size + 15
+    y += row_font.size + 10
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
         draw_text_with_stroke(draw, (col_city_x, y), name, row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
         draw_text_with_stroke(draw, (col_candle_x, y), candle_hhmm, row_font, fill, stroke, stroke_w, anchor="ra")
         draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ra")
-        y += row_font.size + 12
+        y += row_font.size + 8
 
     # הזזת הטקסטים מתחת לטבלה - במיקום קבוע למטה
     blessing_y = H - 120
