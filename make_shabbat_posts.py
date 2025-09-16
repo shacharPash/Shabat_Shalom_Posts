@@ -408,6 +408,31 @@ def fit_background(image_path: str, size=(1080,1080)) -> Image.Image:
     img = img.crop((left, top, left + base_w, top + base_h))
     return img
 
+def get_text_width(text, font, rtl=False):
+    """Get the width of text with the given font."""
+    if rtl:
+        text = fix_hebrew(text)
+    bbox = font.getbbox(text)
+    return bbox[2] - bbox[0]
+
+def get_fitted_font(text, original_font, max_width, rtl=False, min_size=20):
+    """Get a font that fits the text within max_width."""
+    current_size = original_font.size
+
+    # Check if original font fits
+    if get_text_width(text, original_font, rtl) <= max_width:
+        return original_font
+
+    # Find the largest font size that fits
+    while current_size > min_size:
+        current_size -= 2
+        test_font = load_font(current_size, bold=original_font.path.endswith('Bold.ttf'))
+        if get_text_width(text, test_font, rtl) <= max_width:
+            return test_font
+
+    # Return minimum size font if nothing fits
+    return load_font(min_size, bold=original_font.path.endswith('Bold.ttf'))
+
 def draw_text_with_stroke(draw, xy, text, font, fill, stroke_fill, stroke_width, anchor=None, rtl=False):
     if rtl:
         text = fix_hebrew(text)
@@ -423,11 +448,11 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     W, H = img.size
     draw = ImageDraw.Draw(img)
 
-    title_font = load_font(80, bold=True)   # קטן יותר מ-100
-    sub_font   = load_font(44)              # קטן יותר מ-54
-    row_font   = load_font(36)              # קטן יותר מ-42
-    bless_font = load_font(50, bold=True)   # קטן יותר מ-60
-    small_font = load_font(30)              # קטן יותר מ-36
+    title_font = load_font(100, bold=True)
+    sub_font   = load_font(54)
+    row_font   = load_font(50)
+    bless_font = load_font(60, bold=True)
+    small_font = load_font(36)
 
     stroke_w = 5
     fill = "white"
@@ -455,7 +480,9 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         title = "שבת שלום"  # Shabbat greeting
 
-    draw_text_with_stroke(draw, (W//2, 40), title, title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    # התאמת גודל פונט לכותרת הראשית
+    fitted_title_font = get_fitted_font(title, title_font, W - 100, rtl=True)
+    draw_text_with_stroke(draw, (W//2, 40), title, fitted_title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # Create subtitle with parsha and date range
     parsha_txt = week_info.get("parsha") or ""
@@ -542,12 +569,14 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         sub_line = f"{parsha_txt} | {date_str}" if parsha_txt else date_str
 
-    draw_text_with_stroke(draw, (W//2, 140), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    # התאמת גודל פונט לכותרת המשנה
+    fitted_sub_font = get_fitted_font(sub_line, sub_font, W - 100, rtl=True)
+    draw_text_with_stroke(draw, (W//2, 140), sub_line, fitted_sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    # הזזת הטבלה למטה ושינוי גודל - מותאם לפונטים קטנים יותר
-    table_top = H - 350  # מתחיל 350 פיקסלים מהתחתית
-    table_height = (len(all_cities_rows)+1) * (row_font.size+8) + 35   # קטן יותר עם פונטים קטנים
-    table_width = W - 150  # רוחב מותאם
+    # הזזת הטבלה למטה ושינוי גודל
+    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית
+    table_height = (len(all_cities_rows)+1) * (row_font.size+10) + 40
+    table_width = W - 200  # רוחב קטן יותר
 
     # יצירת רקע עגול קטן יותר
     overlay = Image.new("RGBA", (table_width, table_height), (0,0,0,0))
@@ -586,14 +615,14 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
         draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-    y += row_font.size + 8
+    y += row_font.size + 10
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
         # נתונים ממורכזים בכל עמודה
         draw_text_with_stroke(draw, (col_city_x, y), name, row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
         draw_text_with_stroke(draw, (col_candle_x, y), candle_hhmm, row_font, fill, stroke, stroke_w, anchor="ma")
         draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ma")
-        y += row_font.size + 6
+        y += row_font.size + 8
 
     # הזזת הטקסטים מתחת לטבלה - במיקום קבוע למטה
     blessing_y = H - 110
