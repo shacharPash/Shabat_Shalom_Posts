@@ -423,11 +423,11 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     W, H = img.size
     draw = ImageDraw.Draw(img)
 
-    title_font = load_font(100, bold=True)
-    sub_font   = load_font(54)
-    row_font   = load_font(42)  # קטן יותר לטבלה
-    bless_font = load_font(60, bold=True)
-    small_font = load_font(36)
+    title_font = load_font(80, bold=True)   # קטן יותר מ-100
+    sub_font   = load_font(44)              # קטן יותר מ-54
+    row_font   = load_font(36)              # קטן יותר מ-42
+    bless_font = load_font(50, bold=True)   # קטן יותר מ-60
+    small_font = load_font(30)              # קטן יותר מ-36
 
     stroke_w = 5
     fill = "white"
@@ -544,10 +544,10 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
 
     draw_text_with_stroke(draw, (W//2, 140), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    # הזזת הטבלה למטה ושינוי גודל - קטן יותר ויותר למעלה
-    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית (יותר למעלה)
-    table_height = (len(all_cities_rows)+1) * (row_font.size+10) + 40  # הרבה יותר קטן
-    table_width = W - 200  # רוחב קטן יותר
+    # הזזת הטבלה למטה ושינוי גודל - מותאם לפונטים קטנים יותר
+    table_top = H - 350  # מתחיל 350 פיקסלים מהתחתית
+    table_height = (len(all_cities_rows)+1) * (row_font.size+8) + 35   # קטן יותר עם פונטים קטנים
+    table_width = W - 150  # רוחב מותאם
 
     # יצירת רקע עגול קטן יותר
     overlay = Image.new("RGBA", (table_width, table_height), (0,0,0,0))
@@ -586,14 +586,14 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
         draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-    y += row_font.size + 10
+    y += row_font.size + 8
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
         # נתונים ממורכזים בכל עמודה
         draw_text_with_stroke(draw, (col_city_x, y), name, row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
         draw_text_with_stroke(draw, (col_candle_x, y), candle_hhmm, row_font, fill, stroke, stroke_w, anchor="ma")
         draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ma")
-        y += row_font.size + 8
+        y += row_font.size + 6
 
     # הזזת הטקסטים מתחת לטבלה - במיקום קבוע למטה
     blessing_y = H - 110
