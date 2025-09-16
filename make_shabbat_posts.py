@@ -19,7 +19,7 @@ CITIES = [
     {"name": "מורשת", "lat": 32.825819, "lon": 35.233452, "candle_offset": 20},
 ]
 
-IMG_SIZE = (1080, 1080)  # WhatsApp square
+IMG_SIZE = (1350, 1080)  # Wider rectangle (5:4 ratio)
 
 # ========= FULL PARASHA TRANSLATION =========
 PARASHA_TRANSLATION = {
