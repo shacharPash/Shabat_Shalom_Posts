@@ -456,7 +456,7 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         title = "שבת שלום"  # Shabbat greeting
 
-    draw_text_with_stroke(draw, (W//2, 100), title, title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    draw_text_with_stroke(draw, (W//2, 60), title, title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # Create subtitle with parsha and date range
     parsha_txt = week_info.get("parsha") or ""
@@ -543,11 +543,11 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     else:
         sub_line = f"{parsha_txt} | {date_str}" if parsha_txt else date_str
 
-    draw_text_with_stroke(draw, (W//2, 200), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    draw_text_with_stroke(draw, (W//2, 140), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # הזזת הטבלה למטה ושינוי גודל
-    table_top = H - 350  # מתחיל 350 פיקסלים מהתחתית (יותר גבוה)
-    table_height = (len(all_cities_rows)+1) * (row_font.size+15) + 50  # קטן יותר
+    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית
+    table_height = (len(all_cities_rows)+1) * (row_font.size+15) + 80  # גובה יותר גדול כדי שלא ייחתך
     table_width = W - 100  # רוחב יותר גדול לטקסט
 
     # יצירת רקע עגול קטן יותר
@@ -593,9 +593,9 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
         draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ra")
         y += row_font.size + 15
 
-    # הזזת הטקסטים למעלה מהטבלה כדי שלא יתנגשו
-    blessing_y = table_top - 120
-    dedication_y = table_top - 60
+    # הזזת הטקסטים מתחת לטבלה
+    blessing_y = table_top + table_height + 30
+    dedication_y = table_top + table_height + 70
 
     draw_text_with_stroke(draw, (W//2, blessing_y), "\"לחיי שמחות קטנות וגדולות\"", bless_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
     draw_text_with_stroke(draw, (W//2, dedication_y), 'זמני השבת לע"נ אורי בורנשטיין הי"ד', small_font, fill, stroke, 3, anchor="ma", rtl=True)
