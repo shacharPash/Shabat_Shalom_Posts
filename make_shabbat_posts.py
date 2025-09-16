@@ -615,11 +615,14 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     img.paste(overlay, (table_left, table_top), overlay)
 
     draw = ImageDraw.Draw(img)
-    # פיזור רחב יותר של העמודות עם רווחים גדולים יותר
-    col_spacing = table_width // 3.2  # חלוקה לחלקים גדולים יותר
-    col_hav_x    = table_left + col_spacing * 0.7    # זמן יציאה - שמאל
-    col_candle_x = table_left + col_spacing * 1.8    # זמן כניסה - אמצע
-    col_city_x   = table_left + col_spacing * 2.9    # עיר - ימין
+    # פיזור אחיד של העמודות בתוך הריבוע השחור עם רווחים שווים מכל הצדדים
+    margin = 40  # רווח אחיד מקצוות הריבוע השחור
+    usable_width = table_width - (2 * margin)  # רוחב זמין לטקסט
+    col_spacing = usable_width // 4  # חלוקה ל-4 חלקים שווים
+
+    col_hav_x    = table_left + margin + col_spacing * 0.5    # זמן יציאה - שמאל
+    col_candle_x = table_left + margin + col_spacing * 2      # זמן כניסה - אמצע
+    col_city_x   = table_left + margin + col_spacing * 3.5    # עיר - ימין
     y = table_top + 30
 
     # Update column headers based on event type
