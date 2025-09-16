@@ -546,9 +546,9 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     draw_text_with_stroke(draw, (W//2, 200), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # הזזת הטבלה למטה ושינוי גודל
-    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית
+    table_top = H - 350  # מתחיל 350 פיקסלים מהתחתית (יותר גבוה)
     table_height = (len(all_cities_rows)+1) * (row_font.size+15) + 50  # קטן יותר
-    table_width = W - 200  # רוחב קטן יותר
+    table_width = W - 100  # רוחב יותר גדול לטקסט
 
     # יצירת רקע עגול קטן יותר
     overlay = Image.new("RGBA", (table_width, table_height), (0,0,0,0))
@@ -567,10 +567,10 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     img.paste(overlay, (table_left, table_top), overlay)
 
     draw = ImageDraw.Draw(img)
-    # מיקומי עמודות יחסית למרכז הטבלה
-    col_city_x   = table_left + table_width - 50
-    col_candle_x = table_left + table_width - 250
-    col_hav_x    = table_left + table_width - 450
+    # מיקומי עמודות עם רווחים טובים יותר
+    col_city_x   = table_left + table_width - 80   # עיר
+    col_candle_x = table_left + table_width - 350  # זמן כניסה
+    col_hav_x    = table_left + table_width - 620  # זמן יציאה
     y = table_top + 40
 
     # Update column headers based on event type
@@ -593,8 +593,12 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
         draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ra")
         y += row_font.size + 15
 
-    draw_text_with_stroke(draw, (W//2, H - 150), "\"לחיי שמחות קטנות וגדולות\"", bless_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-    draw_text_with_stroke(draw, (W//2, H - 80), 'זמני השבת לע"נ אורי בורנשטיין הי"ד', small_font, fill, stroke, 3, anchor="ma", rtl=True)
+    # הזזת הטקסטים למעלה מהטבלה כדי שלא יתנגשו
+    blessing_y = table_top - 120
+    dedication_y = table_top - 60
+
+    draw_text_with_stroke(draw, (W//2, blessing_y), "\"לחיי שמחות קטנות וגדולות\"", bless_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    draw_text_with_stroke(draw, (W//2, dedication_y), 'זמני השבת לע"נ אורי בורנשטיין הי"ד', small_font, fill, stroke, 3, anchor="ma", rtl=True)
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     img.save(out_path, format="PNG", optimize=True)
