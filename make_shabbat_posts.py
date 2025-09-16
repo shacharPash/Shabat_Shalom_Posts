@@ -574,7 +574,7 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     draw_text_with_stroke(draw, (W//2, 140), sub_line, fitted_sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # הזזת הטבלה למטה ושינוי גודל
-    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית
+    table_top = H - 450  # מתחיל 400 פיקסלים מהתחתית
     table_height = (len(all_cities_rows)+1) * (row_font.size+10) + 40
     table_width = W - 200  # רוחב קטן יותר
 
@@ -595,11 +595,11 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     img.paste(overlay, (table_left, table_top), overlay)
 
     draw = ImageDraw.Draw(img)
-    # פיזור אחיד של העמודות על פני כל רוחב הטבלה
-    col_spacing = table_width // 4  # חלוקה ל-4 חלקים שווים
-    col_hav_x    = table_left + col_spacing          # זמן יציאה - שמאל
-    col_candle_x = table_left + col_spacing * 2      # זמן כניסה - אמצע
-    col_city_x   = table_left + col_spacing * 3      # עיר - ימין
+    # פיזור רחב יותר של העמודות עם רווחים גדולים יותר
+    col_spacing = table_width // 3.2  # חלוקה לחלקים גדולים יותר
+    col_hav_x    = table_left + col_spacing * 0.7    # זמן יציאה - שמאל
+    col_candle_x = table_left + col_spacing * 1.8    # זמן כניסה - אמצע
+    col_city_x   = table_left + col_spacing * 2.9    # עיר - ימין
     y = table_top + 30
 
     # Update column headers based on event type
