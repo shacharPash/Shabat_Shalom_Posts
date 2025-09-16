@@ -16,7 +16,6 @@ CITIES = [
     {"name": "ירושלים", "lat": 31.778117828230577, "lon": 35.23599222120022, "candle_offset": 40},
     {"name": "תל אביב", "lat": 32.08680752114438, "lon": 34.78974135330866, "candle_offset": 20},
     {"name": "לוד", "lat": 31.94588148808545, "lon": 34.88693992597191, "candle_offset": 20},
-    {"name": "אריאל", "lat": 32.103147, "lon": 35.207642, "candle_offset": 20},
     {"name": "מורשת", "lat": 32.825819, "lon": 35.233452, "candle_offset": 20},
 ]
 
@@ -546,7 +545,7 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     draw_text_with_stroke(draw, (W//2, 140), sub_line, sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # הזזת הטבלה למטה ושינוי גודל - קטן יותר ויותר למעלה
-    table_top = H - 320  # מתחיל 320 פיקסלים מהתחתית (יותר למעלה)
+    table_top = H - 400  # מתחיל 400 פיקסלים מהתחתית (יותר למעלה)
     table_height = (len(all_cities_rows)+1) * (row_font.size+10) + 40  # הרבה יותר קטן
     table_width = W - 200  # רוחב קטן יותר
 
@@ -567,35 +566,38 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     img.paste(overlay, (table_left, table_top), overlay)
 
     draw = ImageDraw.Draw(img)
-    # מיקומי עמודות עם רווחים טובים יותר - מותאם לטבלה קטנה
-    col_city_x   = table_left + table_width - 60   # עיר
-    col_candle_x = table_left + table_width - 280  # זמן כניסה
-    col_hav_x    = table_left + table_width - 500  # זמן יציאה
+    # פיזור אחיד של העמודות על פני כל רוחב הטבלה
+    col_spacing = table_width // 4  # חלוקה ל-4 חלקים שווים
+    col_hav_x    = table_left + col_spacing          # זמן יציאה - שמאל
+    col_candle_x = table_left + col_spacing * 2      # זמן כניסה - אמצע
+    col_city_x   = table_left + col_spacing * 3      # עיר - ימין
     y = table_top + 30
 
     # Update column headers based on event type
     event_info = week_info.get("event_info", {})
     event_type = event_info.get("event_type", "shabbos")
 
-    draw_text_with_stroke(draw, (col_city_x, y), "עיר", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+    # כותרות עמודות - ממורכזות
+    draw_text_with_stroke(draw, (col_city_x, y), "עיר", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     if event_type == "yomtov":
-        draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-        draw_text_with_stroke(draw, (col_hav_x, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
     else:
-        draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-        draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
     y += row_font.size + 10
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
-        draw_text_with_stroke(draw, (col_city_x, y), name, row_font, fill, stroke, stroke_w, anchor="ra", rtl=True)
-        draw_text_with_stroke(draw, (col_candle_x, y), candle_hhmm, row_font, fill, stroke, stroke_w, anchor="ra")
-        draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ra")
+        # נתונים ממורכזים בכל עמודה
+        draw_text_with_stroke(draw, (col_city_x, y), name, row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), candle_hhmm, row_font, fill, stroke, stroke_w, anchor="ma")
+        draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ma")
         y += row_font.size + 8
 
     # הזזת הטקסטים מתחת לטבלה - במיקום קבוע למטה
-    blessing_y = H - 120
-    dedication_y = H - 70
+    blessing_y = H - 110
+    dedication_y = H - 50
 
     draw_text_with_stroke(draw, (W//2, blessing_y), "\"לחיי שמחות קטנות וגדולות\"", bless_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
     draw_text_with_stroke(draw, (W//2, dedication_y), 'זמני השבת לע"נ אורי בורנשטיין הי"ד', small_font, fill, stroke, 3, anchor="ma", rtl=True)
