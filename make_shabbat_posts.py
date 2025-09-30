@@ -96,12 +96,20 @@ def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
     main_event_name = None
 
     # Find the start of the sequence (if we're in the middle)
+    # Only go back if the previous day is part of a continuous sequence
     while True:
         prev_day = current_date - timedelta(days=1)
         prev_jewcal = JewCal(gregorian_date=prev_day, diaspora=False)
 
+        # Only continue backwards if:
+        # 1. Previous day has events
+        # 2. Previous day does NOT end with Havdalah (meaning it continues to current day)
         if (prev_jewcal.has_events() and
             prev_jewcal.events.action in ["Candles", "Havdalah"]):
+            # If previous day ends with Havdalah, it's a separate sequence
+            if prev_jewcal.events.action == "Havdalah":
+                break
+            # Otherwise, continue backwards
             current_date = prev_day
             sequence_start = prev_day
         else:
@@ -122,12 +130,20 @@ def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
 
             sequence_end = current_date
 
-            # Check if sequence continues
+            # Check if sequence continues - only if current day is NOT the end (no Havdalah)
+            # OR if the next day is the immediate continuation (like Yom Tov followed by Shabbat on the same day)
             next_day = current_date + timedelta(days=1)
             next_jewcal = JewCal(gregorian_date=next_day, diaspora=False)
 
+            # Only continue if:
+            # 1. Current day doesn't end with Havdalah (meaning it continues to next day)
+            # 2. OR next day has Candles AND current day action is Candles (continuous sequence)
             if (next_jewcal.has_events() and
                 next_jewcal.events.action in ["Candles", "Havdalah"]):
+                # If current day has Havdalah, the sequence ends here (no continuation)
+                if jewcal.events.action == "Havdalah":
+                    break
+                # Otherwise, continue to next day
                 current_date = next_day
             else:
                 break
@@ -607,7 +623,7 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     overlay_draw.rounded_rectangle(
         [0, 0, table_width, table_height],
         radius=corner_radius,
-        fill=(0, 0, 0, 150)
+        fill=(0, 0, 0, 70)
     )
 
     # מרכוז הטבלה אופקית
