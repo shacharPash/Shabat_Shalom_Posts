@@ -198,16 +198,40 @@ def jewcal_times_for_sequence(lat: float, lon: float, start_date: date, end_date
             havdalah_time = end_zmanim['tzeis_minutes']
 
     # Determine event type and name
+    # Prefer the end event if it's more significant (e.g., Simchat Torah over Hoshana Rabba)
     event_name = None
     event_type = None
 
+    # Check both start and end events
+    start_event_name = None
+    start_event_type = None
+    end_event_name = None
+    end_event_type = None
+
     if start_jewcal.has_events():
         if start_jewcal.events.yomtov:
-            event_type = "yomtov"
-            event_name = start_jewcal.events.yomtov
+            start_event_type = "yomtov"
+            start_event_name = start_jewcal.events.yomtov
         elif start_jewcal.events.shabbos:
-            event_type = "shabbos"
-            event_name = start_jewcal.events.shabbos
+            start_event_type = "shabbos"
+            start_event_name = start_jewcal.events.shabbos
+
+    if end_jewcal.has_events():
+        if end_jewcal.events.yomtov:
+            end_event_type = "yomtov"
+            end_event_name = end_jewcal.events.yomtov
+        elif end_jewcal.events.shabbos:
+            end_event_type = "shabbos"
+            end_event_name = end_jewcal.events.shabbos
+
+    # Prefer end event if it's a major holiday (Simchat Torah, Shmini Atzeret, etc.)
+    # Otherwise use start event
+    if end_event_name and ("Simchat Tora" in end_event_name or "Shmini Atzeret" in end_event_name):
+        event_type = end_event_type
+        event_name = end_event_name
+    else:
+        event_type = start_event_type
+        event_name = start_event_name
 
     # Get parsha information only if sequence involves Shabbat
     parsha = None
