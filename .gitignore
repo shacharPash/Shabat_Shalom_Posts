@@ -1,6 +1,10 @@
 # תיקיית פלט - קבצים שנוצרים אוטומטית
 output/
 
+# תיקיות תמונות גדולות
+backlog images/
+imagess/
+
 # קבצי Python
 __pycache__/
 *.py[cod]
