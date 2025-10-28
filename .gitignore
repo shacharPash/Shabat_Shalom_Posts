@@ -5,13 +5,17 @@ output/
 backlog images/
 imagess/
 
-# תמונות בתיקיית images (שמור רק את .gitkeep)
+# תמונות ווידאו בתיקיית images (שמור רק את .gitkeep)
 images/*.jpg
 images/*.jpeg
 images/*.png
 images/*.webp
 images/*.HEIC
 images/*.heic
+images/*.mp4
+images/*.mov
+images/*.avi
+images/*.mkv
 
 # קבצי Python
 __pycache__/
