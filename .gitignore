@@ -5,6 +5,14 @@ output/
 backlog images/
 imagess/
 
+# תמונות בתיקיית images (שמור רק את .gitkeep)
+images/*.jpg
+images/*.jpeg
+images/*.png
+images/*.webp
+images/*.HEIC
+images/*.heic
+
 # קבצי Python
 __pycache__/
 *.py[cod]
