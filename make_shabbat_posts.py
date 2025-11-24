@@ -16,7 +16,7 @@ CITIES = [
     {"name": "ירושלים", "lat": 31.778117828230577, "lon": 35.23599222120022, "candle_offset": 40},
     {"name": "תל אביב", "lat": 32.08680752114438, "lon": 34.78974135330866, "candle_offset": 20},
     {"name": "לוד", "lat": 31.94588148808545, "lon": 34.88693992597191, "candle_offset": 20},
-    {"name": "מורשת", "lat": 32.825819, "lon": 35.233452, "candle_offset": 20},
+    {"name": "מורשת", "lat": 32.825819, "lon": 35.233452, "candle_offset": 30},
 ]
 
 IMG_SIZE = (1080, 1080)  # Wider rectangle (5:4 ratio)
