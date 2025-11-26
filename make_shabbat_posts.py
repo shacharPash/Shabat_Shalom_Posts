@@ -1,6 +1,9 @@
 import argparse
 import os
 from datetime import datetime, date, timedelta
+from io import BytesIO
+from typing import Optional, Iterable
+
 from dateutil.relativedelta import relativedelta
 import requests
 from PIL import Image, ImageDraw, ImageFont
@@ -503,7 +506,13 @@ def draw_text_with_stroke(draw, xy, text, font, fill, stroke_fill, stroke_width,
     )
 
 # ========= COMPOSER =========
-def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, out_path: str):
+def compose_poster(
+    bg_img: Image.Image,
+    week_info: dict,
+    all_cities_rows: list,
+    blessing_text: str | None = None,
+    dedication_text: str | None = None,
+) -> Image.Image:
     img = bg_img.copy()
     W, H = img.size
     draw = ImageDraw.Draw(img)
@@ -691,12 +700,24 @@ def compose_poster(bg_img: Image.Image, week_info: dict, all_cities_rows: list, 
     blessing_y = H - 110
     dedication_y = H - 50
 
-    draw_text_with_stroke(draw, (W//2, blessing_y), "\"לחיי שמחות קטנות וגדולות\"", bless_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-    draw_text_with_stroke(draw, (W//2, dedication_y), 'זמני השבת לע"נ אורי בורנשטיין הי"ד', small_font, fill, stroke, 3, anchor="ma", rtl=True)
+    blessing_text = blessing_text or "\"לחיי שמחות קטנות וגדולות\""
+    dedication_text = dedication_text or 'זמני השבת לע"נ אורי בורנשטיין הי"ד'
 
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    img.save(out_path, format="PNG", optimize=True)
-    print(f"Generated file: {out_path}")
+    draw_text_with_stroke(
+        draw, (W//2, blessing_y),
+        blessing_text, bless_font,
+        fill, stroke, stroke_w,
+        anchor="ma", rtl=True,
+    )
+    draw_text_with_stroke(
+        draw, (W//2, dedication_y),
+        dedication_text, small_font,
+        fill, stroke, 3,
+        anchor="ma", rtl=True,
+    )
+
+    # Do NOT save to disk here anymore
+    return img
 
 # ========= MAIN =========
 def next_friday(d: date) -> date:
@@ -753,6 +774,80 @@ def find_next_event_date(start_base: date) -> tuple[date, str, str]:
     # Fallback to next Friday if no special events found
     return next_friday(start_base), "shabbos", "Shabbos"
 
+
+def generate_poster(
+    *,
+    image_path: str,
+    start_date: Optional[date] = None,
+    cities: Optional[Iterable[dict]] = None,
+    blessing_text: Optional[str] = None,
+    dedication_text: Optional[str] = None,
+) -> bytes:
+    """
+    Generate a single Shabbat/Yom Tov poster for one background image.
+
+    - image_path: path to the background image file
+    - start_date: base date to search from (default: today)
+    - cities: optional list of city dicts like the global CITIES
+    - blessing_text: optional custom bottom message
+    - dedication_text: optional custom 'leiluy neshama' text
+
+    Return: PNG image bytes.
+    """
+    # Use defaults if not provided
+    if start_date is None:
+        start_date = date.today()
+    if cities is None:
+        cities = CITIES
+
+    # Find the next event sequence
+    seq_start, seq_end, event_type, event_name = find_next_sequence(start_date)
+
+    # Compute parsha and zmanim for all cities
+    rows = []
+    parsha_name = None
+    event_info = None
+
+    for city in cities:
+        info = jewcal_times_for_sequence(
+            city["lat"], city["lon"], seq_start, seq_end, city["candle_offset"]
+        )
+        if not parsha_name and info.get("parsha"):
+            parsha_name = info["parsha"]
+        if not event_info:
+            event_info = {
+                "event_name": info.get("event_name"),
+                "event_type": info.get("event_type"),
+                "action": info.get("action"),
+            }
+        candle_hhmm = iso_to_hhmm(info.get("candle"))
+        hav_hhmm = iso_to_hhmm(info.get("havdalah"))
+        rows.append((city["name"], candle_hhmm, hav_hhmm))
+
+    # Create background image
+    bg = fit_background(image_path, IMG_SIZE)
+
+    # Build week info
+    week_info = {
+        "parsha": parsha_name,
+        "seq_start": seq_start,
+        "seq_end": seq_end,
+        "event_info": event_info,
+    }
+
+    # Compose the poster image
+    img = compose_poster(
+        bg, week_info, rows,
+        blessing_text=blessing_text,
+        dedication_text=dedication_text,
+    )
+
+    # Save to BytesIO buffer as PNG and return bytes
+    buffer = BytesIO()
+    img.save(buffer, format="PNG", optimize=True)
+    return buffer.getvalue()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Shabbat/Yom Tov posts with candle times")
     parser.add_argument("--images-dir", default="images", help="Input images folder")
@@ -775,7 +870,7 @@ def main():
     processed_sequences = []  # Track which sequences we've already processed
 
     for i, img_path in enumerate(images):
-        # Find the next sequence
+        # Find the next sequence (for naming the file and updating search date)
         seq_start, seq_end, event_type, event_name = find_next_sequence(current_search_date)
 
         # Skip if we've already processed this sequence
@@ -787,42 +882,29 @@ def main():
 
         processed_sequences.append((seq_start, seq_end))
 
-        rows = []
-        parsha_name = None
-        event_info = None
-
-        for city in CITIES:
-            info = jewcal_times_for_sequence(city["lat"], city["lon"], seq_start, seq_end, city["candle_offset"])
-            if not parsha_name and info.get("parsha"):
-                parsha_name = info["parsha"]
-            if not event_info:
-                event_info = {
-                    "event_name": info.get("event_name"),
-                    "event_type": info.get("event_type"),
-                    "action": info.get("action")
-                }
-            candle_hhmm = iso_to_hhmm(info.get("candle"))
-            hav_hhmm    = iso_to_hhmm(info.get("havdalah"))
-            rows.append((city["name"], candle_hhmm, hav_hhmm))
-
-        bg = fit_background(img_path, IMG_SIZE)
-        week_info = {
-            "parsha": parsha_name,
-            "seq_start": seq_start,
-            "seq_end": seq_end,
-            "event_info": event_info
-        }
+        # Generate the poster using the reusable function
+        poster_bytes = generate_poster(
+            image_path=img_path,
+            start_date=current_search_date,
+            # blessing_text and dedication_text left as defaults
+        )
 
         # Create filename based on event type and sequence
-        event_type_str = event_info.get("event_type", "shabbos")
+        event_type_str = event_type or "shabbos"
         if seq_start == seq_end:
             out_name = f"output/{event_type_str}_{seq_start.isoformat()}_cities.png"
         else:
             out_name = f"output/{event_type_str}_{seq_start.isoformat()}_to_{seq_end.isoformat()}_cities.png"
-        compose_poster(bg, week_info, rows, out_name)
+
+        # Save the poster bytes to disk
+        os.makedirs(os.path.dirname(out_name), exist_ok=True)
+        with open(out_name, "wb") as f:
+            f.write(poster_bytes)
+        print(f"Generated file: {out_name}")
 
         # Move to next sequence
         current_search_date = seq_end + timedelta(days=1)
+
 
 if __name__ == "__main__":
     main()

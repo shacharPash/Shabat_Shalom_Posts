@@ -1,0 +1,105 @@
+import json
+from datetime import date
+from http.server import BaseHTTPRequestHandler
+from typing import Any, Dict, List, Optional
+
+from make_shabbat_posts import generate_poster, CITIES
+
+
+def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
+    """
+    Pure logic function that:
+    - Receives a dict representing the JSON payload of a request
+    - Returns PNG bytes for a single generated poster.
+
+    Expected payload structure (all fields optional):
+    {
+      "image": "images/example.jpg",        # path to background image
+      "message": "שבת שלום לכולם!",        # bottom blessing text
+      "leiluyNeshama": "אורי בורנשטיין",  # dedication name
+      "cities": [                          # override default CITIES
+        { "name": "...", "lat": ..., "lon": ..., "candle_offset": ... }
+      ],
+      "startDate": "YYYY-MM-DD"            # base date for calculations
+    }
+    """
+
+    image_path: Optional[str] = payload.get("image")
+    message: Optional[str] = payload.get("message")
+    leiluy_neshama: Optional[str] = payload.get("leiluyNeshama")
+    cities: Optional[List[Dict[str, Any]]] = payload.get("cities")
+
+    start_date_str: Optional[str] = payload.get("startDate")
+    if start_date_str:
+        start_date = date.fromisoformat(start_date_str)
+    else:
+        start_date = None
+
+    # If image_path is not provided, pick the first valid image from images/
+    if image_path is None:
+        import os
+
+        exts = {".jpg", ".jpeg", ".png", ".webp"}
+        images_dir = "images"
+        all_files = sorted(os.listdir(images_dir))
+        image_files = [
+            f for f in all_files
+            if os.path.splitext(f)[1].lower() in exts
+        ]
+        if not image_files:
+            raise RuntimeError("No images available in images folder and no 'image' provided")
+
+        image_path = os.path.join(images_dir, image_files[0])
+
+    # Use provided cities if any, otherwise fall back to global CITIES
+    cities_arg = cities if cities is not None else CITIES
+
+    # Texts
+    blessing_text = message  # if None, generate_poster/compose_poster will use defaults
+    dedication_text = None
+    if leiluy_neshama:
+        dedication_text = f'זמני השבת לע"נ {leiluy_neshama}'
+
+    poster_bytes = generate_poster(
+        image_path=image_path,
+        start_date=start_date,
+        cities=cities_arg,
+        blessing_text=blessing_text,
+        dedication_text=dedication_text,
+    )
+
+    return poster_bytes
+
+
+class handler(BaseHTTPRequestHandler):
+    """
+    Vercel serverless function entrypoint using BaseHTTPRequestHandler.
+    """
+
+    def do_POST(self):
+        # Read request body
+        content_length = int(self.headers.get("Content-Length", "0"))
+        raw_body = self.rfile.read(content_length) if content_length > 0 else b"{}"
+
+        try:
+            payload = json.loads(raw_body.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+
+        try:
+            poster_bytes = build_poster_from_payload(payload)
+
+            # Send response headers
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.end_headers()
+
+            # Write raw PNG bytes to response
+            self.wfile.write(poster_bytes)
+        except Exception as e:
+            # If something goes wrong, return 500 and a simple error message
+            error_msg = f"Internal Server Error: {e}".encode("utf-8")
+            self.send_response(500)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(error_msg)

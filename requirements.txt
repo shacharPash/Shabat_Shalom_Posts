@@ -1,0 +1,13 @@
+# Core dependencies
+python-dateutil
+requests
+Pillow
+arabic-reshaper
+python-bidi
+jewcal
+pytz
+
+# API server
+fastapi
+uvicorn[standard]
+
