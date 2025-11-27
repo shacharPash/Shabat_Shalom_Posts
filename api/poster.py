@@ -54,25 +54,26 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     if image_base64:
         try:
             image_bytes = base64.b64decode(image_base64)
-            # Save to a temporary file
-            tmp_path = os.path.join(tempfile.gettempdir(), "poster_bg_from_base64.png")
-            with open(tmp_path, "wb") as f:
-                f.write(image_bytes)
-            image_path = tmp_path
+            # Save to a temporary file (cloud-safe: uses /tmp)
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            tmp.write(image_bytes)
+            tmp.close()
+            image_path = tmp.name
         except Exception as e:
             raise RuntimeError(f"Failed to decode imageBase64: {e}")
 
     # Priority 2: imageUrl
     elif image_url:
         try:
-            response = requests.get(image_url, timeout=15)
-            if response.status_code != 200:
-                raise RuntimeError(f"Failed to download image from imageUrl: HTTP {response.status_code}")
-            # Save to a temporary file
-            tmp_path = os.path.join(tempfile.gettempdir(), "poster_bg.jpg")
-            with open(tmp_path, "wb") as f:
-                f.write(response.content)
-            image_path = tmp_path
+            headers = {"User-Agent": "Mozilla/5.0"}
+            r = requests.get(image_url, timeout=15, headers=headers)
+            if r.status_code != 200:
+                raise RuntimeError("Failed to download image from imageUrl")
+            # Save to a temporary file (cloud-safe: uses /tmp)
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+            tmp.write(r.content)
+            tmp.close()
+            image_path = tmp.name
         except requests.RequestException as e:
             raise RuntimeError(f"Failed to download image from imageUrl: {e}")
 
