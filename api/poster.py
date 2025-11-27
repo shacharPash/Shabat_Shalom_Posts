@@ -1,7 +1,12 @@
+import base64
 import json
+import os
+import tempfile
 from datetime import date
 from http.server import BaseHTTPRequestHandler
 from typing import Any, Dict, List, Optional
+
+import requests
 
 from make_shabbat_posts import generate_poster, CITIES
 
@@ -14,7 +19,9 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
 
     Expected payload structure (all fields optional):
     {
-      "image": "images/example.jpg",        # path to background image
+      "imageBase64": "...",                 # base64-encoded PNG/JPEG (highest priority)
+      "imageUrl": "https://...",            # URL to download image from
+      "image": "images/example.jpg",        # path to background image (local)
       "message": "שבת שלום לכולם!",        # bottom blessing text
       "leiluyNeshama": "אורי בורנשטיין",  # dedication name
       "cities": [                          # override default CITIES
@@ -22,8 +29,16 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
       ],
       "startDate": "YYYY-MM-DD"            # base date for calculations
     }
+
+    Priority for background image:
+    1. imageBase64 (if provided)
+    2. imageUrl (if provided)
+    3. image (local path, if provided)
+    4. Fallback: first image from images/ folder
     """
 
+    image_base64: Optional[str] = payload.get("imageBase64")
+    image_url: Optional[str] = payload.get("imageUrl")
     image_path: Optional[str] = payload.get("image")
     message: Optional[str] = payload.get("message")
     leiluy_neshama: Optional[str] = payload.get("leiluyNeshama")
@@ -35,10 +50,35 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     else:
         start_date = None
 
-    # If image_path is not provided, pick the first valid image from images/
-    if image_path is None:
-        import os
+    # Priority 1: imageBase64
+    if image_base64:
+        try:
+            image_bytes = base64.b64decode(image_base64)
+            # Save to a temporary file
+            tmp_path = os.path.join(tempfile.gettempdir(), "poster_bg_from_base64.png")
+            with open(tmp_path, "wb") as f:
+                f.write(image_bytes)
+            image_path = tmp_path
+        except Exception as e:
+            raise RuntimeError(f"Failed to decode imageBase64: {e}")
 
+    # Priority 2: imageUrl
+    elif image_url:
+        try:
+            response = requests.get(image_url, timeout=15)
+            if response.status_code != 200:
+                raise RuntimeError(f"Failed to download image from imageUrl: HTTP {response.status_code}")
+            # Save to a temporary file
+            tmp_path = os.path.join(tempfile.gettempdir(), "poster_bg.jpg")
+            with open(tmp_path, "wb") as f:
+                f.write(response.content)
+            image_path = tmp_path
+        except requests.RequestException as e:
+            raise RuntimeError(f"Failed to download image from imageUrl: {e}")
+
+    # Priority 3: image (local path) - already set from payload.get("image")
+    # Priority 4: Fallback to first image from images/ folder
+    elif image_path is None:
         exts = {".jpg", ".jpeg", ".png", ".webp"}
         images_dir = "images"
         all_files = sorted(os.listdir(images_dir))
