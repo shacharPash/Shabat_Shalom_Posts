@@ -519,7 +519,6 @@ def compose_poster(
 
     title_font = load_font(100, bold=True)
     sub_font   = load_font(54)
-    row_font   = load_font(50)
     bless_font = load_font(60, bold=True)
     small_font = load_font(36)
 
@@ -642,10 +641,31 @@ def compose_poster(
     fitted_sub_font = get_fitted_font(sub_line, sub_font, W - 100, rtl=True)
     draw_text_with_stroke(draw, (W//2, 140), sub_line, fitted_sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    # הזזת הטבלה למטה ושינוי גודל
-    table_top = H - 450  # מתחיל 400 פיקסלים מהתחתית
-    table_height = (len(all_cities_rows)+1) * (row_font.size+10) + 40
+    # Adjust font size and spacing based on number of cities
+    num_cities = len(all_cities_rows)
+    if num_cities <= 4:
+        # Standard sizing for 4 or fewer cities
+        city_font_size = 50
+        row_spacing = 10
+    elif num_cities <= 6:
+        # Medium sizing for 5-6 cities
+        city_font_size = 42
+        row_spacing = 6
+    else:
+        # Compact sizing for 7-8 cities
+        city_font_size = 36
+        row_spacing = 4
+
+    city_row_font = load_font(city_font_size)
+
+    # Calculate table dimensions
+    table_height = (num_cities + 1) * (city_font_size + row_spacing) + 40
     table_width = W - 200  # רוחב קטן יותר
+
+    # Position table dynamically: consistent gap above blessing text
+    blessing_y = H - 125  # Fixed position of blessing text
+    table_to_blessing_gap = 10  # Consistent gap between table bottom and blessing text
+    table_top = blessing_y - table_to_blessing_gap - table_height
 
     # יצירת רקע עגול קטן יותר
     overlay = Image.new("RGBA", (table_width, table_height), (0,0,0,0))
@@ -678,26 +698,25 @@ def compose_poster(
     event_info = week_info.get("event_info", {})
     event_type = event_info.get("event_type", "shabbos")
 
-    # כותרות עמודות - ממורכזות
-    draw_text_with_stroke(draw, (col_city_x, y), "עיר", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    # כותרות עמודות - ממורכזות (use same font as rows for consistency)
+    draw_text_with_stroke(draw, (col_city_x, y), "עיר", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     if event_type == "yomtov":
-        draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-        draw_text_with_stroke(draw, (col_hav_x, y), "צאת החג", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "צאת החג", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
     else:
-        draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-        draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-    y += row_font.size + 10
+        draw_text_with_stroke(draw, (col_candle_x, y), "כניסת שבת", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "צאת שבת", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    y += city_font_size + row_spacing
 
     for name, candle_hhmm, hav_hhmm in all_cities_rows:
         # נתונים ממורכזים בכל עמודה
-        draw_text_with_stroke(draw, (col_city_x, y), name, row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-        draw_text_with_stroke(draw, (col_candle_x, y), candle_hhmm, row_font, fill, stroke, stroke_w, anchor="ma")
-        draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, row_font, fill, stroke, stroke_w, anchor="ma")
-        y += row_font.size + 8
+        draw_text_with_stroke(draw, (col_city_x, y), name, city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_candle_x, y), candle_hhmm, city_row_font, fill, stroke, stroke_w, anchor="ma")
+        draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, city_row_font, fill, stroke, stroke_w, anchor="ma")
+        y += city_font_size + row_spacing - 2
 
-    # הזזת הטקסטים מתחת לטבלה - במיקום קבוע למטה
-    blessing_y = H - 110
+    # Draw text below table - fixed position at bottom (blessing_y already defined above)
     dedication_y = H - 50
 
     blessing_text = blessing_text or "\"לחיי שמחות קטנות וגדולות\""

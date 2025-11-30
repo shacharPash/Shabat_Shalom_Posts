@@ -230,6 +230,12 @@ async def index():
       background: #e8eaf6;
       padding: 4px 10px;
       border-radius: 20px;
+      transition: all 0.2s ease;
+    }
+    .cities-counter.limit-reached {
+      background: #fff3e0;
+      color: #e65100;
+      font-weight: 600;
     }
     .cities-actions {
       display: flex;
@@ -295,6 +301,11 @@ async def index():
     }
     .city-option.hidden {
       display: none;
+    }
+    .city-option.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
     }
     .city-option input[type="checkbox"] {
       width: 16px;
@@ -534,9 +545,8 @@ async def index():
       <label>בחר ערים שיופיעו בפוסטר <span class="optional">(לא חובה)</span></label>
       <div class="cities-section">
         <div class="cities-header">
-          <span id="citiesCounter" class="cities-counter">נבחרו: 0 מתוך TOTAL_CITIES_PLACEHOLDER</span>
+          <span id="citiesCounter" class="cities-counter">נבחרו: 0 מתוך 8</span>
           <div class="cities-actions">
-            <button type="button" id="selectAllBtn">בחר הכל</button>
             <button type="button" id="deselectAllBtn">נקה הכל</button>
           </div>
         </div>
@@ -588,18 +598,32 @@ CITY_CHECKBOXES_PLACEHOLDER
     const citySearch = document.getElementById("citySearch");
     const citiesGrid = document.getElementById("citiesGrid");
     const citiesCounter = document.getElementById("citiesCounter");
-    const selectAllBtn = document.getElementById("selectAllBtn");
     const deselectAllBtn = document.getElementById("deselectAllBtn");
     const noResults = document.getElementById("noResults");
     const cityOptions = document.querySelectorAll(".city-option");
     const cityCheckboxes = document.querySelectorAll('input[name="cityOption"]');
+    const MAX_CITIES = 8;
     let currentBlobUrl = null;
 
-    // Update city counter
+    // Update city counter and enforce max limit
     function updateCityCounter() {
       const checked = document.querySelectorAll('input[name="cityOption"]:checked').length;
-      const total = cityCheckboxes.length;
-      citiesCounter.textContent = "נבחרו: " + checked + " מתוך " + total;
+      citiesCounter.textContent = "נבחרו: " + checked + " מתוך " + MAX_CITIES;
+
+      // Add/remove limit-reached class for visual feedback
+      if (checked >= MAX_CITIES) {
+        citiesCounter.classList.add("limit-reached");
+      } else {
+        citiesCounter.classList.remove("limit-reached");
+      }
+
+      // Disable/enable unchecked checkboxes based on limit
+      cityCheckboxes.forEach(cb => {
+        if (!cb.checked) {
+          cb.disabled = checked >= MAX_CITIES;
+          cb.closest(".city-option").classList.toggle("disabled", checked >= MAX_CITIES);
+        }
+      });
     }
 
     // Toggle checked class on city option
@@ -626,22 +650,12 @@ CITY_CHECKBOXES_PLACEHOLDER
       noResults.style.display = visibleCount === 0 ? "block" : "none";
     });
 
-    // Select all cities
-    selectAllBtn.addEventListener("click", () => {
-      cityCheckboxes.forEach(cb => {
-        if (!cb.closest(".city-option").classList.contains("hidden")) {
-          cb.checked = true;
-          cb.closest(".city-option").classList.add("checked");
-        }
-      });
-      updateCityCounter();
-    });
-
     // Deselect all cities
     deselectAllBtn.addEventListener("click", () => {
       cityCheckboxes.forEach(cb => {
         cb.checked = false;
-        cb.closest(".city-option").classList.remove("checked");
+        cb.disabled = false;
+        cb.closest(".city-option").classList.remove("checked", "disabled");
       });
       updateCityCounter();
     });
