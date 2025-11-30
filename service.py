@@ -1,4 +1,6 @@
-from typing import Any, Dict
+import json
+from typing import Any, Dict, List
+
 from fastapi import FastAPI, Body
 from fastapi.responses import Response, HTMLResponse
 
@@ -7,10 +9,51 @@ from api.poster import build_poster_from_payload
 
 app = FastAPI()
 
+# Load cities from GeoJSON at startup
+def load_cities_from_geojson() -> List[Dict[str, Any]]:
+    """Load and parse cities from the GeoJSON file."""
+    try:
+        with open("cities_coordinates.geojson", "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        cities = []
+        for feature in data.get("features", []):
+            props = feature.get("properties", {})
+            geometry = feature.get("geometry", {})
+            coords = geometry.get("coordinates", [])
+
+            name = props.get("MGLSDE_LOC", "").strip()
+            if name and len(coords) >= 2:
+                cities.append({
+                    "name": name,
+                    "lat": coords[1],  # GeoJSON is [lon, lat]
+                    "lon": coords[0],
+                    "candle_offset": 20  # Default offset
+                })
+
+        # Sort alphabetically by Hebrew name
+        cities.sort(key=lambda c: c["name"])
+        return cities
+    except Exception as e:
+        print(f"Error loading GeoJSON: {e}")
+        return []
+
+# Load cities once at startup
+GEOJSON_CITIES = load_cities_from_geojson()
+CITY_BY_NAME = {c["name"]: c for c in GEOJSON_CITIES}
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
+    # Generate city checkboxes dynamically from GeoJSON data
+    city_checkboxes = "\n".join([
+        f'        <label class="city-option"><input type="checkbox" name="cityOption" value="{city["name"]}"><span>{city["name"]}</span></label>'
+        for city in GEOJSON_CITIES
+    ])
+    total_cities = len(GEOJSON_CITIES)
+
     # UI מעוצב ליצירת פוסטר שבת
-    return """
+    # Using CITY_CHECKBOXES_PLACEHOLDER and TOTAL_CITIES_PLACEHOLDER to avoid f-string issues with CSS braces
+    html_template = """
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -185,6 +228,122 @@ async def index():
     }
     .or-divider::after {
       margin-right: 12px;
+    }
+    /* City selection */
+    .cities-section {
+      border: 2px solid #e8eaf6;
+      border-radius: 12px;
+      padding: 16px;
+      background: #fafafa;
+    }
+    .cities-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .cities-counter {
+      font-size: 13px;
+      color: #5c6bc0;
+      background: #e8eaf6;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .cities-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .cities-actions button {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #c5cae9;
+      background: #fff;
+      color: #3949ab;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+    .cities-actions button:hover {
+      background: #e8eaf6;
+      border-color: #5c6bc0;
+    }
+    .city-search {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      font-size: 14px;
+      font-family: inherit;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .city-search:focus {
+      outline: none;
+      border-color: #5c6bc0;
+      box-shadow: 0 0 0 3px rgba(92, 107, 192, 0.1);
+    }
+    .cities-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      max-height: 250px;
+      overflow-y: auto;
+      padding-left: 4px;
+    }
+    .city-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #e8eaf6;
+      background: #fff;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 13px;
+    }
+    .city-option:hover {
+      border-color: #c5cae9;
+      background: #f5f5ff;
+    }
+    .city-option.checked {
+      border-color: #5c6bc0;
+      background: #e8eaf6;
+    }
+    .city-option.hidden {
+      display: none;
+    }
+    .city-option input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #3949ab;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .city-option span {
+      color: #1a237e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .no-results {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: #9e9e9e;
+      padding: 20px;
+      font-size: 14px;
+    }
+    @media (max-width: 400px) {
+      .cities-grid {
+        grid-template-columns: 1fr;
+      }
+      .cities-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
     }
     .btn-generate {
       margin-top: 8px;
@@ -393,6 +552,25 @@ async def index():
       <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
     </div>
 
+    <div class="form-group">
+      <label>בחר ערים שיופיעו בפוסטר <span class="optional">(לא חובה)</span></label>
+      <div class="cities-section">
+        <div class="cities-header">
+          <span id="citiesCounter" class="cities-counter">נבחרו: 0 מתוך TOTAL_CITIES_PLACEHOLDER</span>
+          <div class="cities-actions">
+            <button type="button" id="selectAllBtn">בחר הכל</button>
+            <button type="button" id="deselectAllBtn">נקה הכל</button>
+          </div>
+        </div>
+        <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר..." />
+        <div class="cities-grid" id="citiesGrid">
+CITY_CHECKBOXES_PLACEHOLDER
+          <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
+        </div>
+      </div>
+      <div class="hint">אם לא תבחר ערים, יוצגו ערי ברירת המחדל</div>
+    </div>
+
     <button id="generateBtn" class="btn-generate">
       <span class="btn-text">✨ צור פוסטר</span>
       <div class="spinner"></div>
@@ -429,7 +607,66 @@ async def index():
     const fileNameEl = document.getElementById("fileName");
     const fileNameText = document.getElementById("fileNameText");
     const clearFileBtn = document.getElementById("clearFileBtn");
+    const citySearch = document.getElementById("citySearch");
+    const citiesGrid = document.getElementById("citiesGrid");
+    const citiesCounter = document.getElementById("citiesCounter");
+    const selectAllBtn = document.getElementById("selectAllBtn");
+    const deselectAllBtn = document.getElementById("deselectAllBtn");
+    const noResults = document.getElementById("noResults");
+    const cityOptions = document.querySelectorAll(".city-option");
+    const cityCheckboxes = document.querySelectorAll('input[name="cityOption"]');
     let currentBlobUrl = null;
+
+    // Update city counter
+    function updateCityCounter() {
+      const checked = document.querySelectorAll('input[name="cityOption"]:checked').length;
+      const total = cityCheckboxes.length;
+      citiesCounter.textContent = "נבחרו: " + checked + " מתוך " + total;
+    }
+
+    // Toggle checked class on city option
+    cityCheckboxes.forEach(cb => {
+      cb.addEventListener("change", () => {
+        cb.closest(".city-option").classList.toggle("checked", cb.checked);
+        updateCityCounter();
+      });
+    });
+
+    // City search filter
+    citySearch.addEventListener("input", () => {
+      const query = citySearch.value.trim().toLowerCase();
+      let visibleCount = 0;
+      cityOptions.forEach(opt => {
+        const name = opt.querySelector("span").textContent.toLowerCase();
+        if (name.includes(query)) {
+          opt.classList.remove("hidden");
+          visibleCount++;
+        } else {
+          opt.classList.add("hidden");
+        }
+      });
+      noResults.style.display = visibleCount === 0 ? "block" : "none";
+    });
+
+    // Select all cities
+    selectAllBtn.addEventListener("click", () => {
+      cityCheckboxes.forEach(cb => {
+        if (!cb.closest(".city-option").classList.contains("hidden")) {
+          cb.checked = true;
+          cb.closest(".city-option").classList.add("checked");
+        }
+      });
+      updateCityCounter();
+    });
+
+    // Deselect all cities
+    deselectAllBtn.addEventListener("click", () => {
+      cityCheckboxes.forEach(cb => {
+        cb.checked = false;
+        cb.closest(".city-option").classList.remove("checked");
+      });
+      updateCityCounter();
+    });
 
     // File upload button click -> trigger hidden file input
     fileUploadBtn.addEventListener("click", () => {
@@ -499,6 +736,15 @@ async def index():
         if (message) payload.message = message;
         if (leiluyNeshama) payload.leiluyNeshama = leiluyNeshama;
 
+        // Collect selected cities
+        const selectedCities = [];
+        document.querySelectorAll('input[name="cityOption"]:checked').forEach(cb => {
+          selectedCities.push(cb.value);
+        });
+        if (selectedCities.length > 0) {
+          payload.cities = selectedCities;
+        }
+
         const resp = await fetch("/poster", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -547,6 +793,9 @@ async def index():
 </html>
     """
 
+    # Replace placeholders with actual values
+    return html_template.replace("CITY_CHECKBOXES_PLACEHOLDER", city_checkboxes).replace("TOTAL_CITIES_PLACEHOLDER", str(total_cities))
+
 
 @app.post("/poster")
 async def create_poster(payload: Dict[str, Any] = Body(default={})):
@@ -555,9 +804,26 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
     - Receives JSON payload
     - Uses build_poster_from_payload to generate a PNG
     - Returns image/png as response
+
+    If payload contains 'cities' as a list of city names (strings),
+    maps them to full city objects with coordinates from GeoJSON.
     """
     if payload is None:
         payload = {}
+
+    # Map city names to full city objects with coordinates
+    if "cities" in payload and isinstance(payload["cities"], list):
+        city_names = payload["cities"]
+        mapped_cities = []
+        for name in city_names:
+            if name in CITY_BY_NAME:
+                mapped_cities.append(CITY_BY_NAME[name])
+        # Only use mapped cities if we found at least one
+        if mapped_cities:
+            payload["cities"] = mapped_cities
+        else:
+            # Remove invalid cities list to use default
+            del payload["cities"]
 
     poster_bytes = build_poster_from_payload(payload)
     return Response(content=poster_bytes, media_type="image/png")
