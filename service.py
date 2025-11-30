@@ -209,26 +209,6 @@ async def index():
     .file-name .clear-file:hover {
       color: #c62828;
     }
-    .or-divider {
-      display: flex;
-      align-items: center;
-      margin: 16px 0;
-      color: #9e9e9e;
-      font-size: 13px;
-    }
-    .or-divider::before,
-    .or-divider::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: #e0e0e0;
-    }
-    .or-divider::before {
-      margin-left: 12px;
-    }
-    .or-divider::after {
-      margin-right: 12px;
-    }
     /* City selection */
     .cities-section {
       border: 2px solid #e8eaf6;
@@ -537,8 +517,6 @@ async def index():
           <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
         </div>
       </div>
-      <div class="or-divider">או</div>
-      <input id="imageUrl" type="text" placeholder="הדבק קישור לתמונה מהאינטרנט" />
       <div class="hint">השאירו ריק לשימוש בתמונת ברירת המחדל</div>
     </div>
 
@@ -681,8 +659,6 @@ CITY_CHECKBOXES_PLACEHOLDER
         fileNameEl.classList.add("show");
         fileUploadBtn.classList.add("has-file");
         fileUploadBtn.innerHTML = "<span>✅</span> תמונה נבחרה";
-        // Clear URL input when file is selected
-        document.getElementById("imageUrl").value = "";
       }
     });
 
@@ -709,7 +685,6 @@ CITY_CHECKBOXES_PLACEHOLDER
     }
 
     btn.addEventListener("click", async () => {
-      const imageUrl = document.getElementById("imageUrl").value.trim();
       const message = document.getElementById("message").value.trim();
       const leiluyNeshama = document.getElementById("neshama").value.trim();
       const selectedFile = fileInput.files && fileInput.files[0];
@@ -723,14 +698,11 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       const payload = {};
 
-      // Priority: uploaded file > imageUrl > default
       try {
         if (selectedFile) {
           // Convert file to base64 and add to payload
           const base64 = await readFileAsBase64(selectedFile);
           payload.imageBase64 = base64;
-        } else if (imageUrl) {
-          payload.imageUrl = imageUrl;
         }
 
         if (message) payload.message = message;
