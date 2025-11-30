@@ -106,6 +106,86 @@ async def index():
       content: "💡";
       font-size: 11px;
     }
+    /* File upload styling */
+    .file-upload-wrapper {
+      position: relative;
+    }
+    .file-input-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      overflow: hidden;
+    }
+    .file-upload-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 2px dashed #c5cae9;
+      background: #f5f5ff;
+      color: #3949ab;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .file-upload-btn:hover {
+      border-color: #5c6bc0;
+      background: #ede7f6;
+    }
+    .file-upload-btn.has-file {
+      border-style: solid;
+      border-color: #5c6bc0;
+      background: #e8eaf6;
+    }
+    .file-name {
+      font-size: 13px;
+      color: #5c6bc0;
+      margin-top: 8px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+    .file-name.show {
+      display: flex;
+    }
+    .file-name .clear-file {
+      background: none;
+      border: none;
+      color: #e53935;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .file-name .clear-file:hover {
+      color: #c62828;
+    }
+    .or-divider {
+      display: flex;
+      align-items: center;
+      margin: 16px 0;
+      color: #9e9e9e;
+      font-size: 13px;
+    }
+    .or-divider::before,
+    .or-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #e0e0e0;
+    }
+    .or-divider::before {
+      margin-left: 12px;
+    }
+    .or-divider::after {
+      margin-right: 12px;
+    }
     .btn-generate {
       margin-top: 8px;
       width: 100%;
@@ -287,8 +367,19 @@ async def index():
     </div>
 
     <div class="form-group">
-      <label for="imageUrl">קישור לתמונת רקע <span class="optional">(לא חובה)</span></label>
-      <input id="imageUrl" type="text" placeholder="https://example.com/image.jpg" />
+      <label>תמונת רקע <span class="optional">(לא חובה)</span></label>
+      <div class="file-upload-wrapper">
+        <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" />
+        <button type="button" id="fileUploadBtn" class="file-upload-btn">
+          <span>📷</span> העלה תמונה מהמכשיר
+        </button>
+        <div id="fileName" class="file-name">
+          <span id="fileNameText"></span>
+          <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
+        </div>
+      </div>
+      <div class="or-divider">או</div>
+      <input id="imageUrl" type="text" placeholder="הדבק קישור לתמונה מהאינטרנט" />
       <div class="hint">השאירו ריק לשימוש בתמונת ברירת המחדל</div>
     </div>
 
@@ -333,12 +424,58 @@ async def index():
     const statusEl = document.getElementById("status");
     const previewEl = document.getElementById("preview");
     const posterImg = document.getElementById("posterImage");
+    const fileInput = document.getElementById("imageFile");
+    const fileUploadBtn = document.getElementById("fileUploadBtn");
+    const fileNameEl = document.getElementById("fileName");
+    const fileNameText = document.getElementById("fileNameText");
+    const clearFileBtn = document.getElementById("clearFileBtn");
     let currentBlobUrl = null;
+
+    // File upload button click -> trigger hidden file input
+    fileUploadBtn.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    // When file is selected, show filename
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        fileNameText.textContent = file.name;
+        fileNameEl.classList.add("show");
+        fileUploadBtn.classList.add("has-file");
+        fileUploadBtn.innerHTML = "<span>✅</span> תמונה נבחרה";
+        // Clear URL input when file is selected
+        document.getElementById("imageUrl").value = "";
+      }
+    });
+
+    // Clear selected file
+    clearFileBtn.addEventListener("click", () => {
+      fileInput.value = "";
+      fileNameEl.classList.remove("show");
+      fileUploadBtn.classList.remove("has-file");
+      fileUploadBtn.innerHTML = "<span>📷</span> העלה תמונה מהמכשיר";
+    });
+
+    // Helper function to read file as base64
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          // Remove the data URL prefix (e.g., "data:image/png;base64,")
+          const base64 = reader.result.split(",")[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
 
     btn.addEventListener("click", async () => {
       const imageUrl = document.getElementById("imageUrl").value.trim();
       const message = document.getElementById("message").value.trim();
       const leiluyNeshama = document.getElementById("neshama").value.trim();
+      const selectedFile = fileInput.files && fileInput.files[0];
 
       // Show loading state
       statusEl.textContent = "⏳ יוצר את הפוסטר שלך...";
@@ -348,11 +485,20 @@ async def index():
       previewEl.classList.remove("show");
 
       const payload = {};
-      if (imageUrl) payload.imageUrl = imageUrl;
-      if (message) payload.message = message;
-      if (leiluyNeshama) payload.leiluyNeshama = leiluyNeshama;
 
+      // Priority: uploaded file > imageUrl > default
       try {
+        if (selectedFile) {
+          // Convert file to base64 and add to payload
+          const base64 = await readFileAsBase64(selectedFile);
+          payload.imageBase64 = base64;
+        } else if (imageUrl) {
+          payload.imageUrl = imageUrl;
+        }
+
+        if (message) payload.message = message;
+        if (leiluyNeshama) payload.leiluyNeshama = leiluyNeshama;
+
         const resp = await fetch("/poster", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
