@@ -1,6 +1,6 @@
 from typing import Any, Dict
 from fastapi import FastAPI, Body
-from fastapi.responses import Response
+from fastapi.responses import Response, HTMLResponse
 
 from api.poster import build_poster_from_payload
 
