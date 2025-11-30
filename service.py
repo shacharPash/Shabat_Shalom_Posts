@@ -23,16 +23,25 @@ def load_cities_from_geojson() -> List[Dict[str, Any]]:
             coords = geometry.get("coordinates", [])
 
             name = props.get("MGLSDE_LOC", "").strip()
+            population = props.get("MGLSDE_L_1", 0)  # Population/size indicator
             if name and len(coords) >= 2:
+                # Set default candle lighting offset based on city
+                if name in ("ירושלים", "פתח תקווה"):
+                    default_offset = 40
+                elif name in ("חיפה", "מורשת"):
+                    default_offset = 30
+                else:
+                    default_offset = 20
                 cities.append({
                     "name": name,
                     "lat": coords[1],  # GeoJSON is [lon, lat]
                     "lon": coords[0],
-                    "candle_offset": 20  # Default offset
+                    "candle_offset": default_offset,
+                    "population": population
                 })
 
-        # Sort alphabetically by Hebrew name
-        cities.sort(key=lambda c: c["name"])
+        # Sort by population (MGLSDE_L_1) descending - cities first, then yishuvim
+        cities.sort(key=lambda c: c["population"], reverse=True)
         return cities
     except Exception as e:
         print(f"Error loading GeoJSON: {e}")
@@ -44,9 +53,9 @@ CITY_BY_NAME = {c["name"]: c for c in GEOJSON_CITIES}
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    # Generate city checkboxes dynamically from GeoJSON data
+    # Generate city checkboxes dynamically from GeoJSON data with offset input
     city_checkboxes = "\n".join([
-        f'        <label class="city-option"><input type="checkbox" name="cityOption" value="{city["name"]}"><span>{city["name"]}</span></label>'
+        f'        <div class="city-option" data-name="{city["name"]}"><input type="checkbox" name="cityOption" value="{city["name"]}"><span class="city-name">{city["name"]}</span><div class="offset-input"><input type="number" class="candle-offset" value="{city["candle_offset"]}" min="0" max="60" title="דקות לפני השקיעה"><span class="offset-label">ד\'</span></div></div>'
         for city in GEOJSON_CITIES
     ])
     total_cities = len(GEOJSON_CITIES)
@@ -314,11 +323,61 @@ async def index():
       cursor: pointer;
       flex-shrink: 0;
     }
-    .city-option span {
+    .city-name {
       color: #1a237e;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      flex: 1;
+    }
+    .offset-input {
+      display: none;
+      align-items: center;
+      gap: 2px;
+      margin-right: auto;
+    }
+    .city-option.checked .offset-input {
+      display: flex;
+    }
+    .candle-offset {
+      width: 42px;
+      padding: 2px 4px;
+      border: 1px solid #c5cae9;
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+      color: #3949ab;
+      background: #fff;
+    }
+    .candle-offset:focus {
+      outline: none;
+      border-color: #5c6bc0;
+      box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.2);
+    }
+    .offset-label {
+      font-size: 11px;
+      color: #7986cb;
+    }
+    .offset-explanation {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+      border: 1px solid #ffe082;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+    .offset-explanation-icon {
+      font-size: 18px;
+    }
+    .offset-explanation-text {
+      font-size: 13px;
+      color: #5d4037;
+      line-height: 1.5;
+    }
+    .offset-explanation-text strong {
+      color: #3e2723;
     }
     .no-results {
       grid-column: 1 / -1;
@@ -551,6 +610,10 @@ async def index():
           </div>
         </div>
         <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר..." />
+        <div class="offset-explanation">
+          <span class="offset-explanation-icon">🕐</span>
+          <span class="offset-explanation-text">המספר ליד כל עיר מציין כמה דקות <strong>לפני השקיעה</strong> נכנסת השבת. ניתן לערוך ידנית.</span>
+        </div>
         <div class="cities-grid" id="citiesGrid">
 CITY_CHECKBOXES_PLACEHOLDER
           <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
@@ -639,7 +702,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       const query = citySearch.value.trim().toLowerCase();
       let visibleCount = 0;
       cityOptions.forEach(opt => {
-        const name = opt.querySelector("span").textContent.toLowerCase();
+        const name = opt.querySelector(".city-name").textContent.toLowerCase();
         if (name.includes(query)) {
           opt.classList.remove("hidden");
           visibleCount++;
@@ -722,10 +785,14 @@ CITY_CHECKBOXES_PLACEHOLDER
         if (message) payload.message = message;
         if (leiluyNeshama) payload.leiluyNeshama = leiluyNeshama;
 
-        // Collect selected cities
+        // Collect selected cities with their candle offsets
         const selectedCities = [];
         document.querySelectorAll('input[name="cityOption"]:checked').forEach(cb => {
-          selectedCities.push(cb.value);
+          const cityOption = cb.closest(".city-option");
+          const cityName = cityOption.dataset.name;
+          const offsetInput = cityOption.querySelector(".candle-offset");
+          const offset = parseInt(offsetInput.value) || 20;
+          selectedCities.push({ name: cityName, candle_offset: offset });
         });
         if (selectedCities.length > 0) {
           payload.cities = selectedCities;
@@ -791,7 +858,7 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
     - Uses build_poster_from_payload to generate a PNG
     - Returns image/png as response
 
-    If payload contains 'cities' as a list of city names (strings),
+    If payload contains 'cities' as a list of city objects (with name and candle_offset),
     maps them to full city objects with coordinates from GeoJSON.
     """
     if payload is None:
@@ -799,11 +866,24 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
 
     # Map city names to full city objects with coordinates
     if "cities" in payload and isinstance(payload["cities"], list):
-        city_names = payload["cities"]
+        city_items = payload["cities"]
         mapped_cities = []
-        for name in city_names:
+        for item in city_items:
+            # Handle both old format (string) and new format (object with name and candle_offset)
+            if isinstance(item, str):
+                name = item
+                candle_offset = 20
+            elif isinstance(item, dict):
+                name = item.get("name", "")
+                candle_offset = item.get("candle_offset", 20)
+            else:
+                continue
+
             if name in CITY_BY_NAME:
-                mapped_cities.append(CITY_BY_NAME[name])
+                city = CITY_BY_NAME[name].copy()
+                city["candle_offset"] = candle_offset  # Override with user's offset
+                mapped_cities.append(city)
+
         # Only use mapped cities if we found at least one
         if mapped_cities:
             payload["cities"] = mapped_cities
