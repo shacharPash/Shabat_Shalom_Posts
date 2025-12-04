@@ -1,14 +1,4 @@
 {
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "api/poster.py",
-      "use": "@vercel/python"
-    }
-  ],
   "rewrites": [
     { "source": "/", "destination": "/api/index" },
     { "source": "/poster", "destination": "/api/poster" }
