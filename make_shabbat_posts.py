@@ -1,17 +1,29 @@
+"""
+Shabbat/Yom Tov Poster Generator
+
+This module generates beautiful posters with candle lighting and havdalah times
+for multiple cities. It uses the jewcal library for accurate Jewish calendar
+calculations and PIL for image generation.
+"""
+
 import argparse
 import os
 from datetime import datetime, date, timedelta
 from io import BytesIO
-from typing import Optional, Iterable
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from dateutil.relativedelta import relativedelta
-import requests
-from PIL import Image, ImageDraw, ImageFont
 import arabic_reshaper
+import pytz
+import requests
 from bidi.algorithm import get_display
 from jewcal import JewCal
 from jewcal.models.zmanim import Location
-import pytz
+from PIL import Image, ImageDraw, ImageFont
+
+# Type aliases for clarity
+CityDict = Dict[str, Any]
+CityRow = Tuple[str, str, str]  # (city_name, candle_time, havdalah_time)
+WeekInfo = Dict[str, Any]
 
 # ========= CONFIG =========
 TZID = "Asia/Jerusalem"
@@ -25,7 +37,7 @@ CITIES = [
 IMG_SIZE = (1080, 1080)  # Wider rectangle (5:4 ratio)
 
 # ========= FULL PARASHA TRANSLATION =========
-PARASHA_TRANSLATION = {
+PARASHA_TRANSLATION: Dict[str, str] = {
     # ספר בראשית
     "Bereshit": "בראשית", "Noach": "נח", "Lech-Lecha": "לך לך", "Vayera": "וירא",
     "Chayei Sara": "חיי שרה", "Toldot": "תולדות", "Vayetzei": "ויצא",
@@ -59,28 +71,97 @@ PARASHA_TRANSLATION = {
     "Beha'aloscha": "בהעלותך", "Shlach": "שלח", "Chukas": "חוקת",
     "Matos": "מטות", "Mas'ei": "מסעי", "Va'eschanan": "ואתחנן",
     "Re'e": "ראה", "Ki Seitzei": "כי תצא", "Ki Savo": "כי תבוא",
-    "Vayeilech": "וילך", "Haazinu": "האזינו", "Ha'azinu": "האזינו", "Ha'Azinu": "האזינו", "Ha'azinu": "האזינו",
+    "Vayeilech": "וילך", "Haazinu": "האזינו", "Ha'azinu": "האזינו", "Ha'Azinu": "האזינו",
     "V'Zot HaBerachah": "וזאת הברכה", "Vzot Haberachah": "וזאת הברכה",
 }
 
+
+def _normalize_parsha_key(name: str) -> str:
+    """Normalize a parsha name for lookup (lowercase, remove apostrophes and hyphens)."""
+    return name.lower().replace("'", "").replace("-", "").replace(" ", "")
+
+
+# Build normalized lookup tables at module load time for O(1) lookup
+_PARASHA_EXACT_LOOKUP: Dict[str, str] = {k.lower(): v for k, v in PARASHA_TRANSLATION.items()}
+_PARASHA_NORMALIZED_LOOKUP: Dict[str, str] = {
+    _normalize_parsha_key(k): v for k, v in PARASHA_TRANSLATION.items()
+}
+
+
+def translate_parsha(english_name: str) -> str:
+    """
+    Translate English parsha name to Hebrew.
+
+    Uses O(1) dictionary lookup instead of iterating through all translations.
+    Handles various spelling variations (apostrophes, hyphens, spacing).
+
+    Args:
+        english_name: English name of the parsha (e.g., "Bereshit", "Ha'Azinu")
+
+    Returns:
+        Hebrew parsha name with פרשת prefix, or original name if not found.
+    """
+    # Normalize apostrophe types
+    clean_name = english_name.replace("\u2019", "'").replace("\u2018", "'")
+
+    # Try exact match (case-insensitive)
+    hebrew = _PARASHA_EXACT_LOOKUP.get(clean_name.lower())
+    if hebrew:
+        return f"פרשת {hebrew}"
+
+    # Try normalized match (remove apostrophes, hyphens, spaces)
+    hebrew = _PARASHA_NORMALIZED_LOOKUP.get(_normalize_parsha_key(clean_name))
+    if hebrew:
+        return f"פרשת {hebrew}"
+
+    # Fallback: return original name with prefix
+    return f"פרשת {clean_name}"
+
 # ========= TEXT HELPERS =========
 def fix_hebrew(text: str) -> str:
+    """Convert Hebrew text to proper RTL display format."""
     if not text:
         return text
     return get_display(arabic_reshaper.reshape(text))
 
-def load_font(size: int, bold=False) -> ImageFont.FreeTypeFont:
-    candidates = [
-        "Alef-Bold.ttf" if bold else "Alef-Regular.ttf",
-        "Alef-Regular.ttf",
-        "DejaVuSans.ttf",
-    ]
+
+# Font cache to avoid reloading fonts repeatedly
+_font_cache: dict[tuple[int, bool], ImageFont.FreeTypeFont] = {}
+
+# Font file candidates (searched in order)
+_FONT_CANDIDATES_BOLD = ["Alef-Bold.ttf", "Alef-Regular.ttf", "DejaVuSans.ttf"]
+_FONT_CANDIDATES_REGULAR = ["Alef-Regular.ttf", "DejaVuSans.ttf"]
+
+
+def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    """
+    Load a font with caching for performance.
+
+    Args:
+        size: Font size in points
+        bold: Whether to use bold variant
+
+    Returns:
+        Loaded font object
+    """
+    cache_key = (size, bold)
+
+    # Return cached font if available
+    if cache_key in _font_cache:
+        return _font_cache[cache_key]
+
+    candidates = _FONT_CANDIDATES_BOLD if bold else _FONT_CANDIDATES_REGULAR
+
     for path in candidates:
         if os.path.isfile(path):
             try:
-                return ImageFont.truetype(path, size=size)
+                font = ImageFont.truetype(path, size=size)
+                _font_cache[cache_key] = font
+                return font
             except Exception:
                 continue
+
+    # Fall back to default font (not cached as it's a different type)
     return ImageFont.load_default()
 
 
@@ -156,10 +237,17 @@ def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
     return sequence_start, sequence_end, main_event_type, main_event_name
 
 def is_end_of_holiday_sequence(target_date: date) -> bool:
-    """Check if target_date is the end of a holiday sequence (should have havdalah)."""
-    from jewcal import JewCal
+    """
+    Check if target_date is the end of a holiday sequence (should have havdalah).
 
-    # Check if the next day also has a holiday/shabbat
+    A sequence ends when the next day does not have candle lighting or havdalah.
+
+    Args:
+        target_date: Date to check
+
+    Returns:
+        True if this is the last day of the sequence
+    """
     next_day = target_date + timedelta(days=1)
     next_jewcal = JewCal(gregorian_date=next_day, diaspora=False)
 
@@ -170,8 +258,31 @@ def is_end_of_holiday_sequence(target_date: date) -> bool:
 
     return True
 
-def jewcal_times_for_sequence(lat: float, lon: float, start_date: date, end_date: date, candle_offset: int) -> dict:
-    """Calculate times for a complete event sequence (Shabbat or holiday sequence)."""
+
+def jewcal_times_for_sequence(
+    lat: float,
+    lon: float,
+    start_date: date,
+    end_date: date,
+    candle_offset: int
+) -> Dict[str, Any]:
+    """
+    Calculate times for a complete event sequence (Shabbat or holiday sequence).
+
+    This handles multi-day sequences like Yom Tov followed by Shabbat, returning
+    the candle lighting time from the first day and havdalah from the last day.
+
+    Args:
+        lat: Latitude of the location
+        lon: Longitude of the location
+        start_date: First day of the sequence
+        end_date: Last day of the sequence
+        candle_offset: Minutes before sunset for candle lighting
+
+    Returns:
+        Dict with keys: parsha, event_name, event_type, candle, havdalah,
+        start_date, end_date, action
+    """
 
     # Create location object
     location = Location(
@@ -316,170 +427,238 @@ def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offs
         "action": jewcal.events.action if jewcal.has_events() else None
     }
 
-def get_parsha_from_hebcal(target_date: date) -> str:
-    """Get parsha information from Hebcal API for the week containing target_date."""
+def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
+    """
+    Get parsha information from Hebcal API for the week containing target_date.
 
+    Args:
+        target_date: The date to get parsha for
+
+    Returns:
+        Hebrew parsha name with prefix, or None if not found
+    """
     # Special cases for Torah reading during holidays
-    from jewcal import JewCal
-    jewcal = JewCal(gregorian_date=target_date, diaspora=False)
-    if jewcal.has_events() and jewcal.events.yomtov:
-        event_name = jewcal.events.yomtov
+    jewcal_obj = JewCal(gregorian_date=target_date, diaspora=False)
+    if jewcal_obj.has_events() and jewcal_obj.events.yomtov:
+        event_name = jewcal_obj.events.yomtov
         # Simchat Torah, Hoshana Rabba, and Chol HaMoed Sukkot read "Vezot Haberakhah"
-        if ("Simchat Tora" in event_name or
-            "Shmini Atzeret / Simchat Tora" in event_name or
-            "Hoshana Rabba" in event_name or
-            "Chol HaMoed" in event_name):
+        if any(s in event_name for s in ("Simchat Tora", "Hoshana Rabba", "Chol HaMoed")):
             return "פרשת וזאת הברכה"
 
     # Find the Saturday of the week containing target_date
-    days_until_saturday = (5 - target_date.weekday()) % 7  # Saturday is weekday 5
-    if days_until_saturday == 0 and target_date.weekday() == 5:  # If target_date is Saturday
-        saturday = target_date
-    else:
-        saturday = target_date + timedelta(days=days_until_saturday)
+    saturday = _get_saturday_for_date(target_date)
 
     # Use the general Hebcal API to get the year's events and find the right parsha
-    year = saturday.year
-    url = (
-        f"https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on&mod=on&nx=on"
-        f"&year={year}&month=x&ss=on&mf=on&c=on&geo=pos"
-        f"&latitude=31.778117828230577&longitude=35.23599222120022"
-        f"&tzid={TZID}&s=on"
-    )
+    url = _build_hebcal_url(saturday.year)
 
     try:
-        r = requests.get(url, timeout=30)
-        r.raise_for_status()
-        data = r.json()
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        data = response.json()
 
         # Find the parsha for our specific Saturday
-        target_date_str = saturday.isoformat()
-
-        for item in data.get("items", []):
-            if item.get("category") == "parashat":
-                item_date = item.get("date", "")
-                # Check if this is the parsha for our Saturday
-                if item_date == target_date_str:
-                    parsha = item.get("title")
-                    if parsha:
-                        # Clean up the parsha name and translate to Hebrew
-                        parsha_clean = parsha.replace("Parashat ", "").strip()
-                        # Normalize different types of apostrophes
-                        parsha_clean = parsha_clean.replace("\u2019", "'").replace("\u2018", "'")
-
-
-                        # Try exact match first
-                        for eng, heb in PARASHA_TRANSLATION.items():
-                            if eng.lower() == parsha_clean.lower():
-                                return f"פרשת {heb}"
-
-                        # Try partial match (for cases like "Ha'azinu" vs "Ha'Azinu")
-                        for eng, heb in PARASHA_TRANSLATION.items():
-                            if eng.lower().replace("'", "").replace("-", "") == parsha_clean.lower().replace("'", "").replace("-", ""):
-                                # print(f"DEBUG: Found partial match: {eng} -> {heb}")
-                                return f"פרשת {heb}"
-
-
-                        return f"פרשת {parsha_clean}"
+        parsha_title = _find_parsha_for_date(data, saturday)
+        if parsha_title:
+            parsha_clean = parsha_title.replace("Parashat ", "").strip()
+            return translate_parsha(parsha_clean)
 
         # If exact match not found, find the closest Saturday before our target
-        closest_parsha = None
-        closest_date = None
-
-        for item in data.get("items", []):
-            if item.get("category") == "parashat":
-                item_date_str = item.get("date", "")
-                if item_date_str:
-                    try:
-                        item_date = date.fromisoformat(item_date_str)
-                        # Find the parsha for the Saturday closest to but not after our target
-                        if item_date <= saturday:
-                            if closest_date is None or item_date > closest_date:
-                                closest_date = item_date
-                                closest_parsha = item.get("title")
-                    except:
-                        continue
-
-        if closest_parsha:
-            parsha_clean = closest_parsha.replace("Parashat ", "").strip()
-            # Normalize different types of apostrophes
-            parsha_clean = parsha_clean.replace("'", "'").replace("'", "'")
-            # Try exact match first
-            for eng, heb in PARASHA_TRANSLATION.items():
-                if eng.lower() == parsha_clean.lower():
-                    return f"פרשת {heb}"
-
-            # Try partial match
-            for eng, heb in PARASHA_TRANSLATION.items():
-                if eng.lower().replace("'", "").replace("-", "") == parsha_clean.lower().replace("'", "").replace("-", ""):
-                    return f"פרשת {heb}"
-
-            return f"פרשת {parsha_clean}"
+        parsha_title = _find_closest_parsha_before_date(data, saturday)
+        if parsha_title:
+            parsha_clean = parsha_title.replace("Parashat ", "").strip()
+            return translate_parsha(parsha_clean)
 
     except Exception as e:
         print(f"Warning: Could not fetch parsha information for {target_date}: {e}")
 
     return None
 
-def iso_to_hhmm(iso_str: str) -> str:
+
+def _get_saturday_for_date(target_date: date) -> date:
+    """Get the Saturday of the week containing target_date."""
+    days_until_saturday = (5 - target_date.weekday()) % 7  # Saturday is weekday 5
+    if days_until_saturday == 0 and target_date.weekday() == 5:
+        return target_date
+    return target_date + timedelta(days=days_until_saturday)
+
+
+def _build_hebcal_url(year: int) -> str:
+    """Build the Hebcal API URL for a given year."""
+    return (
+        f"https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on&mod=on&nx=on"
+        f"&year={year}&month=x&ss=on&mf=on&c=on&geo=pos"
+        f"&latitude=31.778117828230577&longitude=35.23599222120022"
+        f"&tzid={TZID}&s=on"
+    )
+
+
+def _find_parsha_for_date(data: Dict[str, Any], saturday: date) -> Optional[str]:
+    """Find the parsha title for a specific Saturday in Hebcal data."""
+    target_date_str = saturday.isoformat()
+    for item in data.get("items", []):
+        if item.get("category") == "parashat" and item.get("date") == target_date_str:
+            return item.get("title")
+    return None
+
+
+def _find_closest_parsha_before_date(data: Dict[str, Any], saturday: date) -> Optional[str]:
+    """Find the parsha title closest to but not after the target Saturday."""
+    closest_parsha = None
+    closest_date = None
+
+    for item in data.get("items", []):
+        if item.get("category") != "parashat":
+            continue
+        item_date_str = item.get("date", "")
+        if not item_date_str:
+            continue
+        try:
+            item_date = date.fromisoformat(item_date_str)
+            if item_date <= saturday and (closest_date is None or item_date > closest_date):
+                closest_date = item_date
+                closest_parsha = item.get("title")
+        except ValueError:
+            continue
+
+    return closest_parsha
+
+# Israel timezone constant for time conversions
+_ISRAEL_TZ = pytz.timezone('Asia/Jerusalem')
+
+
+def iso_to_hhmm(iso_str: Optional[str]) -> str:
+    """
+    Convert an ISO datetime string to HH:MM format in Israel timezone.
+
+    Args:
+        iso_str: ISO 8601 datetime string (e.g., "2025-01-24T16:30:00+02:00")
+
+    Returns:
+        Time in HH:MM format, or "--:--" if input is empty/None
+    """
     if not iso_str:
         return "--:--"
 
-    # Parse the datetime string
-    dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+    try:
+        # Parse the datetime string
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
 
-    # Convert to Israel timezone
-    israel_tz = pytz.timezone('Asia/Jerusalem')
-    if dt.tzinfo is None:
-        # If no timezone info, assume UTC
-        dt = pytz.utc.localize(dt)
+        if dt.tzinfo is None:
+            # If no timezone info, assume UTC
+            dt = pytz.utc.localize(dt)
 
-    # Convert to Israel time
-    israel_time = dt.astimezone(israel_tz)
-    return israel_time.strftime("%H:%M")
+        # Convert to Israel time
+        israel_time = dt.astimezone(_ISRAEL_TZ)
+        return israel_time.strftime("%H:%M")
+    except (ValueError, AttributeError):
+        return "--:--"
+
 
 # ========= IMAGE HELPERS =========
-def fix_image_orientation(img):
-    """Fix image orientation based on EXIF data."""
+# EXIF orientation tag and rotation values
+_EXIF_ORIENTATION_TAG = 274
+_ORIENTATION_ROTATIONS = {
+    3: 180,
+    6: 270,
+    8: 90,
+}
+
+
+def fix_image_orientation(img: Image.Image) -> Image.Image:
+    """
+    Fix image orientation based on EXIF data.
+
+    Many cameras store images in a default orientation and use EXIF metadata
+    to indicate how the image should be rotated for display.
+
+    Args:
+        img: PIL Image object
+
+    Returns:
+        Image rotated to correct orientation
+    """
     try:
         exif = img._getexif()
         if exif is not None:
-            orientation = exif.get(274)  # 274 is the EXIF orientation tag
-            if orientation == 3:
-                img = img.rotate(180, expand=True)
-            elif orientation == 6:
-                img = img.rotate(270, expand=True)
-            elif orientation == 8:
-                img = img.rotate(90, expand=True)
+            orientation = exif.get(_EXIF_ORIENTATION_TAG)
+            rotation = _ORIENTATION_ROTATIONS.get(orientation)
+            if rotation:
+                img = img.rotate(rotation, expand=True)
     except (AttributeError, KeyError, TypeError):
         pass
     return img
 
-def fit_background(image_path: str, size=(1080,1080)) -> Image.Image:
+
+def fit_background(image_path: str, size: Tuple[int, int] = (1080, 1080)) -> Image.Image:
+    """
+    Load and resize an image to fill the target size (center crop).
+
+    Args:
+        image_path: Path to the image file
+        size: Target size as (width, height)
+
+    Returns:
+        Resized and cropped PIL Image
+    """
     base_w, base_h = size
     img = Image.open(image_path).convert("RGB")
 
     # Fix orientation based on EXIF data
     img = fix_image_orientation(img)
 
+    # Scale to cover the target size
     scale = max(base_w / img.width, base_h / img.height)
     new_w = int(img.width * scale)
     new_h = int(img.height * scale)
     img = img.resize((new_w, new_h), Image.LANCZOS)
+
+    # Center crop to target size
     left = (new_w - base_w) // 2
-    top  = (new_h - base_h) // 2
+    top = (new_h - base_h) // 2
     img = img.crop((left, top, left + base_w, top + base_h))
     return img
 
-def get_text_width(text, font, rtl=False):
-    """Get the width of text with the given font."""
+
+def get_text_width(text: str, font: ImageFont.FreeTypeFont, rtl: bool = False) -> int:
+    """
+    Get the width of text rendered with the given font.
+
+    Args:
+        text: Text to measure
+        font: Font to use
+        rtl: Whether to apply RTL text processing
+
+    Returns:
+        Width in pixels
+    """
     if rtl:
         text = fix_hebrew(text)
     bbox = font.getbbox(text)
     return bbox[2] - bbox[0]
 
-def get_fitted_font(text, original_font, max_width, rtl=False, min_size=20):
-    """Get a font that fits the text within max_width."""
+
+def get_fitted_font(
+    text: str,
+    original_font: ImageFont.FreeTypeFont,
+    max_width: int,
+    rtl: bool = False,
+    min_size: int = 20
+) -> ImageFont.FreeTypeFont:
+    """
+    Get a font that fits the text within max_width.
+
+    Iteratively reduces font size until text fits or min_size is reached.
+
+    Args:
+        text: Text to fit
+        original_font: Starting font
+        max_width: Maximum allowed width in pixels
+        rtl: Whether to apply RTL text processing
+        min_size: Minimum font size to use
+
+    Returns:
+        Font that fits the text (or min_size font if nothing fits)
+    """
     current_size = original_font.size
 
     # Check if original font fits
@@ -798,20 +977,26 @@ def generate_poster(
     *,
     image_path: str,
     start_date: Optional[date] = None,
-    cities: Optional[Iterable[dict]] = None,
+    cities: Optional[Iterable[CityDict]] = None,
     blessing_text: Optional[str] = None,
     dedication_text: Optional[str] = None,
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
 
-    - image_path: path to the background image file
-    - start_date: base date to search from (default: today)
-    - cities: optional list of city dicts like the global CITIES
-    - blessing_text: optional custom bottom message
-    - dedication_text: optional custom 'leiluy neshama' text
+    This is the main entry point for poster generation. It finds the next
+    Shabbat or holiday sequence, calculates candle lighting and havdalah
+    times for each city, and renders a beautiful poster image.
 
-    Return: PNG image bytes.
+    Args:
+        image_path: Path to the background image file
+        start_date: Base date to search from (default: today)
+        cities: List of city dicts with keys: name, lat, lon, candle_offset
+        blessing_text: Custom bottom message (default: standard blessing)
+        dedication_text: Custom 'leiluy neshama' text (default: None)
+
+    Returns:
+        PNG image bytes ready to be saved or transmitted
     """
     # Use defaults if not provided
     if start_date is None:
@@ -819,13 +1004,14 @@ def generate_poster(
     if cities is None:
         cities = CITIES
 
-    # Find the next event sequence
-    seq_start, seq_end, event_type, event_name = find_next_sequence(start_date)
+    # Find the next event sequence (ignore event_type and event_name here,
+    # as they're obtained from jewcal_times_for_sequence for each city)
+    seq_start, seq_end, _, _ = find_next_sequence(start_date)
 
     # Compute parsha and zmanim for all cities
-    rows = []
-    parsha_name = None
-    event_info = None
+    rows: List[CityRow] = []
+    parsha_name: Optional[str] = None
+    event_info: Optional[Dict[str, Any]] = None
 
     for city in cities:
         info = jewcal_times_for_sequence(
@@ -888,16 +1074,16 @@ def main():
     current_search_date = start_base
     processed_sequences = []  # Track which sequences we've already processed
 
-    for i, img_path in enumerate(images):
+    for img_path in images:
         # Find the next sequence (for naming the file and updating search date)
-        seq_start, seq_end, event_type, event_name = find_next_sequence(current_search_date)
+        seq_start, seq_end, event_type, _ = find_next_sequence(current_search_date)
 
         # Skip if we've already processed this sequence
         if any(seq_start <= existing_end and seq_end >= existing_start
                for existing_start, existing_end in processed_sequences):
             # Move search date past this sequence
             current_search_date = seq_end + timedelta(days=1)
-            seq_start, seq_end, event_type, event_name = find_next_sequence(current_search_date)
+            seq_start, seq_end, event_type, _ = find_next_sequence(current_search_date)
 
         processed_sequences.append((seq_start, seq_end))
 

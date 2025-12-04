@@ -1,55 +1,17 @@
-import json
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from fastapi import FastAPI, Body
 from fastapi.responses import Response, HTMLResponse
 
 from api.poster import build_poster_from_payload
+from cities import get_cities_list, build_city_lookup
 
 
 app = FastAPI()
 
-# Load cities from GeoJSON at startup
-def load_cities_from_geojson() -> List[Dict[str, Any]]:
-    """Load and parse cities from the GeoJSON file."""
-    try:
-        with open("cities_coordinates.geojson", "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        cities = []
-        for feature in data.get("features", []):
-            props = feature.get("properties", {})
-            geometry = feature.get("geometry", {})
-            coords = geometry.get("coordinates", [])
-
-            name = props.get("MGLSDE_LOC", "").strip()
-            population = props.get("MGLSDE_L_1", 0)  # Population/size indicator
-            if name and len(coords) >= 2:
-                # Set default candle lighting offset based on city
-                if name in ("ירושלים", "פתח תקווה"):
-                    default_offset = 40
-                elif name in ("חיפה", "מורשת"):
-                    default_offset = 30
-                else:
-                    default_offset = 20
-                cities.append({
-                    "name": name,
-                    "lat": coords[1],  # GeoJSON is [lon, lat]
-                    "lon": coords[0],
-                    "candle_offset": default_offset,
-                    "population": population
-                })
-
-        # Sort by population (MGLSDE_L_1) descending - cities first, then yishuvim
-        cities.sort(key=lambda c: c["population"], reverse=True)
-        return cities
-    except Exception as e:
-        print(f"Error loading GeoJSON: {e}")
-        return []
-
-# Load cities once at startup
-GEOJSON_CITIES = load_cities_from_geojson()
-CITY_BY_NAME = {c["name"]: c for c in GEOJSON_CITIES}
+# Load cities once at startup (cached internally)
+GEOJSON_CITIES = get_cities_list()
+CITY_BY_NAME = build_city_lookup(GEOJSON_CITIES)
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
