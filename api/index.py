@@ -13,7 +13,7 @@ def generate_html() -> str:
     cities = get_cities_list()
 
     city_checkboxes = "\n".join([
-        f'        <div class="city-option" data-name="{city["name"]}"><input type="checkbox" name="cityOption" value="{city["name"]}"><span class="city-name">{city["name"]}</span><div class="offset-input"><input type="number" class="candle-offset" value="{city["candle_offset"]}" min="0" max="60" title="דקות לפני השקיעה"><span class="offset-label">ד\'</span></div></div>'
+        f'        <div class="city-option" data-name="{city["name"]}" data-selected="false"><span class="city-check-icon">✓</span><span class="city-name">{city["name"]}</span><div class="offset-input"><input type="number" class="candle-offset" value="{city["candle_offset"]}" min="0" max="60" title="דקות לפני השקיעה"><span class="offset-label">ד\'</span></div></div>'
         for city in cities
     ])
 

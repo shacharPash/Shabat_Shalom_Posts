@@ -81,7 +81,8 @@
     .city-option.checked { background: #e8eaf6; }
     .city-option.hidden { display: none; }
     .city-option.disabled { opacity: 0.4; cursor: not-allowed; }
-    .city-option input[type="checkbox"] { width: 14px; height: 14px; accent-color: #3949ab; cursor: pointer; }
+    .city-option .city-check-icon { width: 16px; height: 16px; border-radius: 4px; border: 2px solid #c5cae9; display: flex; align-items: center; justify-content: center; font-size: 11px; color: transparent; transition: all 0.15s ease; flex-shrink: 0; }
+    .city-option.checked .city-check-icon { background: #3949ab; border-color: #3949ab; color: #fff; }
     .city-name { color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; font-size: 12px; }
     .offset-input { display: none; }
     .candle-offset { width: 32px; padding: 2px; border: 1px solid #ccc; border-radius: 4px; font-size: 11px; text-align: center; }
@@ -130,7 +131,7 @@
       <div class="file-upload-wrapper">
         <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" multiple />
         <button type="button" id="fileUploadBtn" class="file-upload-btn">
-          <span>📷</span> העלה תמונה או צלם
+          <span>📷</span> העלה תמונה
         </button>
         <div id="fileName" class="file-name">
           <span id="fileNameText"></span>
@@ -254,7 +255,6 @@ CITY_CHECKBOXES_PLACEHOLDER
     const showAllCitiesBtn = document.getElementById("showAllCitiesBtn");
     const noResults = document.getElementById("noResults");
     const cityOptions = document.querySelectorAll(".city-option");
-    const cityCheckboxes = document.querySelectorAll('input[name="cityOption"]');
     const addDedicationBtn = document.getElementById("addDedicationBtn");
     const dedicationSection = document.getElementById("dedicationSection");
     const closeDedicationBtn = document.getElementById("closeDedicationBtn");
@@ -329,24 +329,24 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Render selected cities as chips
     function renderChips() {
-      const checked = document.querySelectorAll('input[name="cityOption"]:checked');
-      selectedChips.innerHTML = Array.from(checked).map(cb => {
-        const name = cb.closest(".city-option").dataset.name;
+      const checked = document.querySelectorAll('.city-option.checked');
+      selectedChips.innerHTML = Array.from(checked).map(opt => {
+        const name = opt.dataset.name;
         return `<span class="city-chip" data-name="${name}"><span class="chip-name">${name}</span><span class="chip-remove">✕</span></span>`;
       }).join('');
       selectedChips.querySelectorAll('.chip-remove').forEach(btn => {
         btn.addEventListener('click', () => {
           const name = btn.closest('.city-chip').dataset.name;
-          const cb = document.querySelector(`.city-option[data-name="${name}"] input`);
-          if (cb) { cb.checked = false; cb.closest('.city-option').classList.remove('checked'); }
+          const opt = document.querySelector(`.city-option[data-name="${name}"]`);
+          if (opt) { opt.classList.remove('checked'); opt.dataset.selected = 'false'; }
           renderChips(); updateCityLimit();
         });
       });
     }
 
     function updateCityLimit() {
-      const checked = document.querySelectorAll('input[name="cityOption"]:checked').length;
-      cityCheckboxes.forEach(cb => { if (!cb.checked) { cb.disabled = checked >= MAX_CITIES; cb.closest(".city-option").classList.toggle("disabled", checked >= MAX_CITIES); } });
+      const checked = document.querySelectorAll('.city-option.checked').length;
+      cityOptions.forEach(opt => { if (!opt.classList.contains('checked')) { opt.classList.toggle("disabled", checked >= MAX_CITIES); } });
     }
 
     showAllCitiesBtn.addEventListener("click", () => {
@@ -355,15 +355,12 @@ CITY_CHECKBOXES_PLACEHOLDER
       showAllCitiesBtn.querySelector("span:first-child").textContent = citiesGridWrapper.classList.contains("show") ? "הסתר רשימה" : "הצג את כל הערים";
     });
 
-    cityCheckboxes.forEach(cb => { cb.addEventListener("change", () => { cb.closest(".city-option").classList.toggle("checked", cb.checked); renderChips(); updateCityLimit(); }); });
-
     cityOptions.forEach(opt => {
       opt.addEventListener("click", (e) => {
         if (e.target.classList.contains("candle-offset")) return;
-        const cb = opt.querySelector('input[name="cityOption"]');
-        if (cb.disabled && !cb.checked) return;
-        cb.checked = !cb.checked;
-        opt.classList.toggle("checked", cb.checked);
+        if (opt.classList.contains('disabled') && !opt.classList.contains('checked')) return;
+        const isChecked = opt.classList.toggle("checked");
+        opt.dataset.selected = isChecked ? 'true' : 'false';
         renderChips(); updateCityLimit();
       });
     });
@@ -392,7 +389,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         fileUploadBtn.innerHTML = count === 1 ? "<span>✅</span> תמונה נבחרה" : `<span>✅</span> ${count} תמונות נבחרו`;
       }
     });
-    clearFileBtn.addEventListener("click", () => { fileInput.value = ""; fileNameEl.classList.remove("show"); fileUploadBtn.classList.remove("has-file"); fileUploadBtn.innerHTML = "<span>📷</span> העלה תמונה או צלם"; });
+    clearFileBtn.addEventListener("click", () => { fileInput.value = ""; fileNameEl.classList.remove("show"); fileUploadBtn.classList.remove("has-file"); fileUploadBtn.innerHTML = "<span>📷</span> העלה תמונה"; });
 
     function readFileAsBase64(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const base64 = reader.result.split(",")[1]; resolve(base64); }; reader.onerror = reject; reader.readAsDataURL(file); }); }
 
@@ -412,7 +409,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         const imagesBase64 = [];
         if (uploadedFiles && uploadedFiles.length > 0) { for (let f = 0; f < uploadedFiles.length; f++) { imagesBase64.push(await readFileAsBase64(uploadedFiles[f])); } }
         const selectedCities = [];
-        document.querySelectorAll('input[name="cityOption"]:checked').forEach(cb => { const cityOption = cb.closest(".city-option"); const cityName = cityOption.dataset.name; const offsetInput = cityOption.querySelector(".candle-offset"); const offset = parseInt(offsetInput.value) || 20; selectedCities.push({ name: cityName, candle_offset: offset }); });
+        document.querySelectorAll('.city-option.checked').forEach(opt => { const cityName = opt.dataset.name; const offsetInput = opt.querySelector(".candle-offset"); const offset = parseInt(offsetInput.value) || 20; selectedCities.push({ name: cityName, candle_offset: offset }); });
         for (let i = 0; i < datesToGenerate.length; i++) {
           const date = datesToGenerate[i];
           const payload = {};
