@@ -1,10 +1,12 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
+from datetime import date, timedelta
 
 from fastapi import FastAPI, Body
 from fastapi.responses import Response, HTMLResponse
 
 from api.poster import build_poster_from_payload
 from cities import get_cities_list, build_city_lookup
+from make_shabbat_posts import find_next_sequence, get_parsha_from_hebcal
 
 
 app = FastAPI()
@@ -120,26 +122,187 @@ async def index():
       content: "💡";
       font-size: 11px;
     }
-    /* Dedication toggle styling */
-    .dedication-toggle {
-      margin-top: 10px;
-    }
-    .toggle-container {
+    /* Dedication section styling */
+    .dedication-add-btn {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 2px dashed #c5cae9;
+      background: #f5f5ff;
+      color: #3949ab;
+      font-size: 15px;
+      font-weight: 500;
       cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .dedication-add-btn:hover {
+      border-color: #5c6bc0;
+      background: #ede7f6;
+    }
+    .dedication-section {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    .dedication-section.show {
+      display: block;
+    }
+    .dedication-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .dedication-header label {
+      margin-bottom: 0;
+    }
+    .dedication-close-btn {
+      background: none;
+      border: none;
+      color: #9e9e9e;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      line-height: 1;
+    }
+    .dedication-close-btn:hover {
+      background: #ffebee;
+      color: #e53935;
+    }
+    /* Date selection styling */
+    /* Advanced options section */
+    .advanced-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+      background: #fafafa;
+      color: #666;
       font-size: 14px;
-      color: #5c6bc0;
-    }
-    .toggle-container input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      accent-color: #3949ab;
       cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      margin-top: 8px;
     }
-    .toggle-label {
-      user-select: none;
+    .advanced-toggle:hover {
+      background: #f5f5f5;
+      border-color: #bdbdbd;
+      color: #424242;
+    }
+    .advanced-toggle.open {
+      background: #e8eaf6;
+      border-color: #5c6bc0;
+      color: #3949ab;
+    }
+    .advanced-toggle .arrow {
+      transition: transform 0.2s ease;
+    }
+    .advanced-toggle.open .arrow {
+      transform: rotate(180deg);
+    }
+    .advanced-section {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      border: 2px solid #e8eaf6;
+      border-radius: 12px;
+      background: #fafafa;
+      animation: fadeIn 0.3s ease;
+    }
+    .advanced-section.show {
+      display: block;
+    }
+    .advanced-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #3949ab;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .date-selection {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .date-option {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 2px solid #e8eaf6;
+      background: #fff;
+      color: #3949ab;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+      flex: 1;
+      min-width: 100px;
+    }
+    .date-option:hover {
+      border-color: #c5cae9;
+      background: #f5f5ff;
+    }
+    .date-option.selected {
+      border-color: #5c6bc0;
+      background: #e8eaf6;
+      font-weight: 600;
+    }
+    .date-option .event-name {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+    .date-option .event-date {
+      font-size: 11px;
+      color: #7986cb;
+    }
+    .date-option.selected .event-date {
+      color: #3949ab;
+    }
+    .multi-select-info {
+      font-size: 12px;
+      color: #7986cb;
+      margin-bottom: 8px;
+    }
+    .weeks-selector {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+    .weeks-selector label {
+      font-size: 13px;
+      color: #3949ab;
+      margin: 0;
+    }
+    .weeks-input {
+      width: 60px;
+      padding: 8px;
+      border: 1px solid #c5cae9;
+      border-radius: 6px;
+      font-size: 14px;
+      text-align: center;
+      color: #3949ab;
+    }
+    .weeks-input:focus {
+      outline: none;
+      border-color: #5c6bc0;
     }
     /* File upload styling */
     .file-upload-wrapper {
@@ -202,51 +365,12 @@ async def index():
       color: #c62828;
     }
     /* City selection */
+    /* City selection - minimal design */
     .cities-section {
-      border: 2px solid #e8eaf6;
-      border-radius: 12px;
-      padding: 16px;
-      background: #fafafa;
-    }
-    .cities-header {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .cities-counter {
-      font-size: 13px;
-      color: #5c6bc0;
-      background: #e8eaf6;
-      padding: 4px 10px;
-      border-radius: 20px;
-      transition: all 0.2s ease;
-    }
-    .cities-counter.limit-reached {
-      background: #fff3e0;
-      color: #e65100;
-      font-weight: 600;
-    }
-    .cities-actions {
-      display: flex;
-      gap: 8px;
-    }
-    .cities-actions button {
-      font-size: 12px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid #c5cae9;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 12px;
       background: #fff;
-      color: #3949ab;
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.15s ease;
-    }
-    .cities-actions button:hover {
-      background: #e8eaf6;
-      border-color: #5c6bc0;
     }
     .city-search {
       width: 100%;
@@ -255,127 +379,151 @@ async def index():
       border: 1px solid #e0e0e0;
       font-size: 14px;
       font-family: inherit;
-      margin-bottom: 12px;
-      background: #fff;
+      background: #fafafa;
     }
     .city-search:focus {
       outline: none;
       border-color: #5c6bc0;
-      box-shadow: 0 0 0 3px rgba(92, 107, 192, 0.1);
+      background: #fff;
+    }
+    /* Selected cities chips */
+    .selected-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .selected-chips:empty {
+      display: none;
+    }
+    .city-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #e8eaf6;
+      border: 1px solid #c5cae9;
+      border-radius: 16px;
+      padding: 4px 10px;
+      font-size: 13px;
+      color: #3949ab;
+    }
+    .city-chip .chip-name {
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .city-chip .chip-remove {
+      cursor: pointer;
+      font-size: 14px;
+      color: #7986cb;
+      line-height: 1;
+    }
+    .city-chip .chip-remove:hover {
+      color: #c62828;
+    }
+    /* Show all toggle */
+    .show-all-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 8px;
+      border: none;
+      background: none;
+      color: #5c6bc0;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      width: 100%;
+    }
+    .show-all-toggle:hover {
+      color: #3949ab;
+    }
+    .show-all-toggle .arrow {
+      transition: transform 0.2s ease;
+    }
+    .show-all-toggle.open .arrow {
+      transform: rotate(180deg);
+    }
+    /* Cities grid - hidden by default */
+    .cities-grid-wrapper {
+      display: none;
+      margin-top: 10px;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+    .cities-grid-wrapper.show {
+      display: block;
     }
     .cities-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      max-height: 250px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      max-height: 200px;
       overflow-y: auto;
-      padding-left: 4px;
     }
     .city-option {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid #e8eaf6;
-      background: #fff;
+      gap: 4px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: #fafafa;
       cursor: pointer;
-      transition: all 0.15s ease;
-      font-size: 13px;
+      transition: background 0.15s ease;
+      font-size: 12px;
     }
     .city-option:hover {
-      border-color: #c5cae9;
-      background: #f5f5ff;
+      background: #f0f0f0;
     }
     .city-option.checked {
-      border-color: #5c6bc0;
       background: #e8eaf6;
     }
     .city-option.hidden {
       display: none;
     }
     .city-option.disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
-      pointer-events: none;
     }
     .city-option input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       accent-color: #3949ab;
       cursor: pointer;
-      flex-shrink: 0;
     }
     .city-name {
-      color: #1a237e;
+      color: #333;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       flex: 1;
+      font-size: 12px;
     }
     .offset-input {
       display: none;
-      align-items: center;
-      gap: 2px;
-      margin-right: auto;
-    }
-    .city-option.checked .offset-input {
-      display: flex;
     }
     .candle-offset {
-      width: 42px;
-      padding: 2px 4px;
-      border: 1px solid #c5cae9;
+      width: 32px;
+      padding: 2px;
+      border: 1px solid #ccc;
       border-radius: 4px;
-      font-size: 12px;
-      text-align: center;
-      color: #3949ab;
-      background: #fff;
-    }
-    .candle-offset:focus {
-      outline: none;
-      border-color: #5c6bc0;
-      box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.2);
-    }
-    .offset-label {
       font-size: 11px;
-      color: #7986cb;
+      text-align: center;
     }
-    .offset-explanation {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-      border: 1px solid #ffe082;
-      border-radius: 8px;
-      padding: 10px 14px;
-      margin-bottom: 12px;
-    }
-    .offset-explanation-icon {
-      font-size: 18px;
-    }
-    .offset-explanation-text {
-      font-size: 13px;
-      color: #5d4037;
-      line-height: 1.5;
-    }
-    .offset-explanation-text strong {
-      color: #3e2723;
-    }
+    .offset-label { display: none; }
     .no-results {
       grid-column: 1 / -1;
       text-align: center;
-      color: #9e9e9e;
-      padding: 20px;
-      font-size: 14px;
+      color: #999;
+      padding: 16px;
+      font-size: 13px;
     }
     @media (max-width: 400px) {
       .cities-grid {
-        grid-template-columns: 1fr;
-      }
-      .cities-header {
-        flex-direction: column;
-        align-items: stretch;
+        grid-template-columns: repeat(2, 1fr);
       }
     }
     .btn-generate {
@@ -554,61 +702,90 @@ async def index():
   <div class="container">
     <div class="header">
       <div class="logo">🕯️✡️🕯️</div>
-      <h1>יוצר פוסטר לשבת</h1>
-      <div class="subtitle">צרו פוסטר יפה עם זמני הדלקת נרות</div>
+      <h1>יוצר פוסטר לשבת וחג</h1>
+      <div class="subtitle">צרו פוסטר יפה עם זמני הדלקת נרות לשבת או לחג</div>
     </div>
 
     <div class="form-group">
       <label>תמונת רקע <span class="optional">(לא חובה)</span></label>
       <div class="file-upload-wrapper">
-        <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" />
+        <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" multiple />
         <button type="button" id="fileUploadBtn" class="file-upload-btn">
-          <span>📷</span> העלה תמונה מהמכשיר
+          <span>📷</span> העלה תמונה או צלם
         </button>
         <div id="fileName" class="file-name">
           <span id="fileNameText"></span>
           <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
         </div>
       </div>
-      <div class="hint">השאירו ריק לשימוש בתמונת ברירת המחדל</div>
+      <div class="hint" id="uploadHint">השאירו ריק לשימוש בתמונת ברירת המחדל</div>
     </div>
 
-    <div class="form-group">
-      <label for="message">ברכה לפוסטר <span class="optional">(לא חובה)</span></label>
-      <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
+    <div class="form-group" id="blessingGroup">
+      <button type="button" id="addBlessingBtn" class="dedication-add-btn">
+        <span>✨</span> הוסף ברכה אישית
+      </button>
+      <div id="blessingSection" class="dedication-section">
+        <div class="dedication-header">
+          <label for="message">ברכה לפוסטר</label>
+          <button type="button" id="closeBlessingBtn" class="dedication-close-btn" title="הסר ברכה">✕</button>
+        </div>
+        <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
+        <div class="hint">💡 אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הפוסטר</div>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="neshama">לעילוי נשמת <span class="optional">(לא חובה)</span></label>
-      <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
-      <div class="dedication-toggle">
-        <label class="toggle-container">
-          <input type="checkbox" id="hideDedication" />
-          <span class="toggle-label">הסתר את שורת ההקדשה מהפוסטר</span>
-        </label>
+    <div class="form-group" id="dedicationGroup">
+      <button type="button" id="addDedicationBtn" class="dedication-add-btn">
+        <span>🕯️</span> הוסף הקדשה לעילוי נשמת
+      </button>
+      <div id="dedicationSection" class="dedication-section">
+        <div class="dedication-header">
+          <label for="neshama">לעילוי נשמת</label>
+          <button type="button" id="closeDedicationBtn" class="dedication-close-btn" title="הסר הקדשה">✕</button>
+        </div>
+        <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
       </div>
     </div>
 
     <div class="form-group">
-      <label>בחר ערים שיופיעו בפוסטר <span class="optional">(לא חובה)</span></label>
+      <label>בחר ערים ויישובים</label>
       <div class="cities-section">
-        <div class="cities-header">
-          <span id="citiesCounter" class="cities-counter">נבחרו: 0 מתוך 8</span>
-          <div class="cities-actions">
-            <button type="button" id="deselectAllBtn">נקה הכל</button>
+        <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר או יישוב..." />
+        <div id="selectedChips" class="selected-chips"></div>
+        <button type="button" id="showAllCitiesBtn" class="show-all-toggle">
+          <span>הצג את כל הערים</span>
+          <span class="arrow">▼</span>
+        </button>
+        <div id="citiesGridWrapper" class="cities-grid-wrapper">
+          <div class="cities-grid" id="citiesGrid">
+CITY_CHECKBOXES_PLACEHOLDER
+            <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
           </div>
         </div>
-        <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר..." />
-        <div class="offset-explanation">
-          <span class="offset-explanation-icon">🕐</span>
-          <span class="offset-explanation-text">המספר ליד כל עיר מציין כמה דקות <strong>לפני השקיעה</strong> נכנסת השבת. ניתן לערוך ידנית.</span>
-        </div>
-        <div class="cities-grid" id="citiesGrid">
-CITY_CHECKBOXES_PLACEHOLDER
-          <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
+      </div>
+    </div>
+
+    <!-- Advanced Options Toggle -->
+    <button type="button" id="advancedToggle" class="advanced-toggle">
+      <span>⚙️ אפשרויות מתקדמות</span>
+      <span class="arrow">▼</span>
+    </button>
+
+    <div id="advancedSection" class="advanced-section">
+      <div class="advanced-title">📅 בחירת תאריך</div>
+      <div class="multi-select-info">לחץ על תאריך אחד או יותר ליצירת מספר פוסטרים</div>
+      <div id="dateSelection" class="date-selection">
+        <div class="date-option selected" data-date="">
+          <span class="event-name">⏳ טוען...</span>
+          <span class="event-date"></span>
         </div>
       </div>
-      <div class="hint">אם לא תבחר ערים, יוצגו ערי ברירת המחדל</div>
+      <div class="weeks-selector">
+        <label>או: צור פוסטרים ל-</label>
+        <input type="number" id="weeksAhead" class="weeks-input" min="1" max="12" value="1" />
+        <label>שבתות/חגים קדימה</label>
+      </div>
     </div>
 
     <button id="generateBtn" class="btn-generate">
@@ -647,29 +824,151 @@ CITY_CHECKBOXES_PLACEHOLDER
     const fileNameEl = document.getElementById("fileName");
     const fileNameText = document.getElementById("fileNameText");
     const clearFileBtn = document.getElementById("clearFileBtn");
+    const advancedToggle = document.getElementById("advancedToggle");
+    const advancedSection = document.getElementById("advancedSection");
+    const dateSelection = document.getElementById("dateSelection");
+    const weeksAhead = document.getElementById("weeksAhead");
     const citySearch = document.getElementById("citySearch");
     const citiesGrid = document.getElementById("citiesGrid");
-    const citiesCounter = document.getElementById("citiesCounter");
-    const deselectAllBtn = document.getElementById("deselectAllBtn");
+    const citiesGridWrapper = document.getElementById("citiesGridWrapper");
+    const selectedChips = document.getElementById("selectedChips");
+    const showAllCitiesBtn = document.getElementById("showAllCitiesBtn");
     const noResults = document.getElementById("noResults");
     const cityOptions = document.querySelectorAll(".city-option");
     const cityCheckboxes = document.querySelectorAll('input[name="cityOption"]');
+    const addDedicationBtn = document.getElementById("addDedicationBtn");
+    const dedicationSection = document.getElementById("dedicationSection");
+    const closeDedicationBtn = document.getElementById("closeDedicationBtn");
+    const neshamaInput = document.getElementById("neshama");
+    const addBlessingBtn = document.getElementById("addBlessingBtn");
+    const blessingSection = document.getElementById("blessingSection");
+    const closeBlessingBtn = document.getElementById("closeBlessingBtn");
+    const messageInput = document.getElementById("message");
     const MAX_CITIES = 8;
     let currentBlobUrl = null;
+    let dedicationEnabled = false;
+    let blessingEnabled = false;
+    let selectedDates = []; // Array of selected dates
+    let allEvents = []; // Store all events
 
-    // Update city counter and enforce max limit
-    function updateCityCounter() {
-      const checked = document.querySelectorAll('input[name="cityOption"]:checked').length;
-      citiesCounter.textContent = "נבחרו: " + checked + " מתוך " + MAX_CITIES;
+    // Advanced options toggle
+    advancedToggle.addEventListener("click", () => {
+      advancedToggle.classList.toggle("open");
+      advancedSection.classList.toggle("show");
+    });
 
-      // Add/remove limit-reached class for visual feedback
-      if (checked >= MAX_CITIES) {
-        citiesCounter.classList.add("limit-reached");
-      } else {
-        citiesCounter.classList.remove("limit-reached");
+    // Load upcoming events for date selection
+    async function loadUpcomingEvents() {
+      try {
+        const resp = await fetch("/upcoming-events");
+        allEvents = await resp.json();
+
+        dateSelection.innerHTML = allEvents.map((event, i) => `
+          <div class="date-option ${i === 0 ? 'selected' : ''}" data-date="${event.startDate}" data-index="${i}">
+            <span class="event-name">${event.displayName}</span>
+            <span class="event-date">${event.dateStr}</span>
+          </div>
+        `).join('');
+
+        // First event is selected by default
+        selectedDates = [allEvents[0].startDate];
+
+        // Add click handlers for multi-select
+        dateSelection.querySelectorAll('.date-option').forEach(opt => {
+          opt.addEventListener('click', (e) => {
+            const date = opt.dataset.date;
+            if (e.ctrlKey || e.metaKey) {
+              // Multi-select with Ctrl/Cmd
+              opt.classList.toggle('selected');
+              if (opt.classList.contains('selected')) {
+                if (!selectedDates.includes(date)) selectedDates.push(date);
+              } else {
+                selectedDates = selectedDates.filter(d => d !== date);
+              }
+            } else {
+              // Single select
+              dateSelection.querySelectorAll('.date-option').forEach(o => o.classList.remove('selected'));
+              opt.classList.add('selected');
+              selectedDates = [date];
+            }
+            // Reset weeks when manually selecting
+            weeksAhead.value = selectedDates.length;
+            if (typeof updateUploadHint === 'function') updateUploadHint();
+          });
+        });
+      } catch (err) {
+        console.error("Failed to load events:", err);
+        dateSelection.innerHTML = '<div class="date-option selected" data-date=""><span class="event-name">שבת/חג הקרוב</span></div>';
+        selectedDates = [""];
       }
+    }
+    loadUpcomingEvents();
 
-      // Disable/enable unchecked checkboxes based on limit
+    // Weeks selector - auto-select dates
+    weeksAhead.addEventListener("change", () => {
+      const weeks = parseInt(weeksAhead.value) || 1;
+      const options = dateSelection.querySelectorAll('.date-option');
+      options.forEach(o => o.classList.remove('selected'));
+      selectedDates = [];
+      for (let i = 0; i < Math.min(weeks, options.length); i++) {
+        options[i].classList.add('selected');
+        selectedDates.push(allEvents[i]?.startDate || "");
+      }
+      if (typeof updateUploadHint === 'function') updateUploadHint();
+    });
+
+    // Blessing section toggle
+    addBlessingBtn.addEventListener("click", () => {
+      blessingEnabled = true;
+      addBlessingBtn.style.display = "none";
+      blessingSection.classList.add("show");
+      messageInput.focus();
+    });
+
+    closeBlessingBtn.addEventListener("click", () => {
+      blessingEnabled = false;
+      messageInput.value = "";
+      blessingSection.classList.remove("show");
+      addBlessingBtn.style.display = "flex";
+    });
+
+    // Dedication section toggle
+    addDedicationBtn.addEventListener("click", () => {
+      dedicationEnabled = true;
+      addDedicationBtn.style.display = "none";
+      dedicationSection.classList.add("show");
+      neshamaInput.focus();
+    });
+
+    closeDedicationBtn.addEventListener("click", () => {
+      dedicationEnabled = false;
+      neshamaInput.value = "";
+      dedicationSection.classList.remove("show");
+      addDedicationBtn.style.display = "flex";
+    });
+
+    // Render selected cities as chips
+    function renderChips() {
+      const checked = document.querySelectorAll('input[name="cityOption"]:checked');
+      selectedChips.innerHTML = Array.from(checked).map(cb => {
+        const name = cb.closest(".city-option").dataset.name;
+        return `<span class="city-chip" data-name="${name}"><span class="chip-name">${name}</span><span class="chip-remove">✕</span></span>`;
+      }).join('');
+      // Add click handlers to remove chips
+      selectedChips.querySelectorAll('.chip-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const name = btn.closest('.city-chip').dataset.name;
+          const cb = document.querySelector(`.city-option[data-name="${name}"] input`);
+          if (cb) { cb.checked = false; cb.closest('.city-option').classList.remove('checked'); }
+          renderChips();
+          updateCityLimit();
+        });
+      });
+    }
+
+    // Enforce max limit
+    function updateCityLimit() {
+      const checked = document.querySelectorAll('input[name="cityOption"]:checked').length;
       cityCheckboxes.forEach(cb => {
         if (!cb.checked) {
           cb.disabled = checked >= MAX_CITIES;
@@ -678,62 +977,95 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     }
 
+    // Show all cities toggle
+    showAllCitiesBtn.addEventListener("click", () => {
+      showAllCitiesBtn.classList.toggle("open");
+      citiesGridWrapper.classList.toggle("show");
+      showAllCitiesBtn.querySelector("span:first-child").textContent =
+        citiesGridWrapper.classList.contains("show") ? "הסתר רשימה" : "הצג את כל הערים";
+    });
+
     // Toggle checked class on city option
     cityCheckboxes.forEach(cb => {
       cb.addEventListener("change", () => {
         cb.closest(".city-option").classList.toggle("checked", cb.checked);
-        updateCityCounter();
+        renderChips();
+        updateCityLimit();
       });
     });
 
-    // City search filter
+    // Make entire city option clickable
+    cityOptions.forEach(opt => {
+      opt.addEventListener("click", (e) => {
+        if (e.target.classList.contains("candle-offset")) return;
+        const cb = opt.querySelector('input[name="cityOption"]');
+        if (cb.disabled && !cb.checked) return;
+        cb.checked = !cb.checked;
+        opt.classList.toggle("checked", cb.checked);
+        renderChips();
+        updateCityLimit();
+      });
+    });
+
+    // City search - show grid when typing, filter results
     citySearch.addEventListener("input", () => {
       const query = citySearch.value.trim().toLowerCase();
+      if (query) {
+        citiesGridWrapper.classList.add("show");
+        showAllCitiesBtn.classList.add("open");
+        showAllCitiesBtn.querySelector("span:first-child").textContent = "הסתר רשימה";
+      }
       let visibleCount = 0;
       cityOptions.forEach(opt => {
         const name = opt.querySelector(".city-name").textContent.toLowerCase();
-        if (name.includes(query)) {
-          opt.classList.remove("hidden");
-          visibleCount++;
-        } else {
-          opt.classList.add("hidden");
-        }
+        if (name.includes(query)) { opt.classList.remove("hidden"); visibleCount++; }
+        else { opt.classList.add("hidden"); }
       });
       noResults.style.display = visibleCount === 0 ? "block" : "none";
     });
 
-    // Deselect all cities
-    deselectAllBtn.addEventListener("click", () => {
-      cityCheckboxes.forEach(cb => {
-        cb.checked = false;
-        cb.disabled = false;
-        cb.closest(".city-option").classList.remove("checked", "disabled");
-      });
-      updateCityCounter();
-    });
+    const uploadHint = document.getElementById("uploadHint");
 
-    // File upload button click -> trigger hidden file input
+    // Update upload hint based on selected dates
+    function updateUploadHint() {
+      const count = selectedDates.length;
+      if (count > 1) {
+        uploadHint.textContent = `ניתן להעלות עד ${count} תמונות - אחת לכל פוסטר. אם תעלו פחות, התמונה האחרונה תשמש לשאר.`;
+        uploadHint.style.color = "#5c6bc0";
+      } else {
+        uploadHint.textContent = "השאירו ריק לשימוש בתמונת ברירת המחדל";
+        uploadHint.style.color = "";
+      }
+    }
+
+    // File upload button click -> trigger file input (browser shows both gallery and camera on mobile)
     fileUploadBtn.addEventListener("click", () => {
       fileInput.click();
     });
 
-    // When file is selected, show filename
+    // When files are selected
     fileInput.addEventListener("change", () => {
-      if (fileInput.files && fileInput.files[0]) {
-        const file = fileInput.files[0];
-        fileNameText.textContent = file.name;
+      if (fileInput.files && fileInput.files.length > 0) {
+        const count = fileInput.files.length;
+        if (count === 1) {
+          fileNameText.textContent = fileInput.files[0].name;
+        } else {
+          fileNameText.textContent = `${count} תמונות נבחרו`;
+        }
         fileNameEl.classList.add("show");
         fileUploadBtn.classList.add("has-file");
-        fileUploadBtn.innerHTML = "<span>✅</span> תמונה נבחרה";
+        fileUploadBtn.innerHTML = count === 1
+          ? "<span>✅</span> תמונה נבחרה"
+          : `<span>✅</span> ${count} תמונות נבחרו`;
       }
     });
 
-    // Clear selected file
+    // Clear selected files
     clearFileBtn.addEventListener("click", () => {
       fileInput.value = "";
       fileNameEl.classList.remove("show");
       fileUploadBtn.classList.remove("has-file");
-      fileUploadBtn.innerHTML = "<span>📷</span> העלה תמונה מהמכשיר";
+      fileUploadBtn.innerHTML = "<span>📷</span> העלה תמונה או צלם";
     });
 
     // Helper function to read file as base64
@@ -741,7 +1073,6 @@ CITY_CHECKBOXES_PLACEHOLDER
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
-          // Remove the data URL prefix (e.g., "data:image/png;base64,")
           const base64 = reader.result.split(",")[1];
           resolve(base64);
         };
@@ -750,33 +1081,40 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     }
 
-    btn.addEventListener("click", async () => {
-      const message = document.getElementById("message").value.trim();
-      const leiluyNeshama = document.getElementById("neshama").value.trim();
-      const hideDedication = document.getElementById("hideDedication").checked;
-      const selectedFile = fileInput.files && fileInput.files[0];
+    // Store generated posters for multi-download
+    let generatedPosters = [];
 
-      // Show loading state
-      statusEl.textContent = "⏳ יוצר את הפוסטר שלך...";
+    btn.addEventListener("click", async () => {
+      const message = messageInput.value.trim();
+      const leiluyNeshama = neshamaInput.value.trim();
+      const hideDedication = !dedicationEnabled;
+      const hideBlessing = !blessingEnabled;
+      const uploadedFiles = fileInput.files;
+
+      // Determine dates to generate
+      const datesToGenerate = selectedDates.length > 0 ? selectedDates : [""];
+      const isMultiple = datesToGenerate.length > 1;
+
+      statusEl.textContent = isMultiple
+        ? `⏳ יוצר ${datesToGenerate.length} פוסטרים...`
+        : "⏳ יוצר את הפוסטר שלך...";
       statusEl.className = "status loading show";
       btn.classList.add("loading");
       btn.disabled = true;
       previewEl.classList.remove("show");
-
-      const payload = {};
+      generatedPosters = [];
 
       try {
-        if (selectedFile) {
-          // Convert file to base64 and add to payload
-          const base64 = await readFileAsBase64(selectedFile);
-          payload.imageBase64 = base64;
+        // Convert all uploaded images to base64
+        const imagesBase64 = [];
+        if (uploadedFiles && uploadedFiles.length > 0) {
+          for (let f = 0; f < uploadedFiles.length; f++) {
+            const base64 = await readFileAsBase64(uploadedFiles[f]);
+            imagesBase64.push(base64);
+          }
         }
 
-        if (message) payload.message = message;
-        if (leiluyNeshama) payload.leiluyNeshama = leiluyNeshama;
-        if (hideDedication) payload.hideDedication = true;
-
-        // Collect selected cities with their candle offsets
+        // Collect selected cities
         const selectedCities = [];
         document.querySelectorAll('input[name="cityOption"]:checked').forEach(cb => {
           const cityOption = cb.closest(".city-option");
@@ -785,32 +1123,51 @@ CITY_CHECKBOXES_PLACEHOLDER
           const offset = parseInt(offsetInput.value) || 20;
           selectedCities.push({ name: cityName, candle_offset: offset });
         });
-        if (selectedCities.length > 0) {
-          payload.cities = selectedCities;
+
+        // Generate poster for each date
+        for (let i = 0; i < datesToGenerate.length; i++) {
+          const date = datesToGenerate[i];
+          const payload = {};
+
+          // Use corresponding image, or last image if fewer images than dates
+          if (imagesBase64.length > 0) {
+            const imgIndex = Math.min(i, imagesBase64.length - 1);
+            payload.imageBase64 = imagesBase64[imgIndex];
+          }
+          if (message) payload.message = message;
+          if (leiluyNeshama) payload.leiluyNeshama = leiluyNeshama;
+          if (hideDedication) payload.hideDedication = true;
+          if (hideBlessing) payload.hideBlessing = true;
+          if (date) payload.startDate = date;
+          if (selectedCities.length > 0) payload.cities = selectedCities;
+
+          statusEl.textContent = isMultiple
+            ? `⏳ יוצר פוסטר ${i + 1} מתוך ${datesToGenerate.length}...`
+            : "⏳ יוצר את הפוסטר שלך...";
+
+          const resp = await fetch("/poster", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          if (!resp.ok) {
+            throw new Error("שגיאה מהשרת: " + resp.status);
+          }
+
+          const blob = await resp.blob();
+          generatedPosters.push({ blob, date });
         }
 
-        const resp = await fetch("/poster", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!resp.ok) {
-          const text = await resp.text();
-          throw new Error("שגיאה מהשרת: " + resp.status);
-        }
-
-        const blob = await resp.blob();
-
-        // Clean up previous blob URL
-        if (currentBlobUrl) {
-          URL.revokeObjectURL(currentBlobUrl);
-        }
-
-        currentBlobUrl = URL.createObjectURL(blob);
+        // Show the first poster (or only poster)
+        if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+        currentBlobUrl = URL.createObjectURL(generatedPosters[0].blob);
         posterImg.src = currentBlobUrl;
         previewEl.classList.add("show");
-        statusEl.textContent = "✅ הפוסטר נוצר בהצלחה!";
+
+        statusEl.textContent = isMultiple
+          ? `✅ נוצרו ${datesToGenerate.length} פוסטרים בהצלחה! לחץ הורד להורדת כולם.`
+          : "✅ הפוסטר נוצר בהצלחה!";
         statusEl.className = "status success show";
       } catch (err) {
         console.error(err);
@@ -822,15 +1179,30 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     });
 
-    downloadBtn.addEventListener("click", () => {
-      if (!currentBlobUrl) return;
+    downloadBtn.addEventListener("click", async () => {
+      if (generatedPosters.length === 0) return;
 
-      const link = document.createElement("a");
-      link.href = currentBlobUrl;
-      link.download = "shabbat-poster.png";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (generatedPosters.length === 1) {
+        // Single poster download
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(generatedPosters[0].blob);
+        link.download = "shabbat-poster.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Multiple posters - download each
+        for (let i = 0; i < generatedPosters.length; i++) {
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(generatedPosters[i].blob);
+          link.download = `shabbat-poster-${i + 1}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          // Small delay between downloads
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
     });
   </script>
 </body>
@@ -884,3 +1256,58 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
 
     poster_bytes = build_poster_from_payload(payload)
     return Response(content=poster_bytes, media_type="image/png")
+
+
+@app.get("/upcoming-events")
+async def get_upcoming_events():
+    """Get the next 4 upcoming Shabbat/holiday events for date selection."""
+    events = []
+    current_date = date.today()
+
+    for i in range(4):
+        seq_start, seq_end, event_type, event_name = find_next_sequence(current_date)
+
+        # Get parsha for Shabbat
+        parsha = None
+        if event_type == "shabbos" or seq_end.weekday() == 5:  # Saturday
+            parsha = get_parsha_from_hebcal(seq_end)
+
+        # Format event name in Hebrew
+        if event_type == "shabbos":
+            display_name = parsha if parsha else "שבת"
+        else:
+            # Translate common Yom Tov names to Hebrew
+            yomtov_translations = {
+                "Rosh Hashana": "ראש השנה",
+                "Yom Kippur": "יום כיפור",
+                "Sukkos": "סוכות",
+                "Shmini Atzeres": "שמיני עצרת",
+                "Simchas Torah": "שמחת תורה",
+                "Pesach": "פסח",
+                "Shavuos": "שבועות",
+                "Chanukah": "חנוכה",
+                "Purim": "פורים",
+            }
+            display_name = yomtov_translations.get(event_name, event_name)
+            if parsha:
+                display_name = f"{display_name} | {parsha}"
+
+        # Format date in Hebrew style
+        date_str = f"{seq_start.day}/{seq_start.month}"
+        if seq_start != seq_end:
+            date_str += f" - {seq_end.day}/{seq_end.month}"
+
+        events.append({
+            "startDate": seq_start.isoformat(),
+            "endDate": seq_end.isoformat(),
+            "eventType": event_type,
+            "eventName": event_name,
+            "displayName": display_name,
+            "dateStr": date_str,
+            "isNext": i == 0,
+        })
+
+        # Move to day after this sequence ends
+        current_date = seq_end + timedelta(days=1)
+
+    return events

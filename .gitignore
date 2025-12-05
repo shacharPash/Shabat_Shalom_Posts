@@ -41,3 +41,5 @@ venv/
 
 # קבצי לוג
 *.log
+.vercel
+.env*.local

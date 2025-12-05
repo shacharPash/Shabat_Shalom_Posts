@@ -841,10 +841,38 @@ def compose_poster(
     table_height = (num_cities + 1) * (city_font_size + row_spacing) + 40
     table_width = W - 200  # רוחב קטן יותר
 
-    # Position table dynamically: consistent gap above blessing text
-    blessing_y = H - 125  # Fixed position of blessing text
-    table_to_blessing_gap = 10  # Consistent gap between table bottom and blessing text
-    table_top = blessing_y - table_to_blessing_gap - table_height
+    # Determine text content and layout
+    # Use default blessing only if None (empty string means hide it)
+    if blessing_text is None:
+        blessing_text = "\"לחיי שמחות קטנות וגדולות\""
+    # Use default dedication text only if None (empty string means hide it)
+    if dedication_text is None:
+        dedication_text = 'זמני השבת לע"נ אורי בורנשטיין הי"ד'
+
+    # Position table dynamically based on what text is shown
+    # Calculate bottom section based on what's visible
+    show_blessing = bool(blessing_text)
+    show_dedication = bool(dedication_text)
+
+    if show_blessing and show_dedication:
+        # Normal layout with both blessing and dedication
+        blessing_y = H - 125
+        dedication_y = H - 50
+        table_bottom_ref = blessing_y
+    elif show_blessing and not show_dedication:
+        # Only blessing, no dedication
+        blessing_y = H - 85
+        table_bottom_ref = blessing_y
+    elif not show_blessing and show_dedication:
+        # Only dedication, no blessing
+        dedication_y = H - 50
+        table_bottom_ref = H - 85  # Table comes closer to bottom
+    else:
+        # Neither blessing nor dedication
+        table_bottom_ref = H - 40  # Table very close to bottom
+
+    table_to_blessing_gap = 10  # Consistent gap between table bottom and text
+    table_top = table_bottom_ref - table_to_blessing_gap - table_height
 
     # יצירת רקע עגול קטן יותר
     overlay = Image.new("RGBA", (table_width, table_height), (0,0,0,0))
@@ -895,22 +923,16 @@ def compose_poster(
         draw_text_with_stroke(draw, (col_hav_x, y), hav_hhmm, city_row_font, fill, stroke, stroke_w, anchor="ma")
         y += city_font_size + row_spacing - 2
 
-    # Draw text below table - fixed position at bottom (blessing_y already defined above)
-    dedication_y = H - 50
-
-    blessing_text = blessing_text or "\"לחיי שמחות קטנות וגדולות\""
-    # Use default dedication text only if None (empty string means hide it)
-    if dedication_text is None:
-        dedication_text = 'זמני השבת לע"נ אורי בורנשטיין הי"ד'
-
-    draw_text_with_stroke(
-        draw, (W//2, blessing_y),
-        blessing_text, bless_font,
-        fill, stroke, stroke_w,
-        anchor="ma", rtl=True,
-    )
-    # Only draw dedication text if it's not empty
-    if dedication_text:
+    # Only draw blessing text if it's shown
+    if show_blessing:
+        draw_text_with_stroke(
+            draw, (W//2, blessing_y),
+            blessing_text, bless_font,
+            fill, stroke, stroke_w,
+            anchor="ma", rtl=True,
+        )
+    # Only draw dedication text if it's shown
+    if show_dedication:
         draw_text_with_stroke(
             draw, (W//2, dedication_y),
             dedication_text, small_font,
