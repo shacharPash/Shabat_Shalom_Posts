@@ -120,6 +120,27 @@ async def index():
       content: "💡";
       font-size: 11px;
     }
+    /* Dedication toggle styling */
+    .dedication-toggle {
+      margin-top: 10px;
+    }
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #5c6bc0;
+    }
+    .toggle-container input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #3949ab;
+      cursor: pointer;
+    }
+    .toggle-label {
+      user-select: none;
+    }
     /* File upload styling */
     .file-upload-wrapper {
       position: relative;
@@ -560,6 +581,12 @@ async def index():
     <div class="form-group">
       <label for="neshama">לעילוי נשמת <span class="optional">(לא חובה)</span></label>
       <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
+      <div class="dedication-toggle">
+        <label class="toggle-container">
+          <input type="checkbox" id="hideDedication" />
+          <span class="toggle-label">הסתר את שורת ההקדשה מהפוסטר</span>
+        </label>
+      </div>
     </div>
 
     <div class="form-group">
@@ -726,6 +753,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     btn.addEventListener("click", async () => {
       const message = document.getElementById("message").value.trim();
       const leiluyNeshama = document.getElementById("neshama").value.trim();
+      const hideDedication = document.getElementById("hideDedication").checked;
       const selectedFile = fileInput.files && fileInput.files[0];
 
       // Show loading state
@@ -746,6 +774,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
         if (message) payload.message = message;
         if (leiluyNeshama) payload.leiluyNeshama = leiluyNeshama;
+        if (hideDedication) payload.hideDedication = true;
 
         // Collect selected cities with their candle offsets
         const selectedCities = [];

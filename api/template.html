@@ -23,6 +23,10 @@
     textarea { resize: vertical; min-height: 80px; }
     .hint { font-size: 12px; color: #9e9e9e; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
     .hint::before { content: "💡"; font-size: 11px; }
+    .dedication-toggle { margin-top: 10px; }
+    .toggle-container { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #5c6bc0; }
+    .toggle-container input[type="checkbox"] { width: 16px; height: 16px; accent-color: #3949ab; cursor: pointer; }
+    .toggle-label { user-select: none; }
     .file-upload-wrapper { position: relative; }
     .file-input-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
     .file-upload-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px 16px; border-radius: 12px; border: 2px dashed #c5cae9; background: #f5f5ff; color: #3949ab; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
@@ -120,6 +124,12 @@
     <div class="form-group">
       <label for="neshama">לעילוי נשמת <span class="optional">(לא חובה)</span></label>
       <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
+      <div class="dedication-toggle">
+        <label class="toggle-container">
+          <input type="checkbox" id="hideDedication" />
+          <span class="toggle-label">הסתר את שורת ההקדשה מהפוסטר</span>
+        </label>
+      </div>
     </div>
 
     <div class="form-group">
@@ -217,6 +227,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     btn.addEventListener("click", async () => {
       const message = document.getElementById("message").value.trim();
       const leiluyNeshama = document.getElementById("neshama").value.trim();
+      const hideDedication = document.getElementById("hideDedication").checked;
       const selectedFile = fileInput.files && fileInput.files[0];
       statusEl.textContent = "⏳ יוצר את הפוסטר שלך..."; statusEl.className = "status loading show"; btn.classList.add("loading"); btn.disabled = true; previewEl.classList.remove("show");
       const payload = {};
@@ -224,6 +235,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         if (selectedFile) { const base64 = await readFileAsBase64(selectedFile); payload.imageBase64 = base64; }
         if (message) payload.message = message;
         if (leiluyNeshama) payload.leiluyNeshama = leiluyNeshama;
+        if (hideDedication) payload.hideDedication = true;
         const selectedCities = [];
         document.querySelectorAll('input[name="cityOption"]:checked').forEach(cb => { const cityOption = cb.closest(".city-option"); const cityName = cityOption.dataset.name; const offsetInput = cityOption.querySelector(".candle-offset"); const offset = parseInt(offsetInput.value) || 20; selectedCities.push({ name: cityName, candle_offset: offset }); });
         if (selectedCities.length > 0) { payload.cities = selectedCities; }

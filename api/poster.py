@@ -42,6 +42,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     image_path: Optional[str] = payload.get("image")
     message: Optional[str] = payload.get("message")
     leiluy_neshama: Optional[str] = payload.get("leiluyNeshama")
+    hide_dedication: bool = payload.get("hideDedication", False)
     cities: Optional[List[Dict[str, Any]]] = payload.get("cities")
 
     start_date_str: Optional[str] = payload.get("startDate")
@@ -98,7 +99,9 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     # Texts
     blessing_text = message  # if None, generate_poster/compose_poster will use defaults
     dedication_text = None
-    if leiluy_neshama:
+    if hide_dedication:
+        dedication_text = ""  # Empty string to hide dedication line
+    elif leiluy_neshama:
         dedication_text = f'זמני השבת לע"נ {leiluy_neshama}'
 
     poster_bytes = generate_poster(

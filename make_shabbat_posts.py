@@ -899,7 +899,9 @@ def compose_poster(
     dedication_y = H - 50
 
     blessing_text = blessing_text or "\"לחיי שמחות קטנות וגדולות\""
-    dedication_text = dedication_text or 'זמני השבת לע"נ אורי בורנשטיין הי"ד'
+    # Use default dedication text only if None (empty string means hide it)
+    if dedication_text is None:
+        dedication_text = 'זמני השבת לע"נ אורי בורנשטיין הי"ד'
 
     draw_text_with_stroke(
         draw, (W//2, blessing_y),
@@ -907,12 +909,14 @@ def compose_poster(
         fill, stroke, stroke_w,
         anchor="ma", rtl=True,
     )
-    draw_text_with_stroke(
-        draw, (W//2, dedication_y),
-        dedication_text, small_font,
-        fill, stroke, 3,
-        anchor="ma", rtl=True,
-    )
+    # Only draw dedication text if it's not empty
+    if dedication_text:
+        draw_text_with_stroke(
+            draw, (W//2, dedication_y),
+            dedication_text, small_font,
+            fill, stroke, 3,
+            anchor="ma", rtl=True,
+        )
 
     # Do NOT save to disk here anymore
     return img
