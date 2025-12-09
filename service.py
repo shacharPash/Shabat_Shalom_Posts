@@ -1,3 +1,4 @@
+import html
 from typing import Any, Dict, List
 from datetime import date, timedelta
 
@@ -18,8 +19,9 @@ CITY_BY_NAME = build_city_lookup(GEOJSON_CITIES)
 @app.get("/", response_class=HTMLResponse)
 async def index():
     # Generate city checkboxes dynamically from GeoJSON data with offset input
+    # Use html.escape to handle city names with quotes (e.g., עין הנצי"ב)
     city_checkboxes = "\n".join([
-        f'        <div class="city-option" data-name="{city["name"]}" data-selected="false"><span class="city-check-icon">✓</span><span class="city-name">{city["name"]}</span><div class="offset-input"><input type="number" class="candle-offset" value="{city["candle_offset"]}" min="0" max="60" title="דקות לפני השקיעה"><span class="offset-label">ד\'</span></div></div>'
+        f'        <div class="city-option" data-name="{html.escape(city["name"], quote=True)}" data-selected="false"><span class="city-check-icon">✓</span><span class="city-name">{html.escape(city["name"])}</span><div class="offset-input"><input type="number" class="candle-offset" value="{city["candle_offset"]}" min="0" max="60" title="דקות לפני השקיעה"><span class="offset-label">ד\'</span></div></div>'
         for city in GEOJSON_CITIES
     ])
     total_cities = len(GEOJSON_CITIES)
@@ -303,6 +305,36 @@ async def index():
     .weeks-input:focus {
       outline: none;
       border-color: #5c6bc0;
+    }
+    /* Date format selector */
+    .date-format-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+    }
+    .date-format-selector {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .date-format-option {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 2px solid #e8eaf6;
+      background: #fff;
+      color: #3949ab;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .date-format-option:hover {
+      border-color: #c5cae9;
+      background: #f5f5ff;
+    }
+    .date-format-option.selected {
+      border-color: #5c6bc0;
+      background: #e8eaf6;
+      font-weight: 600;
     }
     /* File upload styling */
     .file-upload-wrapper {
@@ -798,6 +830,15 @@ CITY_CHECKBOXES_PLACEHOLDER
         <input type="number" id="weeksAhead" class="weeks-input" min="1" max="12" value="1" />
         <label>שבתות/חגים קדימה</label>
       </div>
+
+      <div class="date-format-section">
+        <div class="advanced-title">🗓️ פורמט תאריך</div>
+        <div id="dateFormatSelector" class="date-format-selector">
+          <div class="date-format-option selected" data-format="gregorian">לועזי</div>
+          <div class="date-format-option" data-format="hebrew">עברי</div>
+          <div class="date-format-option" data-format="both">לועזי + עברי</div>
+        </div>
+      </div>
     </div>
 
     <button id="generateBtn" class="btn-generate">
@@ -856,11 +897,22 @@ CITY_CHECKBOXES_PLACEHOLDER
     const closeBlessingBtn = document.getElementById("closeBlessingBtn");
     const messageInput = document.getElementById("message");
     const MAX_CITIES = 8;
+    const dateFormatSelector = document.getElementById("dateFormatSelector");
     let currentBlobUrl = null;
     let dedicationEnabled = false;
     let blessingEnabled = false;
     let selectedDates = []; // Array of selected dates
     let allEvents = []; // Store all events
+    let selectedDateFormat = "gregorian"; // "gregorian", "hebrew", or "both"
+
+    // Date format selector
+    dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        dateFormatSelector.querySelectorAll('.date-format-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        selectedDateFormat = opt.dataset.format;
+      });
+    });
 
     // Advanced options toggle
     advancedToggle.addEventListener("click", () => {
@@ -958,18 +1010,26 @@ CITY_CHECKBOXES_PLACEHOLDER
       addDedicationBtn.style.display = "flex";
     });
 
+    // Helper to escape attribute value for CSS selector
+    function escapeAttrForSelector(val) {
+      return val.replace(/"/g, '\\"');
+    }
+
     // Render selected cities as chips
     function renderChips() {
       const checked = document.querySelectorAll('.city-option.checked');
       selectedChips.innerHTML = Array.from(checked).map(opt => {
         const name = opt.dataset.name;
-        return `<span class="city-chip" data-name="${name}"><span class="chip-name">${name}</span><span class="chip-remove">✕</span></span>`;
+        // Use textContent for display (auto-decodes HTML entities)
+        const displayName = opt.querySelector('.city-name').textContent;
+        return `<span class="city-chip" data-name="${name}"><span class="chip-name">${displayName}</span><span class="chip-remove">✕</span></span>`;
       }).join('');
       // Add click handlers to remove chips
       selectedChips.querySelectorAll('.chip-remove').forEach(btn => {
         btn.addEventListener('click', () => {
           const name = btn.closest('.city-chip').dataset.name;
-          const opt = document.querySelector(`.city-option[data-name="${name}"]`);
+          // Use CSS.escape or manual escaping for selector with quotes
+          const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
           if (opt) { opt.classList.remove('checked'); opt.dataset.selected = 'false'; }
           renderChips();
           updateCityLimit();
@@ -1139,6 +1199,7 @@ CITY_CHECKBOXES_PLACEHOLDER
           if (hideBlessing) payload.hideBlessing = true;
           if (date) payload.startDate = date;
           if (selectedCities.length > 0) payload.cities = selectedCities;
+          payload.dateFormat = selectedDateFormat;
 
           statusEl.textContent = isMultiple
             ? `⏳ יוצר פוסטר ${i + 1} מתוך ${datesToGenerate.length}...`

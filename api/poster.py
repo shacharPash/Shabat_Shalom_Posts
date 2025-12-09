@@ -27,7 +27,8 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
       "cities": [                          # override default CITIES
         { "name": "...", "lat": ..., "lon": ..., "candle_offset": ... }
       ],
-      "startDate": "YYYY-MM-DD"            # base date for calculations
+      "startDate": "YYYY-MM-DD",           # base date for calculations
+      "dateFormat": "gregorian"            # "gregorian", "hebrew", or "both"
     }
 
     Priority for background image:
@@ -45,6 +46,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     hide_dedication: bool = payload.get("hideDedication", False)
     hide_blessing: bool = payload.get("hideBlessing", False)
     cities: Optional[List[Dict[str, Any]]] = payload.get("cities")
+    date_format: str = payload.get("dateFormat", "gregorian")  # "gregorian", "hebrew", or "both"
 
     start_date_str: Optional[str] = payload.get("startDate")
     if start_date_str:
@@ -114,6 +116,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         cities=cities_arg,
         blessing_text=blessing_text,
         dedication_text=dedication_text,
+        date_format=date_format,
     )
 
     return poster_bytes

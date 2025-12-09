@@ -88,6 +88,118 @@ _PARASHA_NORMALIZED_LOOKUP: Dict[str, str] = {
 }
 
 
+# ========= HEBREW MONTH TRANSLATION =========
+HEBREW_MONTH_NAMES: Dict[str, str] = {
+    "Nisan": "ניסן",
+    "Iyar": "אייר",
+    "Sivan": "סיון",
+    "Tammuz": "תמוז",
+    "Av": "אב",
+    "Elul": "אלול",
+    "Tishrei": "תשרי",
+    "Cheshvan": "חשון",
+    "Kislev": "כסלו",
+    "Teves": "טבת",
+    "Tevet": "טבת",
+    "Shevat": "שבט",
+    "Adar": "אדר",
+    "Adar I": "אדר א'",
+    "Adar II": "אדר ב'",
+}
+
+
+def _convert_year_to_hebrew_letters(year: int) -> str:
+    """
+    Convert a Hebrew year to Hebrew letters (gematria).
+
+    Only handles the last 2-3 digits (e.g., 5786 -> תשפ"ו).
+    """
+    # Hebrew letters for numbers
+    ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"]
+    tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"]
+    hundreds = ["", "ק", "ר", "ש", "ת", "תק", "תר", "תש", "תת", "תתק"]
+
+    # Get last 3 digits (e.g., 5786 -> 786)
+    year_short = year % 1000
+
+    h = year_short // 100
+    t = (year_short % 100) // 10
+    o = year_short % 10
+
+    # Special cases for 15 and 16 (ט"ו and ט"ז instead of י"ה and י"ו)
+    if t == 1 and o == 5:
+        result = hundreds[h] + "ט" + "ו"
+    elif t == 1 and o == 6:
+        result = hundreds[h] + "ט" + "ז"
+    else:
+        result = hundreds[h] + tens[t] + ones[o]
+
+    # Add quotation mark before last letter
+    if len(result) > 1:
+        result = result[:-1] + '"' + result[-1]
+    elif len(result) == 1:
+        result = result + "'"
+
+    return result
+
+
+def get_hebrew_date_string(gregorian_date: date) -> str:
+    """
+    Get the Hebrew date string for a given Gregorian date.
+
+    Args:
+        gregorian_date: The Gregorian date to convert
+
+    Returns:
+        Hebrew date string like "כ״ג כסלו תשפ״ו"
+    """
+    jc = JewCal(gregorian_date=gregorian_date, diaspora=False)
+    jewish_date = jc.jewish_date
+
+    # Get day, month name, and year
+    day = jewish_date.day
+    year = jewish_date.year
+
+    # Get month name from the string representation (e.g., "23 Kislev 5786")
+    date_str = str(jewish_date)
+    parts = date_str.split()
+    if len(parts) >= 2:
+        month_name_english = parts[1]
+        month_name = HEBREW_MONTH_NAMES.get(month_name_english, month_name_english)
+    else:
+        month_name = ""
+
+    # Convert day to Hebrew letters
+    day_hebrew = _convert_day_to_hebrew(day)
+
+    # Convert year to Hebrew letters
+    year_hebrew = _convert_year_to_hebrew_letters(year)
+
+    return f"{day_hebrew} {month_name} {year_hebrew}"
+
+
+def _convert_day_to_hebrew(day: int) -> str:
+    """Convert a day number (1-30) to Hebrew gematria with geresh/gershayim."""
+    ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"]
+    tens = ["", "י", "כ", "ל"]
+
+    t = day // 10
+    o = day % 10
+
+    # Special cases for 15 and 16
+    if day == 15:
+        return 'ט"ו'
+    elif day == 16:
+        return 'ט"ז'
+
+    if t == 0:
+        return ones[o] + "'"
+    elif o == 0:
+        return tens[t] + "'"
+    else:
+        return tens[t] + '"' + ones[o]
+
+
 def translate_parsha(english_name: str) -> str:
     """
     Translate English parsha name to Hebrew.
@@ -691,6 +803,7 @@ def compose_poster(
     all_cities_rows: list,
     blessing_text: str | None = None,
     dedication_text: str | None = None,
+    date_format: str = "gregorian",  # "gregorian", "hebrew", or "both"
 ) -> Image.Image:
     img = bg_img.copy()
     W, H = img.size
@@ -736,18 +849,42 @@ def compose_poster(
     seq_start = week_info.get("seq_start")
     seq_end = week_info.get("seq_end")
 
+    # Build date string based on date_format parameter
+    date_str = ""
     if seq_start and seq_end:
-        if seq_start == seq_end:
-            date_str = seq_start.strftime("%d.%m.%Y")
-        else:
-            # Format: 22-24.09.2025 (day range with single month.year)
-            if seq_start.month == seq_end.month and seq_start.year == seq_end.year:
-                date_str = f"{seq_start.day}-{seq_end.day}.{seq_end.month:02d}.{seq_end.year}"
+        # Gregorian date formatting
+        if date_format in ("gregorian", "both"):
+            if seq_start == seq_end:
+                greg_str = seq_start.strftime("%d.%m.%Y")
             else:
-                # Different months: 30.09-02.10.2025
-                date_str = f"{seq_start.strftime('%d.%m')}-{seq_end.strftime('%d.%m.%Y')}"
-    else:
-        date_str = ""
+                if seq_start.month == seq_end.month and seq_start.year == seq_end.year:
+                    greg_str = f"{seq_start.day}-{seq_end.day}.{seq_end.month:02d}.{seq_end.year}"
+                else:
+                    greg_str = f"{seq_start.strftime('%d.%m')}-{seq_end.strftime('%d.%m.%Y')}"
+            date_str = greg_str
+
+        # Hebrew date formatting
+        if date_format in ("hebrew", "both"):
+            heb_start = get_hebrew_date_string(seq_start)
+            if seq_start == seq_end:
+                heb_str = heb_start
+            else:
+                heb_end = get_hebrew_date_string(seq_end)
+                # If same month, just show day range
+                heb_start_parts = heb_start.split()
+                heb_end_parts = heb_end.split()
+                if len(heb_start_parts) >= 3 and len(heb_end_parts) >= 3:
+                    if heb_start_parts[1] == heb_end_parts[1]:  # Same month
+                        heb_str = f"{heb_start_parts[0]}-{heb_end_parts[0]} {heb_end_parts[1]} {heb_end_parts[2]}"
+                    else:
+                        heb_str = f"{heb_start} - {heb_end}"
+                else:
+                    heb_str = f"{heb_start} - {heb_end}"
+
+            if date_format == "both" and date_str:
+                date_str = f"{date_str} | {heb_str}"
+            else:
+                date_str = heb_str
 
     # Add event name for Yom Tov
     if event_type == "yomtov" and event_name:
@@ -1006,6 +1143,7 @@ def generate_poster(
     cities: Optional[Iterable[CityDict]] = None,
     blessing_text: Optional[str] = None,
     dedication_text: Optional[str] = None,
+    date_format: str = "gregorian",  # "gregorian", "hebrew", or "both"
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
@@ -1020,6 +1158,7 @@ def generate_poster(
         cities: List of city dicts with keys: name, lat, lon, candle_offset
         blessing_text: Custom bottom message (default: standard blessing)
         dedication_text: Custom 'leiluy neshama' text (default: None)
+        date_format: Date format - "gregorian", "hebrew", or "both"
 
     Returns:
         PNG image bytes ready to be saved or transmitted
@@ -1071,6 +1210,7 @@ def generate_poster(
         bg, week_info, rows,
         blessing_text=blessing_text,
         dedication_text=dedication_text,
+        date_format=date_format,
     )
 
     # Save to BytesIO buffer as PNG and return bytes

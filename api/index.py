@@ -1,3 +1,4 @@
+import html
 import os
 import sys
 from http.server import BaseHTTPRequestHandler
@@ -12,8 +13,9 @@ def generate_html() -> str:
     """Generate the HTML page with city checkboxes."""
     cities = get_cities_list()
 
+    # Use html.escape to handle city names with quotes (e.g., עין הנצי"ב)
     city_checkboxes = "\n".join([
-        f'        <div class="city-option" data-name="{city["name"]}" data-selected="false"><span class="city-check-icon">✓</span><span class="city-name">{city["name"]}</span><div class="offset-input"><input type="number" class="candle-offset" value="{city["candle_offset"]}" min="0" max="60" title="דקות לפני השקיעה"><span class="offset-label">ד\'</span></div></div>'
+        f'        <div class="city-option" data-name="{html.escape(city["name"], quote=True)}" data-selected="false"><span class="city-check-icon">✓</span><span class="city-name">{html.escape(city["name"])}</span><div class="offset-input"><input type="number" class="candle-offset" value="{city["candle_offset"]}" min="0" max="60" title="דקות לפני השקיעה"><span class="offset-label">ד\'</span></div></div>'
         for city in cities
     ])
 
