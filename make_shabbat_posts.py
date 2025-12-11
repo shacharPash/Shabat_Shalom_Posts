@@ -53,7 +53,7 @@ PARASHA_TRANSLATION: Dict[str, str] = {
     "Tetzaveh": "תצוה", "Ki Tisa": "כי תשא", "Vayakhel": "ויקהל", "Pekudei": "פקודי",
 
     # ספר ויקרא
-    "Vayikra": "ויקרא", "Tzav": "צו", "Shemini": "שמיני", "Tazria": "תזריע",
+    "Vayikra": "ויקרא", "Tzav": "צו", "Shemini": "שמיני", "Shmini": "שמיני", "Tazria": "תזריע",
     "Metzora": "מצורע", "Achrei Mot": "אחרי מות", "Kedoshim": "קדושים",
     "Emor": "אמור", "Behar": "בהר", "Bechukotai": "בחוקותי",
 
@@ -76,6 +76,15 @@ PARASHA_TRANSLATION: Dict[str, str] = {
     "Re'e": "ראה", "Ki Seitzei": "כי תצא", "Ki Savo": "כי תבוא",
     "Vayeilech": "וילך", "Haazinu": "האזינו", "Ha'azinu": "האזינו", "Ha'Azinu": "האזינו",
     "V'Zot HaBerachah": "וזאת הברכה", "Vzot Haberachah": "וזאת הברכה",
+
+    # פרשות מחוברות (כשקוראים שתי פרשות באותה שבת)
+    "Vayakhel-Pekudei": "ויקהל-פקודי", "Vayakhel-Pekudey": "ויקהל-פקודי",
+    "Tazria-Metzora": "תזריע-מצורע", "Tazria-Metsora": "תזריע-מצורע",
+    "Achrei Mot-Kedoshim": "אחרי מות-קדושים", "Acharei Mot-Kedoshim": "אחרי מות-קדושים",
+    "Behar-Bechukotai": "בהר-בחוקותי", "Behar-Bechukosai": "בהר-בחוקותי",
+    "Chukat-Balak": "חוקת-בלק", "Chukas-Balak": "חוקת-בלק",
+    "Matot-Masei": "מטות-מסעי", "Matos-Masei": "מטות-מסעי", "Matot-Mas'ei": "מטות-מסעי",
+    "Nitzavim-Vayelech": "נצבים-וילך", "Nitzavim-Vayeilech": "נצבים-וילך",
 }
 
 

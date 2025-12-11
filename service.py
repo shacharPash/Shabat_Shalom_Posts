@@ -238,51 +238,122 @@ async def index():
       align-items: center;
       gap: 6px;
     }
-    .date-selection {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+    /* Searchable date dropdown */
+    .date-dropdown-container {
+      position: relative;
       margin-bottom: 16px;
     }
-    .date-option {
-      padding: 10px 14px;
+    .date-dropdown-trigger {
+      width: 100%;
+      padding: 12px 16px;
       border-radius: 10px;
       border: 2px solid #e8eaf6;
       background: #fff;
       color: #3949ab;
-      font-size: 13px;
+      font-size: 14px;
       cursor: pointer;
-      transition: all 0.15s ease;
-      text-align: center;
-      flex: 1;
-      min-width: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      font-family: inherit;
     }
-    .date-option:hover {
+    .date-dropdown-trigger:hover {
       border-color: #c5cae9;
       background: #f5f5ff;
     }
-    .date-option.selected {
+    .date-dropdown-trigger.open {
       border-color: #5c6bc0;
-      background: #e8eaf6;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    .date-dropdown-trigger .selected-date-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .date-dropdown-trigger .selected-event-name {
       font-weight: 600;
     }
-    .date-option .event-name {
-      font-weight: 600;
-      display: block;
-      margin-bottom: 4px;
+    .date-dropdown-trigger .selected-event-date {
       font-size: 12px;
-    }
-    .date-option .event-date {
-      font-size: 11px;
       color: #7986cb;
     }
-    .date-option.selected .event-date {
+    .date-dropdown-trigger .dropdown-arrow {
+      transition: transform 0.2s ease;
+    }
+    .date-dropdown-trigger.open .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+    .date-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 2px solid #5c6bc0;
+      border-top: none;
+      border-bottom-left-radius: 10px;
+      border-bottom-right-radius: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .date-dropdown-menu.show {
+      display: block;
+    }
+    .date-search-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-bottom: 1px solid #e8eaf6;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fafafa;
+    }
+    .date-search-input:focus {
+      outline: none;
+      background: #fff;
+    }
+    .date-dropdown-list {
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .date-dropdown-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s ease;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .date-dropdown-item:hover {
+      background: #f5f5ff;
+    }
+    .date-dropdown-item.selected {
+      background: #e8eaf6;
+    }
+    .date-dropdown-item.hidden {
+      display: none;
+    }
+    .date-dropdown-item .item-name {
+      font-weight: 600;
+      font-size: 13px;
       color: #3949ab;
     }
-    .multi-select-info {
+    .date-dropdown-item .item-date {
       font-size: 12px;
       color: #7986cb;
-      margin-bottom: 8px;
+    }
+    .date-no-results {
+      padding: 16px;
+      text-align: center;
+      color: #999;
+      font-size: 13px;
+      display: none;
     }
     .weeks-selector {
       display: flex;
@@ -310,6 +381,18 @@ async def index():
     .weeks-input:focus {
       outline: none;
       border-color: #5c6bc0;
+    }
+    .selected-range-info {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #e8f5e9;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #2e7d32;
+      display: none;
+    }
+    .selected-range-info.show {
+      display: block;
     }
     /* Date format selector */
     .date-format-section {
@@ -854,6 +937,16 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
+    <!-- Date Format Selector (Main Menu) -->
+    <div class="form-group">
+      <label>🗓️ פורמט תאריך בפוסטר</label>
+      <div id="dateFormatSelector" class="date-format-selector">
+        <div class="date-format-option" data-format="gregorian">לועזי</div>
+        <div class="date-format-option" data-format="hebrew">עברי</div>
+        <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
+      </div>
+    </div>
+
     <!-- Advanced Options Toggle -->
     <button type="button" id="advancedToggle" class="advanced-toggle">
       <span>⚙️ אפשרויות מתקדמות</span>
@@ -861,28 +954,32 @@ CITY_CHECKBOXES_PLACEHOLDER
     </button>
 
     <div id="advancedSection" class="advanced-section">
-      <div class="advanced-title">📅 בחירת תאריך</div>
-      <div class="multi-select-info">לחץ על תאריך אחד או יותר ליצירת מספר פוסטרים</div>
-      <div id="dateSelection" class="date-selection">
-        <div class="date-option selected" data-date="">
-          <span class="event-name">⏳ טוען...</span>
-          <span class="event-date"></span>
+      <div class="advanced-title">📅 בחירת תאריך התחלה</div>
+
+      <!-- Searchable Date Dropdown -->
+      <div class="date-dropdown-container">
+        <button type="button" id="dateDropdownTrigger" class="date-dropdown-trigger">
+          <div class="selected-date-info">
+            <span class="selected-event-name" id="selectedEventName">⏳ טוען...</span>
+            <span class="selected-event-date" id="selectedEventDate"></span>
+          </div>
+          <span class="dropdown-arrow">▼</span>
+        </button>
+        <div id="dateDropdownMenu" class="date-dropdown-menu">
+          <input type="text" id="dateSearchInput" class="date-search-input" placeholder="🔍 חפש לפי פרשה או תאריך..." />
+          <div id="dateDropdownList" class="date-dropdown-list">
+            <!-- Items will be populated by JavaScript -->
+          </div>
+          <div id="dateNoResults" class="date-no-results">לא נמצאו תוצאות</div>
         </div>
-      </div>
-      <div class="weeks-selector">
-        <label>או: צור פוסטרים ל-</label>
-        <input type="number" id="weeksAhead" class="weeks-input" min="1" max="12" value="1" />
-        <label>שבתות/חגים קדימה</label>
       </div>
 
-      <div class="date-format-section">
-        <div class="advanced-title">🗓️ פורמט תאריך</div>
-        <div id="dateFormatSelector" class="date-format-selector">
-          <div class="date-format-option" data-format="gregorian">לועזי</div>
-          <div class="date-format-option" data-format="hebrew">עברי</div>
-          <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
-        </div>
+      <div class="weeks-selector">
+        <label>מספר שבתות/חגים קדימה:</label>
+        <input type="number" id="weeksAhead" class="weeks-input" min="1" max="20" value="1" />
       </div>
+
+      <div id="selectedRangeInfo" class="selected-range-info"></div>
     </div>
 
     <button id="generateBtn" class="btn-generate">
@@ -933,7 +1030,6 @@ CITY_CHECKBOXES_PLACEHOLDER
     const clearFileBtn = document.getElementById("clearFileBtn");
     const advancedToggle = document.getElementById("advancedToggle");
     const advancedSection = document.getElementById("advancedSection");
-    const dateSelection = document.getElementById("dateSelection");
     const weeksAhead = document.getElementById("weeksAhead");
     const citySearch = document.getElementById("citySearch");
     const citiesGrid = document.getElementById("citiesGrid");
@@ -951,9 +1047,21 @@ CITY_CHECKBOXES_PLACEHOLDER
     const copyLinkText = document.getElementById("copyLinkText");
     const urlParamsNotice = document.getElementById("urlParamsNotice");
     const clearParamsBtn = document.getElementById("clearParamsBtn");
+
+    // Date dropdown elements
+    const dateDropdownTrigger = document.getElementById("dateDropdownTrigger");
+    const dateDropdownMenu = document.getElementById("dateDropdownMenu");
+    const dateSearchInput = document.getElementById("dateSearchInput");
+    const dateDropdownList = document.getElementById("dateDropdownList");
+    const dateNoResults = document.getElementById("dateNoResults");
+    const selectedEventName = document.getElementById("selectedEventName");
+    const selectedEventDate = document.getElementById("selectedEventDate");
+    const selectedRangeInfo = document.getElementById("selectedRangeInfo");
+
     let currentBlobUrl = null;
     let selectedDates = []; // Array of selected dates
     let allEvents = []; // Store all events
+    let selectedStartIndex = 0; // Index of the selected start date
     let selectedDateFormat = "both"; // "gregorian", "hebrew", or "both" - default is both
     let loadedFromUrl = false; // Track if form was pre-filled from URL
 
@@ -972,64 +1080,142 @@ CITY_CHECKBOXES_PLACEHOLDER
       advancedSection.classList.toggle("show");
     });
 
+    // ===== Date Dropdown Functionality =====
+
+    // Toggle dropdown
+    dateDropdownTrigger.addEventListener("click", () => {
+      dateDropdownTrigger.classList.toggle("open");
+      dateDropdownMenu.classList.toggle("show");
+      if (dateDropdownMenu.classList.contains("show")) {
+        dateSearchInput.focus();
+      }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".date-dropdown-container")) {
+        dateDropdownTrigger.classList.remove("open");
+        dateDropdownMenu.classList.remove("show");
+      }
+    });
+
+    // Search functionality
+    dateSearchInput.addEventListener("input", () => {
+      const query = dateSearchInput.value.trim().toLowerCase();
+      let hasResults = false;
+
+      dateDropdownList.querySelectorAll(".date-dropdown-item").forEach(item => {
+        const name = (item.dataset.name || "").toLowerCase();
+        const parsha = (item.dataset.parsha || "").toLowerCase();
+        const dateStr = (item.dataset.datestr || "").toLowerCase();
+
+        if (name.includes(query) || parsha.includes(query) || dateStr.includes(query)) {
+          item.classList.remove("hidden");
+          hasResults = true;
+        } else {
+          item.classList.add("hidden");
+        }
+      });
+
+      dateNoResults.style.display = hasResults ? "none" : "block";
+    });
+
+    // Update selected dates based on start index and weeks
+    function updateSelectedDates() {
+      const weeks = parseInt(weeksAhead.value) || 1;
+      selectedDates = [];
+
+      for (let i = 0; i < weeks && (selectedStartIndex + i) < allEvents.length; i++) {
+        selectedDates.push(allEvents[selectedStartIndex + i].startDate);
+      }
+
+      // Update the range info display
+      if (selectedDates.length > 1) {
+        const startEvent = allEvents[selectedStartIndex];
+        const endEvent = allEvents[selectedStartIndex + selectedDates.length - 1];
+        selectedRangeInfo.textContent = `📋 יווצרו ${selectedDates.length} פוסטרים: מ-${startEvent.displayName} (${startEvent.dateStr}) עד ${endEvent.displayName} (${endEvent.dateStr})`;
+        selectedRangeInfo.classList.add("show");
+      } else {
+        selectedRangeInfo.classList.remove("show");
+      }
+
+      // Update dropdown item selection visual
+      dateDropdownList.querySelectorAll(".date-dropdown-item").forEach((item, idx) => {
+        item.classList.toggle("selected", idx === selectedStartIndex);
+      });
+
+      if (typeof updateUploadHint === 'function') updateUploadHint();
+    }
+
+    // Select a date from dropdown
+    function selectDate(index) {
+      selectedStartIndex = index;
+      const event = allEvents[index];
+
+      // Update trigger display
+      selectedEventName.textContent = event.displayName;
+      selectedEventDate.textContent = event.dateStr;
+
+      // Close dropdown
+      dateDropdownTrigger.classList.remove("open");
+      dateDropdownMenu.classList.remove("show");
+      dateSearchInput.value = "";
+
+      // Show all items again
+      dateDropdownList.querySelectorAll(".date-dropdown-item").forEach(item => {
+        item.classList.remove("hidden");
+      });
+      dateNoResults.style.display = "none";
+
+      updateSelectedDates();
+    }
+
     // Load upcoming events for date selection
     async function loadUpcomingEvents() {
       try {
         const resp = await fetch("/upcoming-events");
         allEvents = await resp.json();
 
-        dateSelection.innerHTML = allEvents.map((event, i) => `
-          <div class="date-option ${i === 0 ? 'selected' : ''}" data-date="${event.startDate}" data-index="${i}">
-            <span class="event-name">${event.displayName}</span>
-            <span class="event-date">${event.dateStr}</span>
+        // Populate dropdown list
+        dateDropdownList.innerHTML = allEvents.map((event, i) => `
+          <div class="date-dropdown-item ${i === 0 ? 'selected' : ''}"
+               data-index="${i}"
+               data-date="${event.startDate}"
+               data-name="${event.displayName}"
+               data-parsha="${event.parsha || ''}"
+               data-datestr="${event.dateStr}">
+            <span class="item-name">${event.displayName}</span>
+            <span class="item-date">${event.dateStr}</span>
           </div>
         `).join('');
 
+        // Update trigger with first event
+        if (allEvents.length > 0) {
+          selectedEventName.textContent = allEvents[0].displayName;
+          selectedEventDate.textContent = allEvents[0].dateStr;
+        }
+
         // First event is selected by default
+        selectedStartIndex = 0;
         selectedDates = [allEvents[0].startDate];
 
-        // Add click handlers for multi-select
-        dateSelection.querySelectorAll('.date-option').forEach(opt => {
-          opt.addEventListener('click', (e) => {
-            const date = opt.dataset.date;
-            if (e.ctrlKey || e.metaKey) {
-              // Multi-select with Ctrl/Cmd
-              opt.classList.toggle('selected');
-              if (opt.classList.contains('selected')) {
-                if (!selectedDates.includes(date)) selectedDates.push(date);
-              } else {
-                selectedDates = selectedDates.filter(d => d !== date);
-              }
-            } else {
-              // Single select
-              dateSelection.querySelectorAll('.date-option').forEach(o => o.classList.remove('selected'));
-              opt.classList.add('selected');
-              selectedDates = [date];
-            }
-            // Reset weeks when manually selecting
-            weeksAhead.value = selectedDates.length;
-            if (typeof updateUploadHint === 'function') updateUploadHint();
-          });
+        // Add click handlers for dropdown items
+        dateDropdownList.querySelectorAll('.date-dropdown-item').forEach((item, index) => {
+          item.addEventListener('click', () => selectDate(index));
         });
+
       } catch (err) {
         console.error("Failed to load events:", err);
-        dateSelection.innerHTML = '<div class="date-option selected" data-date=""><span class="event-name">שבת/חג הקרוב</span></div>';
+        selectedEventName.textContent = "שבת/חג הקרוב";
+        selectedEventDate.textContent = "";
         selectedDates = [""];
       }
     }
     loadUpcomingEvents();
 
-    // Weeks selector - auto-select dates
+    // Weeks selector - update dates from selected start
     weeksAhead.addEventListener("change", () => {
-      const weeks = parseInt(weeksAhead.value) || 1;
-      const options = dateSelection.querySelectorAll('.date-option');
-      options.forEach(o => o.classList.remove('selected'));
-      selectedDates = [];
-      for (let i = 0; i < Math.min(weeks, options.length); i++) {
-        options[i].classList.add('selected');
-        selectedDates.push(allEvents[i]?.startDate || "");
-      }
-      if (typeof updateUploadHint === 'function') updateUploadHint();
+      updateSelectedDates();
     });
 
     // Helper to escape attribute value for CSS selector
@@ -1505,11 +1691,11 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
 
 @app.get("/upcoming-events")
 async def get_upcoming_events():
-    """Get the next 4 upcoming Shabbat/holiday events for date selection."""
+    """Get the next 20 upcoming Shabbat/holiday events for date selection."""
     events = []
     current_date = date.today()
 
-    for i in range(4):
+    for i in range(20):
         seq_start, seq_end, event_type, event_name = find_next_sequence(current_date)
 
         # Get parsha for Shabbat
@@ -1524,16 +1710,42 @@ async def get_upcoming_events():
             # Translate common Yom Tov names to Hebrew
             yomtov_translations = {
                 "Rosh Hashana": "ראש השנה",
+                "Rosh Hashanah": "ראש השנה",
                 "Yom Kippur": "יום כיפור",
                 "Sukkos": "סוכות",
+                "Sukkot": "סוכות",
                 "Shmini Atzeres": "שמיני עצרת",
+                "Shemini Atzeret": "שמיני עצרת",
                 "Simchas Torah": "שמחת תורה",
+                "Simchat Torah": "שמחת תורה",
                 "Pesach": "פסח",
+                "Passover": "פסח",
                 "Shavuos": "שבועות",
+                "Shavuot": "שבועות",
                 "Chanukah": "חנוכה",
+                "Hanukkah": "חנוכה",
                 "Purim": "פורים",
+                "Tu BiShvat": "ט״ו בשבט",
+                "Tu B'Shvat": "ט״ו בשבט",
+                "Lag BaOmer": "ל״ג בעומר",
+                "Lag B'Omer": "ל״ג בעומר",
+                "Tisha B'Av": "תשעה באב",
+                "Yom HaShoah": "יום השואה",
+                "Yom HaZikaron": "יום הזיכרון",
+                "Yom HaAtzmaut": "יום העצמאות",
+                "Yom Yerushalayim": "יום ירושלים",
+                "Chol HaMoed": "חול המועד",
             }
-            display_name = yomtov_translations.get(event_name, event_name)
+            # Try exact match first, then try partial match for variations like "Pesach I"
+            display_name = yomtov_translations.get(event_name)
+            if not display_name:
+                # Try matching prefix (for "Pesach I", "Sukkot II", etc.)
+                for eng, heb in yomtov_translations.items():
+                    if event_name.startswith(eng):
+                        display_name = heb
+                        break
+                else:
+                    display_name = event_name
             if parsha:
                 display_name = f"{display_name} | {parsha}"
 
@@ -1548,6 +1760,7 @@ async def get_upcoming_events():
             "eventType": event_type,
             "eventName": event_name,
             "displayName": display_name,
+            "parsha": parsha,  # Include parsha separately for search
             "dateStr": date_str,
             "isNext": i == 0,
         })

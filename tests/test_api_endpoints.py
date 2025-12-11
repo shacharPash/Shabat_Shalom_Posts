@@ -285,8 +285,8 @@ class TestUpcomingEventsEndpoint(unittest.TestCase):
 
         # Should return a list
         self.assertIsInstance(result, list)
-        # Should have 4 events
-        self.assertEqual(len(result), 4)
+        # Should have 20 events
+        self.assertEqual(len(result), 20)
 
     def test_upcoming_events_structure(self):
         """Test that each event has required fields."""
@@ -300,6 +300,7 @@ class TestUpcomingEventsEndpoint(unittest.TestCase):
             self.assertIn("endDate", event)
             self.assertIn("eventType", event)
             self.assertIn("displayName", event)
+            self.assertIn("parsha", event)  # For searchability by parsha name
             self.assertIn("dateStr", event)
             self.assertIn("isNext", event)
 
