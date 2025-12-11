@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from make_shabbat_posts import generate_poster, CITIES
+from make_shabbat_posts import generate_poster, DEFAULT_CITIES
 
 
 def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
@@ -96,18 +96,17 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
 
         image_path = os.path.join(images_dir, image_files[0])
 
-    # Use provided cities if any, otherwise fall back to global CITIES
-    cities_arg = cities if cities is not None else CITIES
+    # Use provided cities if any, otherwise use default cities (major Israeli cities)
+    cities_arg = cities if cities is not None else DEFAULT_CITIES
 
-    # Texts
-    blessing_text = message  # if None, generate_poster/compose_poster will use defaults
-    if hide_blessing:
-        blessing_text = ""  # Empty string to hide blessing line
+    # Texts - no defaults, only use what user provided
+    # Empty string means hide, None also means hide (no defaults)
+    blessing_text = ""
+    if message and not hide_blessing:
+        blessing_text = message
 
-    dedication_text = None
-    if hide_dedication:
-        dedication_text = ""  # Empty string to hide dedication line
-    elif leiluy_neshama:
+    dedication_text = ""
+    if leiluy_neshama and not hide_dedication:
         dedication_text = f'זמני השבת לע"נ {leiluy_neshama}'
 
     poster_bytes = generate_poster(

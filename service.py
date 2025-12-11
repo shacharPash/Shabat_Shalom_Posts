@@ -162,6 +162,11 @@ async def index():
     .dedication-header label {
       margin-bottom: 0;
     }
+    .optional-hint {
+      font-size: 12px;
+      color: #9e9e9e;
+      font-weight: normal;
+    }
     .dedication-close-btn {
       background: none;
       border: none;
@@ -717,6 +722,53 @@ async def index():
       background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
       margin: 24px 0;
     }
+    /* Copy link button */
+    .btn-copy-link {
+      margin-top: 12px;
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 2px solid #c5cae9;
+      background: #f5f5ff;
+      color: #3949ab;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+    .btn-copy-link:hover {
+      border-color: #5c6bc0;
+      background: #ede7f6;
+    }
+    .btn-copy-link.copied {
+      border-color: #4caf50;
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .url-params-notice {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #fff3e0;
+      border: 1px solid #ffe0b2;
+      font-size: 13px;
+      color: #e65100;
+      display: none;
+    }
+    .url-params-notice.show {
+      display: block;
+    }
+    .url-params-notice .clear-params {
+      color: #e65100;
+      text-decoration: underline;
+      cursor: pointer;
+      margin-right: 8px;
+    }
     @media (max-width: 480px) {
       body {
         padding: 12px;
@@ -766,13 +818,9 @@ async def index():
     </div>
 
     <div class="form-group" id="blessingGroup">
-      <button type="button" id="addBlessingBtn" class="dedication-add-btn">
-        <span>✨</span> הוסף ברכה אישית
-      </button>
-      <div id="blessingSection" class="dedication-section">
+      <div id="blessingSection" class="dedication-section show">
         <div class="dedication-header">
-          <label for="message">ברכה לפוסטר</label>
-          <button type="button" id="closeBlessingBtn" class="dedication-close-btn" title="הסר ברכה">✕</button>
+          <label for="message">✨ ברכה לפוסטר <span class="optional-hint">(לא חובה)</span></label>
         </div>
         <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
         <div class="hint">💡 אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הפוסטר</div>
@@ -780,13 +828,9 @@ async def index():
     </div>
 
     <div class="form-group" id="dedicationGroup">
-      <button type="button" id="addDedicationBtn" class="dedication-add-btn">
-        <span>🕯️</span> הוסף הקדשה לעילוי נשמת
-      </button>
-      <div id="dedicationSection" class="dedication-section">
+      <div id="dedicationSection" class="dedication-section show">
         <div class="dedication-header">
-          <label for="neshama">לעילוי נשמת</label>
-          <button type="button" id="closeDedicationBtn" class="dedication-close-btn" title="הסר הקדשה">✕</button>
+          <label for="neshama">🕯️ לעילוי נשמת <span class="optional-hint">(לא חובה)</span></label>
         </div>
         <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
       </div>
@@ -834,9 +878,9 @@ CITY_CHECKBOXES_PLACEHOLDER
       <div class="date-format-section">
         <div class="advanced-title">🗓️ פורמט תאריך</div>
         <div id="dateFormatSelector" class="date-format-selector">
-          <div class="date-format-option selected" data-format="gregorian">לועזי</div>
+          <div class="date-format-option" data-format="gregorian">לועזי</div>
           <div class="date-format-option" data-format="hebrew">עברי</div>
-          <div class="date-format-option" data-format="both">לועזי + עברי</div>
+          <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
         </div>
       </div>
     </div>
@@ -845,6 +889,16 @@ CITY_CHECKBOXES_PLACEHOLDER
       <span class="btn-text">✨ צור פוסטר</span>
       <div class="spinner"></div>
     </button>
+
+    <button id="copyLinkBtn" class="btn-copy-link">
+      <span id="copyLinkIcon">📋</span>
+      <span id="copyLinkText">העתק קישור אישי</span>
+    </button>
+
+    <div id="urlParamsNotice" class="url-params-notice">
+      ⚠️ הטופס מולא אוטומטית מהקישור
+      <span class="clear-params" id="clearParamsBtn">נקה והתחל מחדש</span>
+    </div>
 
     <div id="status" class="status"></div>
 
@@ -888,22 +942,20 @@ CITY_CHECKBOXES_PLACEHOLDER
     const showAllCitiesBtn = document.getElementById("showAllCitiesBtn");
     const noResults = document.getElementById("noResults");
     const cityOptions = document.querySelectorAll(".city-option");
-    const addDedicationBtn = document.getElementById("addDedicationBtn");
-    const dedicationSection = document.getElementById("dedicationSection");
-    const closeDedicationBtn = document.getElementById("closeDedicationBtn");
     const neshamaInput = document.getElementById("neshama");
-    const addBlessingBtn = document.getElementById("addBlessingBtn");
-    const blessingSection = document.getElementById("blessingSection");
-    const closeBlessingBtn = document.getElementById("closeBlessingBtn");
     const messageInput = document.getElementById("message");
     const MAX_CITIES = 8;
     const dateFormatSelector = document.getElementById("dateFormatSelector");
+    const copyLinkBtn = document.getElementById("copyLinkBtn");
+    const copyLinkIcon = document.getElementById("copyLinkIcon");
+    const copyLinkText = document.getElementById("copyLinkText");
+    const urlParamsNotice = document.getElementById("urlParamsNotice");
+    const clearParamsBtn = document.getElementById("clearParamsBtn");
     let currentBlobUrl = null;
-    let dedicationEnabled = false;
-    let blessingEnabled = false;
     let selectedDates = []; // Array of selected dates
     let allEvents = []; // Store all events
-    let selectedDateFormat = "gregorian"; // "gregorian", "hebrew", or "both"
+    let selectedDateFormat = "both"; // "gregorian", "hebrew", or "both" - default is both
+    let loadedFromUrl = false; // Track if form was pre-filled from URL
 
     // Date format selector
     dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
@@ -980,36 +1032,6 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (typeof updateUploadHint === 'function') updateUploadHint();
     });
 
-    // Blessing section toggle
-    addBlessingBtn.addEventListener("click", () => {
-      blessingEnabled = true;
-      addBlessingBtn.style.display = "none";
-      blessingSection.classList.add("show");
-      messageInput.focus();
-    });
-
-    closeBlessingBtn.addEventListener("click", () => {
-      blessingEnabled = false;
-      messageInput.value = "";
-      blessingSection.classList.remove("show");
-      addBlessingBtn.style.display = "flex";
-    });
-
-    // Dedication section toggle
-    addDedicationBtn.addEventListener("click", () => {
-      dedicationEnabled = true;
-      addDedicationBtn.style.display = "none";
-      dedicationSection.classList.add("show");
-      neshamaInput.focus();
-    });
-
-    closeDedicationBtn.addEventListener("click", () => {
-      dedicationEnabled = false;
-      neshamaInput.value = "";
-      dedicationSection.classList.remove("show");
-      addDedicationBtn.style.display = "flex";
-    });
-
     // Helper to escape attribute value for CSS selector
     function escapeAttrForSelector(val) {
       return val.replace(/"/g, '\\"');
@@ -1046,6 +1068,168 @@ CITY_CHECKBOXES_PLACEHOLDER
         }
       });
     }
+
+    // ===== URL Query Parameters Support =====
+
+    // Generate shareable URL with current form values
+    function generateShareableUrl() {
+      const params = new URLSearchParams();
+
+      // Add selected cities
+      const selectedCityNames = Array.from(document.querySelectorAll('.city-option.checked'))
+        .map(opt => opt.dataset.name);
+      if (selectedCityNames.length > 0) {
+        params.set('cities', selectedCityNames.join(','));
+      }
+
+      // Add message if present
+      if (messageInput.value.trim()) {
+        params.set('message', messageInput.value.trim());
+      }
+
+      // Add neshama if present
+      if (neshamaInput.value.trim()) {
+        params.set('neshama', neshamaInput.value.trim());
+      }
+
+      // Add date format if not default (default is now "both")
+      if (selectedDateFormat !== 'both') {
+        params.set('dateFormat', selectedDateFormat);
+      }
+
+      const url = window.location.origin + window.location.pathname;
+      const queryString = params.toString();
+      return queryString ? `${url}?${queryString}` : url;
+    }
+
+    // Copy link button handler
+    copyLinkBtn.addEventListener("click", async () => {
+      const url = generateShareableUrl();
+      try {
+        await navigator.clipboard.writeText(url);
+        copyLinkBtn.classList.add("copied");
+        copyLinkIcon.textContent = "✅";
+        copyLinkText.textContent = "הקישור הועתק!";
+        setTimeout(() => {
+          copyLinkBtn.classList.remove("copied");
+          copyLinkIcon.textContent = "📋";
+          copyLinkText.textContent = "העתק קישור אישי";
+        }, 2000);
+      } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        copyLinkBtn.classList.add("copied");
+        copyLinkIcon.textContent = "✅";
+        copyLinkText.textContent = "הקישור הועתק!";
+        setTimeout(() => {
+          copyLinkBtn.classList.remove("copied");
+          copyLinkIcon.textContent = "📋";
+          copyLinkText.textContent = "העתק קישור אישי";
+        }, 2000);
+      }
+    });
+
+    // Read URL params and pre-fill form on page load
+    // Default cities to pre-select when no URL params
+    const DEFAULT_CITIES = ['ירושלים', 'תל אביב -יפו', 'חיפה', 'באר שבע'];
+
+    function loadFromUrlParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let hasParams = false;
+
+      // Pre-select cities from URL, or use defaults if no cities param
+      const citiesParam = urlParams.get('cities');
+      const cityNames = citiesParam
+        ? citiesParam.split(',').map(c => decodeURIComponent(c.trim()))
+        : DEFAULT_CITIES;
+
+      cityNames.forEach(name => {
+        const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+        if (opt) {
+          opt.classList.add('checked');
+          opt.dataset.selected = 'true';
+          if (citiesParam) hasParams = true; // Only mark as URL param if explicitly set
+        }
+      });
+      renderChips();
+      updateCityLimit();
+
+      // Pre-fill message
+      const messageParam = urlParams.get('message');
+      if (messageParam) {
+        messageInput.value = decodeURIComponent(messageParam);
+        hasParams = true;
+      }
+
+      // Pre-fill leiluy neshama
+      const neshamaParam = urlParams.get('neshama');
+      if (neshamaParam) {
+        neshamaInput.value = decodeURIComponent(neshamaParam);
+        hasParams = true;
+      }
+
+      // Set date format
+      const dateFormatParam = urlParams.get('dateFormat');
+      if (dateFormatParam && ['gregorian', 'hebrew', 'both'].includes(dateFormatParam)) {
+        selectedDateFormat = dateFormatParam;
+        dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
+          opt.classList.toggle('selected', opt.dataset.format === dateFormatParam);
+        });
+        hasParams = true;
+      }
+
+      // Show notice if form was pre-filled
+      if (hasParams) {
+        loadedFromUrl = true;
+        urlParamsNotice.classList.add("show");
+      }
+    }
+
+    // Clear URL params and reset form
+    clearParamsBtn.addEventListener("click", () => {
+      // Clear URL without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Reset cities to defaults
+      document.querySelectorAll('.city-option.checked').forEach(opt => {
+        opt.classList.remove('checked');
+        opt.dataset.selected = 'false';
+      });
+      // Re-select default cities
+      DEFAULT_CITIES.forEach(name => {
+        const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+        if (opt) {
+          opt.classList.add('checked');
+          opt.dataset.selected = 'true';
+        }
+      });
+      renderChips();
+      updateCityLimit();
+
+      // Reset message and neshama
+      messageInput.value = "";
+      neshamaInput.value = "";
+
+      // Reset date format to default (both)
+      selectedDateFormat = "both";
+      dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.format === 'both');
+      });
+
+      // Hide notice
+      urlParamsNotice.classList.remove("show");
+      loadedFromUrl = false;
+    });
+
+    // Load from URL params on page load
+    loadFromUrlParams();
+
+    // ===== End URL Query Parameters Support =====
 
     // Show all cities toggle
     showAllCitiesBtn.addEventListener("click", () => {
@@ -1147,8 +1331,9 @@ CITY_CHECKBOXES_PLACEHOLDER
     btn.addEventListener("click", async () => {
       const message = messageInput.value.trim();
       const leiluyNeshama = neshamaInput.value.trim();
-      const hideDedication = !dedicationEnabled;
-      const hideBlessing = !blessingEnabled;
+      // Hide if empty - no need for enabled flags anymore
+      const hideDedication = !leiluyNeshama;
+      const hideBlessing = !message;
       const uploadedFiles = fileInput.files;
 
       // Determine dates to generate

@@ -27,12 +27,15 @@ WeekInfo = Dict[str, Any]
 
 # ========= CONFIG =========
 TZID = "Asia/Jerusalem"
-CITIES = [
-    {"name": "ירושלים", "lat": 31.778117828230577, "lon": 35.23599222120022, "candle_offset": 40},
-    {"name": "תל אביב", "lat": 32.08680752114438, "lon": 34.78974135330866, "candle_offset": 20},
-    {"name": "לוד", "lat": 31.94588148808545, "lon": 34.88693992597191, "candle_offset": 20},
-    {"name": "מורשת", "lat": 32.825819, "lon": 35.233452, "candle_offset": 30},
+# Default cities - major Israeli cities (neutral defaults)
+DEFAULT_CITIES = [
+    {"name": "ירושלים", "lat": 31.779737, "lon": 35.209554, "candle_offset": 40},
+    {"name": "תל אביב -יפו", "lat": 32.079112, "lon": 34.777326, "candle_offset": 20},
+    {"name": "חיפה", "lat": 32.801771, "lon": 35.000609, "candle_offset": 20},
+    {"name": "באר שבע", "lat": 31.256689, "lon": 34.786409, "candle_offset": 20},
 ]
+# Keep CITIES as alias for backward compatibility
+CITIES = DEFAULT_CITIES
 
 IMG_SIZE = (1080, 1080)  # Wider rectangle (5:4 ratio)
 
@@ -979,12 +982,11 @@ def compose_poster(
     table_width = W - 200  # רוחב קטן יותר
 
     # Determine text content and layout
-    # Use default blessing only if None (empty string means hide it)
+    # No defaults - if None or empty, don't show anything
     if blessing_text is None:
-        blessing_text = "\"לחיי שמחות קטנות וגדולות\""
-    # Use default dedication text only if None (empty string means hide it)
+        blessing_text = ""
     if dedication_text is None:
-        dedication_text = 'זמני השבת לע"נ אורי בורנשטיין הי"ד'
+        dedication_text = ""
 
     # Position table dynamically based on what text is shown
     # Calculate bottom section based on what's visible
@@ -1167,7 +1169,7 @@ def generate_poster(
     if start_date is None:
         start_date = date.today()
     if cities is None:
-        cities = CITIES
+        cities = DEFAULT_CITIES  # Use neutral default cities
 
     # Find the next event sequence (ignore event_type and event_name here,
     # as they're obtained from jewcal_times_for_sequence for each city)
