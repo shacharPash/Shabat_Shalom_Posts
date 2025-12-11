@@ -708,6 +708,15 @@ async def index():
       padding: 16px;
       font-size: 13px;
     }
+    .city-counter {
+      font-weight: 400;
+      font-size: 13px;
+      color: #7986cb;
+    }
+    .city-counter.at-limit {
+      color: #e53935;
+      font-weight: 600;
+    }
     /* Custom city section */
     .custom-city-section {
       margin-top: 16px;
@@ -980,6 +989,12 @@ async def index():
       background: #e8f5e9;
       color: #2e7d32;
     }
+    .copy-link-hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #7986cb;
+      text-align: center;
+    }
     .url-params-notice {
       margin-top: 16px;
       padding: 12px 16px;
@@ -1067,7 +1082,7 @@ async def index():
     </div>
 
     <div class="form-group">
-      <label>בחר ערים ויישובים</label>
+      <label>בחר ערים ויישובים <span id="cityCounter" class="city-counter">(0/8)</span></label>
       <div class="cities-section">
         <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר או יישוב..." />
         <div id="selectedChips" class="selected-chips"></div>
@@ -1163,6 +1178,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       <span id="copyLinkIcon">📋</span>
       <span id="copyLinkText">העתק קישור אישי</span>
     </button>
+    <div class="copy-link-hint">🔗 יוצר קישור עם הערים והברכות שבחרת - שלח לאחרים או שמור לעצמך לשימוש חוזר</div>
 
     <div id="urlParamsNotice" class="url-params-notice">
       ⚠️ הטופס מולא אוטומטית מהקישור
@@ -1425,14 +1441,36 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     }
 
+    // Get total cities count (predefined + custom)
+    function getTotalCitiesCount() {
+      const predefinedCount = document.querySelectorAll('.city-option.checked').length;
+      const customCount = customCitiesList.querySelectorAll('.custom-city-entry').length;
+      return predefinedCount + customCount;
+    }
+
+    // City counter element
+    const cityCounter = document.getElementById("cityCounter");
+
     // Enforce max limit
     function updateCityLimit() {
-      const checked = document.querySelectorAll('.city-option.checked').length;
+      const total = getTotalCitiesCount();
+      const atLimit = total >= MAX_CITIES;
+
+      // Update counter display
+      cityCounter.textContent = `(${total}/${MAX_CITIES})`;
+      cityCounter.classList.toggle("at-limit", atLimit);
+
+      // Disable unchecked predefined cities
       cityOptions.forEach(opt => {
         if (!opt.classList.contains('checked')) {
-          opt.classList.toggle("disabled", checked >= MAX_CITIES);
+          opt.classList.toggle("disabled", atLimit);
         }
       });
+
+      // Disable/enable add custom city button
+      addCustomCityBtn.disabled = atLimit;
+      addCustomCityBtn.style.opacity = atLimit ? "0.5" : "1";
+      addCustomCityBtn.style.cursor = atLimit ? "not-allowed" : "pointer";
     }
 
     // ===== URL Query Parameters Support =====
@@ -1638,6 +1676,9 @@ CITY_CHECKBOXES_PLACEHOLDER
     let customCityCounter = 0;
 
     function addCustomCityEntry() {
+      // Check limit before adding
+      if (getTotalCitiesCount() >= MAX_CITIES) return;
+
       customCityCounter++;
       const entry = document.createElement("div");
       entry.className = "custom-city-entry";
@@ -1653,7 +1694,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Add remove handler
       entry.querySelector(".remove-custom-city-btn").addEventListener("click", () => {
         entry.remove();
+        updateCityLimit(); // Re-check limit after removal
       });
+
+      updateCityLimit(); // Check limit after adding
     }
 
     addCustomCityBtn.addEventListener("click", addCustomCityEntry);
