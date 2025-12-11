@@ -28,7 +28,16 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         { "name": "...", "lat": ..., "lon": ..., "candle_offset": ... }
       ],
       "startDate": "YYYY-MM-DD",           # base date for calculations
-      "dateFormat": "gregorian"            # "gregorian", "hebrew", or "both"
+      "dateFormat": "gregorian",           # "gregorian", "hebrew", or "both"
+
+      # Manual overrides (optional - override auto-detected values):
+      "overrideMainTitle": "שבת שלום",     # custom main title (greeting)
+      "overrideSubtitle": "פרשת... | ...", # custom subtitle (parsha + date line)
+
+      # Custom cities with manual times:
+      "customCities": [
+        { "name": "עיר מותאמת", "candle": "16:30", "havdalah": "17:45" }
+      ]
     }
 
     Priority for background image:
@@ -47,6 +56,13 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     hide_blessing: bool = payload.get("hideBlessing", False)
     cities: Optional[List[Dict[str, Any]]] = payload.get("cities")
     date_format: str = payload.get("dateFormat", "gregorian")  # "gregorian", "hebrew", or "both"
+
+    # Manual overrides
+    override_main_title: Optional[str] = payload.get("overrideMainTitle")
+    override_subtitle: Optional[str] = payload.get("overrideSubtitle")
+
+    # Custom cities with manual times
+    custom_cities: Optional[List[Dict[str, str]]] = payload.get("customCities")
 
     start_date_str: Optional[str] = payload.get("startDate")
     if start_date_str:
@@ -109,6 +125,15 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     if leiluy_neshama and not hide_dedication:
         dedication_text = f'זמני השבת לע"נ {leiluy_neshama}'
 
+    # Build overrides dict (only include non-None values)
+    overrides = {}
+    if override_main_title:
+        overrides["main_title"] = override_main_title
+    if override_subtitle:
+        overrides["subtitle"] = override_subtitle
+    if custom_cities:
+        overrides["custom_cities"] = custom_cities
+
     poster_bytes = generate_poster(
         image_path=image_path,
         start_date=start_date,
@@ -116,6 +141,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         blessing_text=blessing_text,
         dedication_text=dedication_text,
         date_format=date_format,
+        overrides=overrides if overrides else None,
     )
 
     return poster_bytes

@@ -71,6 +71,30 @@
     .date-format-option { padding: 8px 16px; border-radius: 8px; border: 2px solid #e8eaf6; background: #fff; color: #3949ab; font-size: 13px; cursor: pointer; transition: all 0.15s ease; }
     .date-format-option:hover { border-color: #c5cae9; background: #f5f5ff; }
     .date-format-option.selected { border-color: #5c6bc0; background: #e8eaf6; font-weight: 600; }
+    /* Manual override section */
+    .override-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e0e0e0; }
+    .override-title { font-size: 14px; font-weight: 600; color: #e53935; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .override-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .override-field { display: flex; flex-direction: column; gap: 4px; }
+    .override-field.full-width { grid-column: 1 / -1; }
+    .override-label { font-size: 12px; color: #666; font-weight: 500; }
+    .override-input { padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit; direction: rtl; transition: border-color 0.15s ease; }
+    .override-input:focus { outline: none; border-color: #5c6bc0; }
+    .override-input::placeholder { color: #bbb; }
+    .override-note { font-size: 11px; color: #999; margin-top: 8px; text-align: center; }
+    /* Custom city section */
+    .custom-city-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e0e0e0; }
+    .custom-city-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .custom-city-title { font-size: 14px; font-weight: 600; color: #5c6bc0; }
+    .add-custom-city-btn { padding: 6px 12px; background: #5c6bc0; color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; transition: background 0.15s ease; }
+    .add-custom-city-btn:hover { background: #3949ab; }
+    .custom-cities-list { display: flex; flex-direction: column; gap: 10px; }
+    .custom-city-entry { display: grid; grid-template-columns: 1fr 80px 80px 32px; gap: 8px; align-items: center; padding: 10px; background: #f5f5ff; border-radius: 8px; border: 1px solid #e0e0e0; }
+    .custom-city-entry input { padding: 8px 10px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px; font-family: inherit; direction: rtl; }
+    .custom-city-entry input:focus { outline: none; border-color: #5c6bc0; }
+    .custom-city-entry input::placeholder { color: #bbb; font-size: 11px; }
+    .remove-custom-city-btn { width: 28px; height: 28px; border: none; background: #ffebee; color: #e53935; border-radius: 6px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.15s ease; }
+    .remove-custom-city-btn:hover { background: #ffcdd2; }
     .file-upload-wrapper { position: relative; }
     .file-input-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
     .file-upload-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px 16px; border-radius: 12px; border: 2px dashed #c5cae9; background: #f5f5ff; color: #3949ab; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
@@ -203,6 +227,14 @@ CITY_CHECKBOXES_PLACEHOLDER
             <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
           </div>
         </div>
+        <!-- Custom Cities Section -->
+        <div class="custom-city-section">
+          <div class="custom-city-header">
+            <span class="custom-city-title">✏️ ערים מותאמות אישית</span>
+            <button type="button" id="addCustomCityBtn" class="add-custom-city-btn">+ הוסף עיר</button>
+          </div>
+          <div id="customCitiesList" class="custom-cities-list"></div>
+        </div>
       </div>
     </div>
 
@@ -247,6 +279,22 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
 
       <div id="selectedRangeInfo" class="selected-range-info"></div>
+
+      <!-- Manual Override Section -->
+      <div class="override-section">
+        <div class="override-title">✏️ דריסה ידנית (אופציונלי)</div>
+        <div class="override-grid">
+          <div class="override-field full-width">
+            <label class="override-label">כותרת ראשית</label>
+            <input type="text" id="overrideMainTitle" class="override-input" placeholder="לדוגמה: שבת שלום, חג שמח, שנה טובה" />
+          </div>
+          <div class="override-field full-width">
+            <label class="override-label">כותרת משנית (פרשה + תאריך)</label>
+            <input type="text" id="overrideSubtitle" class="override-input" placeholder="לדוגמה: פרשת וישלח | 13-14.12.2025" />
+          </div>
+        </div>
+        <div class="override-note">💡 שדות ריקים ישתמשו בערכים האוטומטיים</div>
+      </div>
     </div>
 
     <button id="generateBtn" class="btn-generate">
@@ -315,6 +363,14 @@ CITY_CHECKBOXES_PLACEHOLDER
     const selectedEventName = document.getElementById("selectedEventName");
     const selectedEventDate = document.getElementById("selectedEventDate");
     const selectedRangeInfo = document.getElementById("selectedRangeInfo");
+
+    // Manual override elements
+    const overrideMainTitle = document.getElementById("overrideMainTitle");
+    const overrideSubtitle = document.getElementById("overrideSubtitle");
+
+    // Custom city elements
+    const addCustomCityBtn = document.getElementById("addCustomCityBtn");
+    const customCitiesList = document.getElementById("customCitiesList");
 
     let currentBlobUrl = null;
     let dedicationEnabled = false;
@@ -504,6 +560,31 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     function readFileAsBase64(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const base64 = reader.result.split(",")[1]; resolve(base64); }; reader.onerror = reject; reader.readAsDataURL(file); }); }
 
+    // Custom city functions
+    function addCustomCityEntry() {
+      const entry = document.createElement("div");
+      entry.className = "custom-city-entry";
+      entry.innerHTML = `
+        <input type="text" class="custom-city-name" placeholder="שם העיר" />
+        <input type="text" class="custom-city-candle" placeholder="הדלקה" />
+        <input type="text" class="custom-city-havdalah" placeholder="הבדלה" />
+        <button type="button" class="remove-custom-city-btn">×</button>
+      `;
+      entry.querySelector(".remove-custom-city-btn").addEventListener("click", () => entry.remove());
+      customCitiesList.appendChild(entry);
+    }
+    function getCustomCities() {
+      const cities = [];
+      customCitiesList.querySelectorAll(".custom-city-entry").forEach(entry => {
+        const name = entry.querySelector(".custom-city-name").value.trim();
+        const candle = entry.querySelector(".custom-city-candle").value.trim();
+        const havdalah = entry.querySelector(".custom-city-havdalah").value.trim();
+        if (name) cities.push({ name, candle, havdalah });
+      });
+      return cities;
+    }
+    addCustomCityBtn.addEventListener("click", addCustomCityEntry);
+
     let generatedPosters = [];
     btn.addEventListener("click", async () => {
       const message = messageInput.value.trim();
@@ -532,6 +613,14 @@ CITY_CHECKBOXES_PLACEHOLDER
           if (date) payload.startDate = date;
           if (selectedCities.length > 0) payload.cities = selectedCities;
           payload.dateFormat = selectedDateFormat;
+          // Add manual overrides if provided
+          const mainTitleOverride = overrideMainTitle.value.trim();
+          const subtitleOverride = overrideSubtitle.value.trim();
+          if (mainTitleOverride) payload.overrideMainTitle = mainTitleOverride;
+          if (subtitleOverride) payload.overrideSubtitle = subtitleOverride;
+          // Add custom cities if provided
+          const customCities = getCustomCities();
+          if (customCities.length > 0) payload.customCities = customCities;
           statusEl.textContent = isMultiple ? `⏳ יוצר פוסטר ${i + 1} מתוך ${datesToGenerate.length}...` : "⏳ יוצר את הפוסטר שלך...";
           const resp = await fetch("/api/poster", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
           if (!resp.ok) { throw new Error("שגיאה מהשרת: " + resp.status); }

@@ -424,6 +424,61 @@ async def index():
       background: #e8eaf6;
       font-weight: 600;
     }
+    /* Manual override section */
+    .override-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+    }
+    .override-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e53935;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .override-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .override-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .override-field.full-width {
+      grid-column: 1 / -1;
+    }
+    .override-label {
+      font-size: 12px;
+      color: #666;
+      font-weight: 500;
+    }
+    .override-input {
+      padding: 10px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      direction: rtl;
+      transition: border-color 0.15s ease;
+    }
+    .override-input:focus {
+      outline: none;
+      border-color: #5c6bc0;
+    }
+    .override-input::placeholder {
+      color: #bbb;
+    }
+    .override-note {
+      font-size: 11px;
+      color: #999;
+      margin-top: 8px;
+      text-align: center;
+    }
     /* File upload styling */
     .file-upload-wrapper {
       position: relative;
@@ -652,6 +707,98 @@ async def index():
       color: #999;
       padding: 16px;
       font-size: 13px;
+    }
+    /* Custom city section */
+    .custom-city-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+    .custom-city-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .custom-city-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e53935;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .add-custom-city-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px dashed #c5cae9;
+      background: #f5f5ff;
+      color: #3949ab;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .add-custom-city-btn:hover {
+      border-color: #5c6bc0;
+      background: #ede7f6;
+    }
+    .custom-cities-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .custom-city-entry {
+      display: grid;
+      grid-template-columns: 1fr 80px 80px auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      background: #fff5f5;
+      border-radius: 8px;
+      border: 1px solid #ffcdd2;
+    }
+    .custom-city-input {
+      padding: 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      direction: rtl;
+    }
+    .custom-city-input:focus {
+      outline: none;
+      border-color: #5c6bc0;
+    }
+    .custom-city-input::placeholder {
+      color: #bbb;
+    }
+    .remove-custom-city-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: #ffebee;
+      color: #e53935;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .remove-custom-city-btn:hover {
+      background: #e53935;
+      color: #fff;
+    }
+    @media (max-width: 500px) {
+      .custom-city-entry {
+        grid-template-columns: 1fr auto;
+      }
+      .custom-city-entry .custom-city-input:nth-child(2),
+      .custom-city-entry .custom-city-input:nth-child(3) {
+        grid-column: 1 / 2;
+      }
     }
     @media (max-width: 400px) {
       .cities-grid {
@@ -934,6 +1081,15 @@ CITY_CHECKBOXES_PLACEHOLDER
             <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
           </div>
         </div>
+
+        <!-- Custom City Section -->
+        <div class="custom-city-section">
+          <div class="custom-city-header">
+            <span class="custom-city-title">✏️ ערים מותאמות אישית</span>
+            <button type="button" id="addCustomCityBtn" class="add-custom-city-btn">+ הוסף עיר</button>
+          </div>
+          <div id="customCitiesList" class="custom-cities-list"></div>
+        </div>
       </div>
     </div>
 
@@ -980,6 +1136,22 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
 
       <div id="selectedRangeInfo" class="selected-range-info"></div>
+
+      <!-- Manual Override Section -->
+      <div class="override-section">
+        <div class="override-title">✏️ דריסה ידנית (אופציונלי)</div>
+        <div class="override-grid">
+          <div class="override-field full-width">
+            <label class="override-label">כותרת ראשית</label>
+            <input type="text" id="overrideMainTitle" class="override-input" placeholder="לדוגמה: שבת שלום, חג שמח, שנה טובה" />
+          </div>
+          <div class="override-field full-width">
+            <label class="override-label">כותרת משנית (פרשה + תאריך)</label>
+            <input type="text" id="overrideSubtitle" class="override-input" placeholder="לדוגמה: פרשת וישלח | 13-14.12.2025" />
+          </div>
+        </div>
+        <div class="override-note">💡 שדות ריקים ישתמשו בערכים האוטומטיים</div>
+      </div>
     </div>
 
     <button id="generateBtn" class="btn-generate">
@@ -1054,9 +1226,17 @@ CITY_CHECKBOXES_PLACEHOLDER
     const dateSearchInput = document.getElementById("dateSearchInput");
     const dateDropdownList = document.getElementById("dateDropdownList");
     const dateNoResults = document.getElementById("dateNoResults");
+
+    // Manual override elements
+    const overrideMainTitle = document.getElementById("overrideMainTitle");
+    const overrideSubtitle = document.getElementById("overrideSubtitle");
     const selectedEventName = document.getElementById("selectedEventName");
     const selectedEventDate = document.getElementById("selectedEventDate");
     const selectedRangeInfo = document.getElementById("selectedRangeInfo");
+
+    // Custom city elements
+    const addCustomCityBtn = document.getElementById("addCustomCityBtn");
+    const customCitiesList = document.getElementById("customCitiesList");
 
     let currentBlobUrl = null;
     let selectedDates = []; // Array of selected dates
@@ -1454,6 +1634,45 @@ CITY_CHECKBOXES_PLACEHOLDER
       noResults.style.display = visibleCount === 0 ? "block" : "none";
     });
 
+    // Custom city functionality
+    let customCityCounter = 0;
+
+    function addCustomCityEntry() {
+      customCityCounter++;
+      const entry = document.createElement("div");
+      entry.className = "custom-city-entry";
+      entry.dataset.customId = customCityCounter;
+      entry.innerHTML = `
+        <input type="text" class="custom-city-input custom-city-name" placeholder="שם העיר" />
+        <input type="text" class="custom-city-input custom-city-candle" placeholder="הדלקה" dir="ltr" />
+        <input type="text" class="custom-city-input custom-city-havdalah" placeholder="הבדלה" dir="ltr" />
+        <button type="button" class="remove-custom-city-btn" title="הסר עיר">×</button>
+      `;
+      customCitiesList.appendChild(entry);
+
+      // Add remove handler
+      entry.querySelector(".remove-custom-city-btn").addEventListener("click", () => {
+        entry.remove();
+      });
+    }
+
+    addCustomCityBtn.addEventListener("click", addCustomCityEntry);
+
+    // Get custom cities data
+    function getCustomCities() {
+      const entries = customCitiesList.querySelectorAll(".custom-city-entry");
+      const customCities = [];
+      entries.forEach(entry => {
+        const name = entry.querySelector(".custom-city-name").value.trim();
+        const candle = entry.querySelector(".custom-city-candle").value.trim();
+        const havdalah = entry.querySelector(".custom-city-havdalah").value.trim();
+        if (name) {
+          customCities.push({ name, candle, havdalah });
+        }
+      });
+      return customCities;
+    }
+
     const uploadHint = document.getElementById("uploadHint");
 
     // Update upload hint based on selected dates
@@ -1571,6 +1790,18 @@ CITY_CHECKBOXES_PLACEHOLDER
           if (date) payload.startDate = date;
           if (selectedCities.length > 0) payload.cities = selectedCities;
           payload.dateFormat = selectedDateFormat;
+
+          // Add manual overrides if provided
+          const mainTitleOverride = overrideMainTitle.value.trim();
+          const subtitleOverride = overrideSubtitle.value.trim();
+          if (mainTitleOverride) payload.overrideMainTitle = mainTitleOverride;
+          if (subtitleOverride) payload.overrideSubtitle = subtitleOverride;
+
+          // Add custom cities if any
+          const customCities = getCustomCities();
+          if (customCities.length > 0) {
+            payload.customCities = customCities;
+          }
 
           statusEl.textContent = isMultiple
             ? `⏳ יוצר פוסטר ${i + 1} מתוך ${datesToGenerate.length}...`
@@ -1691,11 +1922,14 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
 
 @app.get("/upcoming-events")
 async def get_upcoming_events():
-    """Get the next 20 upcoming Shabbat/holiday events for date selection."""
+    """Get upcoming Shabbat/holiday events for one year ahead."""
     events = []
     current_date = date.today()
+    # Calculate end date as one year from today
+    one_year_ahead = date(current_date.year + 1, current_date.month, current_date.day)
 
-    for i in range(20):
+    i = 0
+    while current_date < one_year_ahead:
         seq_start, seq_end, event_type, event_name = find_next_sequence(current_date)
 
         # Get parsha for Shabbat
@@ -1735,6 +1969,9 @@ async def get_upcoming_events():
                 "Yom HaAtzmaut": "יום העצמאות",
                 "Yom Yerushalayim": "יום ירושלים",
                 "Chol HaMoed": "חול המועד",
+                "Shmini Atzeret": "שמיני עצרת",
+                "Simchat Tora": "שמחת תורה",
+                "Shmini Atzeret / Simchat Tora": "שמיני עצרת / שמחת תורה",
             }
             # Try exact match first, then try partial match for variations like "Pesach I"
             display_name = yomtov_translations.get(event_name)
@@ -1746,8 +1983,12 @@ async def get_upcoming_events():
                         break
                 else:
                     display_name = event_name
-            if parsha:
-                display_name = f"{display_name} | {parsha}"
+
+            # For Chol HaMoed on Shabbat (Saturday), show "שבת חול המועד"
+            is_shabbat = seq_end.weekday() == 5  # Saturday
+            if "Chol HaMoed" in event_name and is_shabbat:
+                display_name = "שבת חול המועד"
+            # For holidays on Shabbat, only show the holiday name (no parsha)
 
         # Format date in Hebrew style
         date_str = f"{seq_start.day}/{seq_start.month}"
@@ -1767,5 +2008,6 @@ async def get_upcoming_events():
 
         # Move to day after this sequence ends
         current_date = seq_end + timedelta(days=1)
+        i += 1
 
     return events

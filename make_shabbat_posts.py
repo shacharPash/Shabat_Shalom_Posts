@@ -76,6 +76,8 @@ PARASHA_TRANSLATION: Dict[str, str] = {
     "Re'e": "ראה", "Ki Seitzei": "כי תצא", "Ki Savo": "כי תבוא",
     "Vayeilech": "וילך", "Haazinu": "האזינו", "Ha'azinu": "האזינו", "Ha'Azinu": "האזינו",
     "V'Zot HaBerachah": "וזאת הברכה", "Vzot Haberachah": "וזאת הברכה",
+    # וריאציות נוספות מ-Hebcal API
+    "Eikev": "עקב", "Ki Teitzei": "כי תצא", "Ki Tetze": "כי תצא",
 
     # פרשות מחוברות (כשקוראים שתי פרשות באותה שבת)
     "Vayakhel-Pekudei": "ויקהל-פקודי", "Vayakhel-Pekudey": "ויקהל-פקודי",
@@ -551,9 +553,53 @@ def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offs
         "action": jewcal.events.action if jewcal.has_events() else None
     }
 
+# ========= HEBCAL API CACHE =========
+# Cache to store Hebcal API responses by year - avoids redundant API calls
+# Key: year (int), Value: API response data (dict)
+_hebcal_cache: Dict[int, Dict[str, Any]] = {}
+
+
+def _get_hebcal_data_for_year(year: int) -> Optional[Dict[str, Any]]:
+    """
+    Get Hebcal API data for a specific year, using cache when available.
+
+    Args:
+        year: The year to fetch data for
+
+    Returns:
+        Hebcal API response data, or None if fetch failed
+    """
+    # Check cache first
+    if year in _hebcal_cache:
+        return _hebcal_cache[year]
+
+    # Fetch from API
+    url = _build_hebcal_url(year)
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+
+        # Store in cache for future use
+        _hebcal_cache[year] = data
+        return data
+
+    except Exception as e:
+        print(f"Warning: Could not fetch Hebcal data for year {year}: {e}")
+        return None
+
+
+def clear_hebcal_cache() -> None:
+    """Clear the Hebcal API cache. Useful for testing or memory management."""
+    _hebcal_cache.clear()
+
+
 def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     """
     Get parsha information from Hebcal API for the week containing target_date.
+
+    Uses a cache to store API responses by year, significantly reducing
+    the number of API calls when fetching multiple dates.
 
     Args:
         target_date: The date to get parsha for
@@ -572,28 +618,22 @@ def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     # Find the Saturday of the week containing target_date
     saturday = _get_saturday_for_date(target_date)
 
-    # Use the general Hebcal API to get the year's events and find the right parsha
-    url = _build_hebcal_url(saturday.year)
+    # Get cached or fresh data for the year
+    data = _get_hebcal_data_for_year(saturday.year)
+    if not data:
+        return None
 
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        data = response.json()
+    # Find the parsha for our specific Saturday
+    parsha_title = _find_parsha_for_date(data, saturday)
+    if parsha_title:
+        parsha_clean = parsha_title.replace("Parashat ", "").strip()
+        return translate_parsha(parsha_clean)
 
-        # Find the parsha for our specific Saturday
-        parsha_title = _find_parsha_for_date(data, saturday)
-        if parsha_title:
-            parsha_clean = parsha_title.replace("Parashat ", "").strip()
-            return translate_parsha(parsha_clean)
-
-        # If exact match not found, find the closest Saturday before our target
-        parsha_title = _find_closest_parsha_before_date(data, saturday)
-        if parsha_title:
-            parsha_clean = parsha_title.replace("Parashat ", "").strip()
-            return translate_parsha(parsha_clean)
-
-    except Exception as e:
-        print(f"Warning: Could not fetch parsha information for {target_date}: {e}")
+    # If exact match not found, find the closest Saturday before our target
+    parsha_title = _find_closest_parsha_before_date(data, saturday)
+    if parsha_title:
+        parsha_clean = parsha_title.replace("Parashat ", "").strip()
+        return translate_parsha(parsha_clean)
 
     return None
 
@@ -852,6 +892,10 @@ def compose_poster(
     else:
         title = "שבת שלום"  # Shabbat greeting
 
+    # Apply main title override if provided
+    if week_info.get("main_title_override"):
+        title = week_info["main_title_override"]
+
     # התאמת גודל פונט לכותרת הראשית
     fitted_title_font = get_fitted_font(title, title_font, W - 100, rtl=True)
     draw_text_with_stroke(draw, (W//2, 40), title, fitted_title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
@@ -964,6 +1008,10 @@ def compose_poster(
             sub_line = f"{hebrew_event} | {date_str}"
     else:
         sub_line = f"{parsha_txt} | {date_str}" if parsha_txt else date_str
+
+    # Apply subtitle override if provided (replaces entire subtitle line)
+    if week_info.get("subtitle_override"):
+        sub_line = week_info["subtitle_override"]
 
     # התאמת גודל פונט לכותרת המשנה
     fitted_sub_font = get_fitted_font(sub_line, sub_font, W - 100, rtl=True)
@@ -1155,6 +1203,7 @@ def generate_poster(
     blessing_text: Optional[str] = None,
     dedication_text: Optional[str] = None,
     date_format: str = "gregorian",  # "gregorian", "hebrew", or "both"
+    overrides: Optional[Dict[str, str]] = None,  # Manual overrides for poster fields
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
@@ -1170,6 +1219,11 @@ def generate_poster(
         blessing_text: Custom bottom message (default: standard blessing)
         dedication_text: Custom 'leiluy neshama' text (default: None)
         date_format: Date format - "gregorian", "hebrew", or "both"
+        overrides: Optional dict with manual overrides:
+            - main_title: Custom main title (e.g., "שבת שלום")
+            - subtitle: Custom subtitle (entire line with parsha + date)
+            - custom_cities: List of custom cities with manual times
+              [{ "name": "...", "candle": "HH:MM", "havdalah": "HH:MM" }]
 
     Returns:
         PNG image bytes ready to be saved or transmitted
@@ -1205,6 +1259,16 @@ def generate_poster(
         hav_hhmm = iso_to_hhmm(info.get("havdalah"))
         rows.append((city["name"], candle_hhmm, hav_hhmm))
 
+    # Add custom cities with manual times (if provided)
+    custom_cities = overrides.get("custom_cities") if overrides else None
+    if custom_cities:
+        for custom in custom_cities:
+            name = custom.get("name", "")
+            candle = custom.get("candle", "")
+            havdalah = custom.get("havdalah", "")
+            if name:
+                rows.append((name, candle, havdalah))
+
     # Create background image
     bg = fit_background(image_path, IMG_SIZE)
 
@@ -1215,6 +1279,13 @@ def generate_poster(
         "seq_end": seq_end,
         "event_info": event_info,
     }
+
+    # Apply title overrides if provided
+    if overrides:
+        if overrides.get("main_title"):
+            week_info["main_title_override"] = overrides["main_title"]
+        if overrides.get("subtitle"):
+            week_info["subtitle_override"] = overrides["subtitle"]
 
     # Compose the poster image
     img = compose_poster(

@@ -285,8 +285,9 @@ class TestUpcomingEventsEndpoint(unittest.TestCase):
 
         # Should return a list
         self.assertIsInstance(result, list)
-        # Should have 20 events
-        self.assertEqual(len(result), 20)
+        # Should have approximately 52 events (one year of Shabbatot + holidays)
+        self.assertGreaterEqual(len(result), 50)
+        self.assertLessEqual(len(result), 60)
 
     def test_upcoming_events_structure(self):
         """Test that each event has required fields."""
