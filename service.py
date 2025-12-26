@@ -1402,7 +1402,7 @@ async def index():
     <div class="header">
       <div class="logo"><img src="/static/watermark.png" alt="לוגו" class="logo-img" /></div>
       <h1>יוצר זְמוּנָה לשבת וחג</h1>
-      <div class="subtitle">צרי זְמוּנָה יפה עם זמני הדלקת נרות לשבת או לחג</div>
+      <div class="subtitle">צור זְמוּנָה יפה עם זמני הדלקת נרות לשבת או לחג</div>
       <div class="subtitle" style="font-size: 11px; opacity: 0.7;">זְמוּנָה = זְמַן + תְּמוּנָה 🕐🖼️</div>
     </div>
 
