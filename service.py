@@ -2601,7 +2601,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       statusEl.textContent = isMultiple
         ? `⏳ יוצרת ${datesToGenerate.length} זְמוּנוֹת...`
-        : "⏳ יוצרת את הזְמוּנָה שלך...";
+        : "⏳ יוצר את הזְמוּנָה שלך...";
       statusEl.className = "status loading show";
       btn.classList.add("loading");
       btn.disabled = true;
@@ -2667,7 +2667,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
           statusEl.textContent = isMultiple
             ? `⏳ יוצרת זְמוּנָה ${i + 1} מתוך ${datesToGenerate.length}...`
-            : "⏳ יוצרת את הזְמוּנָה שלך...";
+            : "⏳ יוצר את הזְמוּנָה שלך...";
 
           const resp = await fetch("/poster", {
             method: "POST",
