@@ -1,14 +1,16 @@
-import base64
 import json
 import os
 import sys
-import tempfile
-from datetime import date
 from http.server import BaseHTTPRequestHandler
-from typing import Any, Dict, List, Optional
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+# Import other dependencies (may fail, but handler should still load)
+import base64
+import tempfile
+from datetime import date
+from typing import Any, Dict, List, Optional
 
 import requests
 
