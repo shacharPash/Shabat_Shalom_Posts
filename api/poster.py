@@ -1,16 +1,16 @@
 import base64
+import json
 import os
 import sys
 import tempfile
 from datetime import date
+from http.server import BaseHTTPRequestHandler
 from typing import Any, Dict, List, Optional
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import requests
-from fastapi import FastAPI, Body
-from fastapi.responses import Response
 
 from make_shabbat_posts import generate_poster, DEFAULT_CITIES
 
@@ -163,23 +163,48 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     return poster_bytes
 
 
-# FastAPI app for Vercel serverless functions
-app = FastAPI()
+# Vercel serverless function handler
+class handler(BaseHTTPRequestHandler):
+    """Vercel serverless function entrypoint for poster generation."""
 
+    def do_POST(self):
+        """Handle POST request to generate a poster."""
+        try:
+            # Read request body
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length) if content_length > 0 else b""
 
-@app.post("/api/poster")
-@app.post("/poster")
-async def create_poster(payload: Dict[str, Any] = Body(default={})):
-    """
-    Create a Shabbat/Yom Tov poster.
-    Vercel serverless function entrypoint using FastAPI ASGI.
-    """
-    try:
-        poster_bytes = build_poster_from_payload(payload or {})
-        return Response(content=poster_bytes, media_type="image/png")
-    except Exception as e:
-        return Response(
-            content=f"Internal Server Error: {e}".encode("utf-8"),
-            status_code=500,
-            media_type="text/plain"
-        )
+            # Parse JSON payload
+            payload = json.loads(body.decode("utf-8")) if body else {}
+
+            # Generate poster
+            poster_bytes = build_poster_from_payload(payload)
+
+            # Send successful response
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(len(poster_bytes)))
+            self.end_headers()
+            self.wfile.write(poster_bytes)
+
+        except json.JSONDecodeError as e:
+            error_msg = f"Invalid JSON: {e}".encode("utf-8")
+            self.send_response(400)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(error_msg)
+
+        except Exception as e:
+            error_msg = f"Internal Server Error: {e}".encode("utf-8")
+            self.send_response(500)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(error_msg)
+
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests."""
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
