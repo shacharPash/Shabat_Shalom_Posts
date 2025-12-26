@@ -27,6 +27,13 @@ WeekInfo = Dict[str, Any]
 
 # ========= CONFIG =========
 TZID = "Asia/Jerusalem"
+
+# Watermark configuration
+WATERMARK_PATH = os.path.join(os.path.dirname(__file__), "public", "static", "watermark.png")
+WATERMARK_SIZE = 60  # Width in pixels (height auto-calculated to preserve aspect ratio)
+WATERMARK_MARGIN = 10  # Margin from edges in pixels
+WATERMARK_OPACITY = 0.5  # 50% opacity (0.0 = invisible, 1.0 = fully opaque)
+
 # Default cities - major Israeli cities (neutral defaults)
 DEFAULT_CITIES = [
     {"name": "ירושלים", "lat": 31.779737, "lon": 35.209554, "candle_offset": 40},
@@ -753,13 +760,20 @@ def fix_image_orientation(img: Image.Image) -> Image.Image:
     return img
 
 
-def fit_background(image_path: str, size: Tuple[int, int] = (1080, 1080)) -> Image.Image:
+def fit_background(
+    image_path: str,
+    size: Tuple[int, int] = (1080, 1080),
+    crop_position: Optional[Tuple[float, float]] = None
+) -> Image.Image:
     """
-    Load and resize an image to fill the target size (center crop).
+    Load and resize an image to fill the target size with customizable crop position.
 
     Args:
         image_path: Path to the image file
         size: Target size as (width, height)
+        crop_position: Tuple of (x, y) as percentages (0.0 to 1.0) where
+                       (0.5, 0.5) is center, (0.0, 0.0) is top-left,
+                       (1.0, 1.0) is bottom-right. Default is center.
 
     Returns:
         Resized and cropped PIL Image
@@ -776,9 +790,21 @@ def fit_background(image_path: str, size: Tuple[int, int] = (1080, 1080)) -> Ima
     new_h = int(img.height * scale)
     img = img.resize((new_w, new_h), Image.LANCZOS)
 
-    # Center crop to target size
-    left = (new_w - base_w) // 2
-    top = (new_h - base_h) // 2
+    # Use provided crop position or default to center (0.5, 0.5)
+    crop_x, crop_y = crop_position if crop_position else (0.5, 0.5)
+
+    # Clamp values to valid range [0.0, 1.0]
+    crop_x = max(0.0, min(1.0, crop_x))
+    crop_y = max(0.0, min(1.0, crop_y))
+
+    # Calculate crop position based on percentage
+    # The crop window can move from 0 to (new_dimension - base_dimension)
+    max_left = new_w - base_w
+    max_top = new_h - base_h
+
+    left = int(max_left * crop_x)
+    top = int(max_top * crop_y)
+
     img = img.crop((left, top, left + base_w, top + base_h))
     return img
 
@@ -848,6 +874,72 @@ def draw_text_with_stroke(draw, xy, text, font, fill, stroke_fill, stroke_width,
         anchor=anchor
     )
 
+
+def overlay_watermark(
+    img: Image.Image,
+    watermark_path: str = WATERMARK_PATH,
+    size: int = WATERMARK_SIZE,
+    margin: int = WATERMARK_MARGIN,
+    opacity: float = WATERMARK_OPACITY,
+) -> Image.Image:
+    """
+    Overlay a watermark image on the bottom-right corner of the poster.
+
+    Args:
+        img: The poster image to add watermark to
+        watermark_path: Path to the watermark image file
+        size: Target width for the watermark (height auto-calculated)
+        margin: Margin from the edges in pixels
+        opacity: Opacity level (0.0 to 1.0)
+
+    Returns:
+        Image with watermark overlaid
+    """
+    if not os.path.isfile(watermark_path):
+        # Watermark file not found, return original image
+        return img
+
+    try:
+        # Load watermark image with transparency support
+        watermark = Image.open(watermark_path).convert("RGBA")
+
+        # Calculate new height maintaining aspect ratio
+        aspect_ratio = watermark.height / watermark.width
+        new_width = size
+        new_height = int(size * aspect_ratio)
+
+        # Resize watermark
+        watermark = watermark.resize((new_width, new_height), Image.LANCZOS)
+
+        # Apply opacity to the watermark
+        if opacity < 1.0:
+            # Split into channels and adjust alpha
+            r, g, b, a = watermark.split()
+            a = a.point(lambda x: int(x * opacity))
+            watermark = Image.merge("RGBA", (r, g, b, a))
+
+        # Calculate position (bottom-right with margin)
+        W, H = img.size
+        x = W - new_width - margin
+        y = H - new_height - margin
+
+        # Ensure img is in RGBA mode for compositing
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+
+        # Create a copy and paste watermark with transparency
+        result = img.copy()
+        result.paste(watermark, (x, y), watermark)
+
+        # Convert back to RGB if original was RGB
+        return result.convert("RGB")
+
+    except Exception as e:
+        # If anything goes wrong, return original image
+        print(f"Warning: Could not overlay watermark: {e}")
+        return img
+
+
 # ========= COMPOSER =========
 def compose_poster(
     bg_img: Image.Image,
@@ -856,6 +948,7 @@ def compose_poster(
     blessing_text: str | None = None,
     dedication_text: str | None = None,
     date_format: str = "gregorian",  # "gregorian", "hebrew", or "both"
+    show_watermark: bool = True,  # Enable/disable watermark
 ) -> Image.Image:
     img = bg_img.copy()
     W, H = img.size
@@ -1136,6 +1229,10 @@ def compose_poster(
             anchor="ma", rtl=True,
         )
 
+    # Add watermark if enabled
+    if show_watermark:
+        img = overlay_watermark(img)
+
     # Do NOT save to disk here anymore
     return img
 
@@ -1204,6 +1301,8 @@ def generate_poster(
     dedication_text: Optional[str] = None,
     date_format: str = "gregorian",  # "gregorian", "hebrew", or "both"
     overrides: Optional[Dict[str, str]] = None,  # Manual overrides for poster fields
+    crop_position: Optional[Tuple[float, float]] = None,  # Image crop position (x, y) as 0.0-1.0
+    show_watermark: bool = True,  # Enable/disable watermark
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
@@ -1224,6 +1323,9 @@ def generate_poster(
             - subtitle: Custom subtitle (entire line with parsha + date)
             - custom_cities: List of custom cities with manual times
               [{ "name": "...", "candle": "HH:MM", "havdalah": "HH:MM" }]
+        crop_position: Tuple of (x, y) as percentages (0.0 to 1.0) for crop position.
+                       (0.5, 0.5) is center (default), (0.0, 0.0) is top-left.
+        show_watermark: Whether to show the watermark on the poster (default: True)
 
     Returns:
         PNG image bytes ready to be saved or transmitted
@@ -1269,8 +1371,8 @@ def generate_poster(
             if name:
                 rows.append((name, candle, havdalah))
 
-    # Create background image
-    bg = fit_background(image_path, IMG_SIZE)
+    # Create background image with custom crop position
+    bg = fit_background(image_path, IMG_SIZE, crop_position=crop_position)
 
     # Build week info
     week_info = {
@@ -1293,6 +1395,7 @@ def generate_poster(
         blessing_text=blessing_text,
         dedication_text=dedication_text,
         date_format=date_format,
+        show_watermark=show_watermark,
     )
 
     # Save to BytesIO buffer as PNG and return bytes

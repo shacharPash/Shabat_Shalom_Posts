@@ -64,6 +64,16 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     # Custom cities with manual times
     custom_cities: Optional[List[Dict[str, str]]] = payload.get("customCities")
 
+    # Watermark control (enabled by default)
+    show_watermark: bool = payload.get("showWatermark", True)
+
+    # Image crop position (x, y) as percentages 0.0-1.0
+    crop_x: Optional[float] = payload.get("cropX")
+    crop_y: Optional[float] = payload.get("cropY")
+    crop_position = None
+    if crop_x is not None and crop_y is not None:
+        crop_position = (float(crop_x), float(crop_y))
+
     start_date_str: Optional[str] = payload.get("startDate")
     if start_date_str:
         start_date = date.fromisoformat(start_date_str)
@@ -142,6 +152,8 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         dedication_text=dedication_text,
         date_format=date_format,
         overrides=overrides if overrides else None,
+        crop_position=crop_position,
+        show_watermark=show_watermark,
     )
 
     return poster_bytes

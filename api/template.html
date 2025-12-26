@@ -3,7 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>יוצר פוסטר לשבת וחג ✡</title>
+  <title>יוצר זְמוּנָה לשבת וחג ✡</title>
+
+  <!-- Favicons - Vercel serves public/ files from root -->
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/static/favicon-48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png" />
+  <!-- Fallback for local development -->
+  <link rel="shortcut icon" href="/static/favicon.ico" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,6 +23,7 @@
     .container { background: #ffffff; margin: 0 auto; padding: 32px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 520px; width: 100%; }
     .header { text-align: center; margin-bottom: 28px; }
     .logo { font-size: 48px; margin-bottom: 8px; }
+    .logo-img { width: 80px; height: auto; }
     h1 { margin: 0; font-size: 28px; font-weight: 700; color: #1a237e; }
     .subtitle { color: #5c6bc0; font-size: 14px; margin-top: 6px; }
     .form-group { margin-bottom: 20px; }
@@ -165,9 +176,9 @@
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🕯️✡️🕯️</div>
-      <h1>יוצר פוסטר לשבת וחג</h1>
-      <div class="subtitle">צרו פוסטר יפה עם זמני הדלקת נרות לשבת או לחג</div>
+      <div class="logo"><img src="/static/watermark.png" alt="לוגו" class="logo-img" /></div>
+      <h1>יוצר זְמוּנָה לשבת וחג</h1>
+      <div class="subtitle">צרו זְמוּנָה יפה עם זמני הדלקת נרות לשבת או לחג</div>
     </div>
 
     <div class="form-group">
@@ -191,11 +202,11 @@
       </button>
       <div id="blessingSection" class="dedication-section">
         <div class="dedication-header">
-          <label for="message">ברכה לפוסטר</label>
+          <label for="message">ברכה לזְמוּנָה</label>
           <button type="button" id="closeBlessingBtn" class="dedication-close-btn" title="הסר ברכה">✕</button>
         </div>
         <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
-        <div class="hint">💡 אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הפוסטר</div>
+        <div class="hint">💡 אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
       </div>
     </div>
 
@@ -240,7 +251,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     <!-- Date Format Selector (Main Menu) -->
     <div class="form-group">
-      <label>🗓️ פורמט תאריך בפוסטר</label>
+      <label>🗓️ פורמט תאריך בזְמוּנָה</label>
       <div id="dateFormatSelector" class="date-format-selector">
         <div class="date-format-option" data-format="gregorian">לועזי</div>
         <div class="date-format-option" data-format="hebrew">עברי</div>
@@ -298,7 +309,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     </div>
 
     <button id="generateBtn" class="btn-generate">
-      <span class="btn-text">✨ צור פוסטר</span>
+      <span class="btn-text">✨ צור זְמוּנָה</span>
       <div class="spinner"></div>
     </button>
 
@@ -307,13 +318,13 @@ CITY_CHECKBOXES_PLACEHOLDER
     <div class="preview" id="preview">
       <div class="divider"></div>
       <div class="preview-header">
-        <h3 class="preview-title">🎉 הפוסטר מוכן!</h3>
+        <h3 class="preview-title">🎉 הזְמוּנָה מוכן!</h3>
         <button id="downloadBtn" class="btn-download">
           <span>⬇️</span> הורד תמונה
         </button>
       </div>
       <div class="preview-image-container">
-        <img id="posterImage" alt="פוסטר שבת שנוצר" />
+        <img id="posterImage" alt="זְמוּנָה שבת שנוצר" />
       </div>
     </div>
 
@@ -432,7 +443,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (selectedDates.length > 1) {
         const startEvent = allEvents[selectedStartIndex];
         const endEvent = allEvents[selectedStartIndex + selectedDates.length - 1];
-        selectedRangeInfo.textContent = `📋 יווצרו ${selectedDates.length} פוסטרים: מ-${startEvent.displayName} (${startEvent.dateStr}) עד ${endEvent.displayName} (${endEvent.dateStr})`;
+        selectedRangeInfo.textContent = `📋 יווצרו ${selectedDates.length} זְמוּנָהים: מ-${startEvent.displayName} (${startEvent.dateStr}) עד ${endEvent.displayName} (${endEvent.dateStr})`;
         selectedRangeInfo.classList.add("show");
       } else { selectedRangeInfo.classList.remove("show"); }
       dateDropdownList.querySelectorAll(".date-dropdown-item").forEach((item, idx) => {
@@ -543,7 +554,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     const uploadHint = document.getElementById("uploadHint");
     function updateUploadHint() {
       const count = selectedDates.length;
-      if (count > 1) { uploadHint.textContent = `ניתן להעלות עד ${count} תמונות - אחת לכל פוסטר. אם תעלו פחות, התמונה האחרונה תשמש לשאר.`; uploadHint.style.color = "#5c6bc0"; }
+      if (count > 1) { uploadHint.textContent = `ניתן להעלות עד ${count} תמונות - אחת לכל זְמוּנָה. אם תעלו פחות, התמונה האחרונה תשמש לשאר.`; uploadHint.style.color = "#5c6bc0"; }
       else { uploadHint.textContent = "השאירו ריק לשימוש בתמונת ברירת המחדל"; uploadHint.style.color = ""; }
     }
 
@@ -594,7 +605,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       const uploadedFiles = fileInput.files;
       const datesToGenerate = selectedDates.length > 0 ? selectedDates : [""];
       const isMultiple = datesToGenerate.length > 1;
-      statusEl.textContent = isMultiple ? `⏳ יוצר ${datesToGenerate.length} פוסטרים...` : "⏳ יוצר את הפוסטר שלך...";
+      statusEl.textContent = isMultiple ? `⏳ יוצר ${datesToGenerate.length} זְמוּנָהים...` : "⏳ יוצר את הזְמוּנָה שלך...";
       statusEl.className = "status loading show"; btn.classList.add("loading"); btn.disabled = true; previewEl.classList.remove("show");
       generatedPosters = [];
       try {
@@ -621,7 +632,7 @@ CITY_CHECKBOXES_PLACEHOLDER
           // Add custom cities if provided
           const customCities = getCustomCities();
           if (customCities.length > 0) payload.customCities = customCities;
-          statusEl.textContent = isMultiple ? `⏳ יוצר פוסטר ${i + 1} מתוך ${datesToGenerate.length}...` : "⏳ יוצר את הפוסטר שלך...";
+          statusEl.textContent = isMultiple ? `⏳ יוצר זְמוּנָה ${i + 1} מתוך ${datesToGenerate.length}...` : "⏳ יוצר את הזְמוּנָה שלך...";
           const resp = await fetch("/api/poster", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
           if (!resp.ok) { throw new Error("שגיאה מהשרת: " + resp.status); }
           const blob = await resp.blob();
@@ -630,7 +641,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
         currentBlobUrl = URL.createObjectURL(generatedPosters[0].blob);
         posterImg.src = currentBlobUrl; previewEl.classList.add("show");
-        statusEl.textContent = isMultiple ? `✅ נוצרו ${datesToGenerate.length} פוסטרים בהצלחה! לחץ הורד להורדת כולם.` : "✅ הפוסטר נוצר בהצלחה!";
+        statusEl.textContent = isMultiple ? `✅ נוצרו ${datesToGenerate.length} זְמוּנָהים בהצלחה! לחץ הורד להורדת כולם.` : "✅ הזְמוּנָה נוצר בהצלחה!";
         statusEl.className = "status success show";
       } catch (err) { console.error(err); statusEl.textContent = "❌ " + err.message; statusEl.className = "status error show"; }
       finally { btn.classList.remove("loading"); btn.disabled = false; }
