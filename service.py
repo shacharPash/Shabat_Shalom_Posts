@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 from datetime import date, timedelta
 
 from fastapi import FastAPI, Body
-from fastapi.responses import Response, HTMLResponse
+from fastapi.responses import Response, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.poster import build_poster_from_payload
@@ -18,6 +18,16 @@ app = FastAPI()
 static_dir = os.path.join(os.path.dirname(__file__), "public", "static")
 if os.path.isdir(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+# Favicon route at root level (browsers look for /favicon.ico)
+@app.get("/favicon.ico")
+async def favicon():
+    favicon_path = os.path.join(static_dir, "favicon.ico")
+    if os.path.isfile(favicon_path):
+        return FileResponse(favicon_path, media_type="image/x-icon")
+    return Response(status_code=404)
+
 
 # Load cities once at startup (cached internally)
 GEOJSON_CITIES = get_cities_list()
