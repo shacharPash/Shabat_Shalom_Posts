@@ -90,7 +90,7 @@ async def index():
     }
     .logo-img {
       width: 200px;
-      //height: auto;
+      /* height: auto; */
       max-width: 100%;
     }
     h1 {
