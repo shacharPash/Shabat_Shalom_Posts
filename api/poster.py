@@ -134,7 +134,14 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         image_path = os.path.join(images_dir, image_files[0])
 
     # Use provided cities if any, otherwise use default cities (major Israeli cities)
-    cities_arg = cities if cities is not None else DEFAULT_CITIES
+    # Exception: if custom_cities are provided, allow empty cities list (don't fall back to defaults)
+    if cities is not None:
+        cities_arg = cities
+    elif custom_cities:
+        # User has custom cities only - use empty list for predefined cities
+        cities_arg = []
+    else:
+        cities_arg = DEFAULT_CITIES
 
     # Texts - no defaults, only use what user provided
     # Empty string means hide, None also means hide (no defaults)
@@ -208,8 +215,13 @@ class handler(BaseHTTPRequestHandler):
                 if mapped_cities:
                     payload["cities"] = mapped_cities
                 else:
-                    # Remove invalid cities list to use default
-                    del payload["cities"]
+                    # No valid predefined cities found
+                    # If user has custom cities, set empty list (don't fall back to defaults)
+                    # Otherwise, remove to trigger default cities
+                    if "customCities" in payload and payload["customCities"]:
+                        payload["cities"] = []
+                    else:
+                        del payload["cities"]
 
             # Generate poster
             poster_bytes = build_poster_from_payload(payload)

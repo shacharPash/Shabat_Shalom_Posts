@@ -90,8 +90,13 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
         if mapped_cities:
             payload["cities"] = mapped_cities
         else:
-            # Remove invalid cities list to use default
-            del payload["cities"]
+            # No valid predefined cities found
+            # If user has custom cities, set empty list (don't fall back to defaults)
+            # Otherwise, remove to trigger default cities
+            if "customCities" in payload and payload["customCities"]:
+                payload["cities"] = []
+            else:
+                del payload["cities"]
 
     poster_bytes = build_poster_from_payload(payload)
     return Response(content=poster_bytes, media_type="image/png")
