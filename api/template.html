@@ -660,26 +660,41 @@
       text-align: center;
       text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     }
-    .crop-poster-city {
+    .crop-poster-table {
       background: rgba(0,0,0,0.4);
       border-radius: 4px;
       padding: 4px 8px;
-      margin-bottom: 4px;
       display: inline-block;
+      margin-bottom: 4px;
     }
-    .crop-poster-city-name {
+    .crop-poster-headers {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: rgba(255,255,255,0.7);
+      font-size: 6px;
+      margin-bottom: 2px;
+      padding-bottom: 2px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    .crop-poster-headers span {
+      flex: 1;
+      text-align: center;
+    }
+    .crop-poster-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
       color: white;
-      font-size: 10px;
-      font-weight: bold;
-    }
-    .crop-poster-times {
-      color: rgba(255,255,255,0.9);
       font-size: 7px;
     }
-    .crop-poster-blessing {
+    .crop-poster-row span {
+      flex: 1;
+      text-align: center;
+    }
+    .crop-poster-dedication {
       color: rgba(255,255,255,0.85);
       font-size: 6px;
-      margin-top: 4px;
     }
     .crop-area.unsupported {
       display: flex;
@@ -1407,11 +1422,19 @@
                 <div class="crop-poster-subtitle">פרשת ... | תאריך</div>
               </div>
               <div class="crop-poster-bottom">
-                <div class="crop-poster-city">
-                  <div class="crop-poster-city-name">🏙️ עיר</div>
-                  <div class="crop-poster-times">🕯️ 00:00 &nbsp; ✨ 00:00</div>
+                <div class="crop-poster-table">
+                  <div class="crop-poster-headers">
+                    <span>עיר</span>
+                    <span>כניסת שבת</span>
+                    <span>צאת שבת</span>
+                  </div>
+                  <div class="crop-poster-row">
+                    <span>ירושלים</span>
+                    <span>00:00</span>
+                    <span>00:00</span>
+                  </div>
                 </div>
-                <div class="crop-poster-blessing">שבת שלום ומבורך</div>
+                <div id="cropPosterDedication" class="crop-poster-dedication">זמני השבת לע"נ ...</div>
               </div>
             </div>
             <div id="noCropMsg" class="crop-no-need-msg" style="display: none;">✓ מרובעת</div>
