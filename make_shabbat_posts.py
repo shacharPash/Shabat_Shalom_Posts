@@ -1371,6 +1371,20 @@ def generate_poster(
             if name:
                 rows.append((name, candle, havdalah))
 
+    # If no predefined cities were processed (only custom cities),
+    # we still need event_info and parsha for the poster header.
+    # Use Jerusalem coordinates as reference point.
+    if not event_info:
+        # Jerusalem coordinates
+        ref_lat, ref_lon = 31.779737, 35.209554
+        ref_info = jewcal_times_for_sequence(ref_lat, ref_lon, seq_start, seq_end, 40)
+        parsha_name = ref_info.get("parsha")
+        event_info = {
+            "event_name": ref_info.get("event_name"),
+            "event_type": ref_info.get("event_type"),
+            "action": ref_info.get("action"),
+        }
+
     # Create background image with custom crop position
     bg = fit_background(image_path, IMG_SIZE, crop_position=crop_position)
 
