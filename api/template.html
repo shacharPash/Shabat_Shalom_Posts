@@ -1888,7 +1888,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         <h3 class="preview-title" id="previewTitle">🎉 הזְמוּנָה מוכנה!</h3>
         <div class="preview-actions">
           <button id="whatsappBtn" class="btn-whatsapp">
-            <span>📱</span> <span id="whatsappBtnText">שתף בוואטסאפ</span>
+            <span>📱</span> <span id="whatsappBtnText">שתף</span>
           </button>
           <button id="downloadBtn" class="btn-download">
             <span>⬇️</span> <span id="downloadBtnText">הורד תמונה</span>
@@ -3161,7 +3161,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       // Build share message
       const eventName = selectedEventName.textContent || 'שבת';
-      const message = `שבת שלום! 🕯️\n${eventName}\n\nנוצר באמצעות: https://shabat-shalom-posts.vercel.app`;
+      const message = `שבת שלום! 🕯️\n${eventName}\n\nנוצר באמצעות: https://shabat-posts.vercel.app/`;
 
       // Try Web Share API first (best for mobile - can share image directly)
       if (navigator.canShare && navigator.canShare({ files: [new File([posterBlob], 'shabbat-poster.png', { type: 'image/png' })] })) {
