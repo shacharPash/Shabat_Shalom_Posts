@@ -26,27 +26,97 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      /* Light mode colors */
+      --bg-gradient-start: #1a237e;
+      --bg-gradient-mid: #283593;
+      --bg-gradient-end: #3949ab;
+      --container-bg: #ffffff;
+      --text-primary: #1a237e;
+      --text-secondary: #3949ab;
+      --text-tertiary: #666666;
+      --input-bg: #fafafa;
+      --input-bg-focus: #fff;
+      --input-border: #e8eaf6;
+      --input-border-focus: #5c6bc0;
+      --button-bg: #f5f5ff;
+      --button-border: #c5cae9;
+      --button-hover-bg: #ede7f6;
+      --divider-color: #e0e0e0;
+      --shadow-color: rgba(0,0,0,0.3);
+      --overlay-bg: rgba(0,0,0,0.4);
+    }
+
+    [data-theme="dark"] {
+      /* Dark mode colors */
+      --bg-gradient-start: #0a0e27;
+      --bg-gradient-mid: #1a1f3a;
+      --bg-gradient-end: #2a2f4a;
+      --container-bg: #1e1e2e;
+      --text-primary: #e8eaf6;
+      --text-secondary: #9fa8da;
+      --text-tertiary: #b0b0b0;
+      --input-bg: #2a2a3a;
+      --input-bg-focus: #323242;
+      --input-border: #3a3a4a;
+      --input-border-focus: #7986cb;
+      --button-bg: #2a2a3a;
+      --button-border: #3a3a4a;
+      --button-hover-bg: #323242;
+      --divider-color: #3a3a4a;
+      --shadow-color: rgba(0,0,0,0.6);
+      --overlay-bg: rgba(0,0,0,0.6);
+    }
+
     * {
       box-sizing: border-box;
     }
     body {
       font-family: 'Heebo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
       margin: 0;
       padding: 20px;
       min-height: 100vh;
+      transition: background 0.3s ease;
     }
     .container {
-      background: #ffffff;
+      background: var(--container-bg);
       margin: 0 auto;
       padding: 20px 32px 32px 32px;
       border-radius: 24px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      box-shadow: 0 20px 60px var(--shadow-color);
       max-width: 520px;
       width: 100%;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
     }
     .header {
       text-align: center;
+      position: relative;
+    }
+    .theme-toggle {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: var(--button-bg);
+      border: 2px solid var(--button-border);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: all 0.3s ease;
+      z-index: 10;
+    }
+    .theme-toggle:hover {
+      background: var(--button-hover-bg);
+      transform: scale(1.1);
+    }
+    .theme-toggle:focus-visible {
+      outline: 2px solid var(--input-border-focus);
+      outline-offset: 2px;
     }
     .logo {
       font-size: 0px;
@@ -61,12 +131,14 @@
       margin: 0;
       font-size: 28px;
       font-weight: 700;
-      color: #1a237e;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
     }
     .subtitle {
-      color: #3949ab;
+      color: var(--text-secondary);
       font-size: 14px;
       margin-top: 6px;
+      transition: color 0.3s ease;
     }
     .form-group {
       margin-bottom: 20px;
@@ -75,29 +147,31 @@
       display: block;
       margin-bottom: 8px;
       font-weight: 600;
-      color: #1a237e;
+      color: var(--text-primary);
       font-size: 15px;
+      transition: color 0.3s ease;
     }
     label .optional {
       font-weight: 400;
-      color: #666666;
+      color: var(--text-tertiary);
       font-size: 13px;
     }
     input[type="text"], textarea {
       width: 100%;
       padding: 14px 16px;
       border-radius: 12px;
-      border: 2px solid #e8eaf6;
+      border: 2px solid var(--input-border);
       font-size: 15px;
       font-family: inherit;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      background: #fafafa;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.3s ease, color 0.3s ease;
+      background: var(--input-bg);
+      color: var(--text-primary);
     }
     input[type="text"]:focus, textarea:focus {
       outline: none;
-      border-color: #5c6bc0;
+      border-color: var(--input-border-focus);
       box-shadow: 0 0 0 4px rgba(92, 107, 192, 0.15);
-      background: #fff;
+      background: var(--input-bg-focus);
     }
     textarea {
       resize: vertical;
@@ -105,11 +179,12 @@
     }
     .hint {
       font-size: 12px;
-      color: #666666;
+      color: var(--text-tertiary);
       margin-top: 6px;
       display: flex;
       align-items: center;
       gap: 4px;
+      transition: color 0.3s ease;
     }
     .hint::before {
       content: "💡";
@@ -124,9 +199,9 @@
       width: 100%;
       padding: 14px 16px;
       border-radius: 12px;
-      border: 2px dashed #c5cae9;
-      background: #f5f5ff;
-      color: #3949ab;
+      border: 2px dashed var(--button-border);
+      background: var(--button-bg);
+      color: var(--text-secondary);
       font-size: 15px;
       font-weight: 500;
       cursor: pointer;
@@ -134,8 +209,8 @@
       font-family: inherit;
     }
     .dedication-add-btn:hover {
-      border-color: #5c6bc0;
-      background: #ede7f6;
+      border-color: var(--input-border-focus);
+      background: var(--button-hover-bg);
     }
     .dedication-add-btn:focus-visible {
       outline: 2px solid #3949ab;
@@ -159,13 +234,14 @@
     }
     .optional-hint {
       font-size: 12px;
-      color: #666666;
+      color: var(--text-tertiary);
       font-weight: normal;
+      transition: color 0.3s ease;
     }
     .dedication-close-btn {
       background: none;
       border: none;
-      color: #666666;
+      color: var(--text-tertiary);
       font-size: 20px;
       cursor: pointer;
       padding: 4px 8px;
@@ -191,9 +267,9 @@
       width: 100%;
       padding: 12px 16px;
       border-radius: 10px;
-      border: 1px solid #e0e0e0;
-      background: #fafafa;
-      color: #666;
+      border: 1px solid var(--divider-color);
+      background: var(--input-bg);
+      color: var(--text-tertiary);
       font-size: 14px;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -201,9 +277,9 @@
       margin-top: 8px;
     }
     .advanced-toggle:hover {
-      background: #f5f5f5;
-      border-color: #bdbdbd;
-      color: #424242;
+      background: var(--button-hover-bg);
+      border-color: var(--button-border);
+      color: var(--text-secondary);
     }
     .advanced-toggle:focus-visible {
       outline: 2px solid #3949ab;
@@ -224,10 +300,11 @@
       display: none;
       margin-top: 16px;
       padding: 16px;
-      border: 2px solid #e8eaf6;
+      border: 2px solid var(--input-border);
       border-radius: 12px;
-      background: #fafafa;
+      background: var(--input-bg);
       animation: fadeIn 0.3s ease;
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
     .advanced-section.show {
       display: block;
@@ -235,11 +312,12 @@
     .advanced-title {
       font-size: 14px;
       font-weight: 600;
-      color: #3949ab;
+      color: var(--text-secondary);
       margin-bottom: 12px;
       display: flex;
       align-items: center;
       gap: 6px;
+      transition: color 0.3s ease;
     }
     /* Searchable date dropdown */
     .date-dropdown-container {
@@ -250,9 +328,9 @@
       width: 100%;
       padding: 12px 16px;
       border-radius: 10px;
-      border: 2px solid #e8eaf6;
-      background: #fff;
-      color: #3949ab;
+      border: 2px solid var(--input-border);
+      background: var(--input-bg-focus);
+      color: var(--text-secondary);
       font-size: 14px;
       cursor: pointer;
       display: flex;
@@ -262,8 +340,8 @@
       font-family: inherit;
     }
     .date-dropdown-trigger:hover {
-      border-color: #c5cae9;
-      background: #f5f5ff;
+      border-color: var(--button-border);
+      background: var(--button-bg);
     }
     .date-dropdown-trigger:focus-visible {
       outline: 2px solid #3949ab;
@@ -298,15 +376,16 @@
       top: 100%;
       left: 0;
       right: 0;
-      background: #fff;
-      border: 2px solid #5c6bc0;
+      background: var(--container-bg);
+      border: 2px solid var(--input-border-focus);
       border-top: none;
       border-bottom-left-radius: 10px;
       border-bottom-right-radius: 10px;
       max-height: 300px;
       overflow-y: auto;
       z-index: 100;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px var(--shadow-color);
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
     .date-dropdown-menu.show {
       display: block;
@@ -315,14 +394,16 @@
       width: 100%;
       padding: 10px 14px;
       border: none;
-      border-bottom: 1px solid #e8eaf6;
+      border-bottom: 1px solid var(--input-border);
       font-size: 14px;
       font-family: inherit;
-      background: #fafafa;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
     }
     .date-search-input:focus {
       outline: none;
-      background: #fff;
+      background: var(--input-bg-focus);
     }
     .date-dropdown-list {
       max-height: 240px;
@@ -841,24 +922,27 @@
     /* City selection */
     /* City selection - minimal design */
     .cities-section {
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--divider-color);
       border-radius: 10px;
       padding: 12px;
-      background: #fff;
+      background: var(--input-bg-focus);
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
     .city-search {
       width: 100%;
       padding: 10px 14px;
       border-radius: 8px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--divider-color);
       font-size: 14px;
       font-family: inherit;
-      background: #fafafa;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
     }
     .city-search:focus {
       outline: none;
-      border-color: #5c6bc0;
-      background: #fff;
+      border-color: var(--input-border-focus);
+      background: var(--input-bg-focus);
     }
     /* Selected cities chips */
     .selected-chips {
@@ -874,12 +958,13 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      background: #e8eaf6;
-      border: 1px solid #c5cae9;
+      background: var(--button-bg);
+      border: 1px solid var(--button-border);
       border-radius: 16px;
       padding: 4px 8px;
       font-size: 13px;
-      color: #3949ab;
+      color: var(--text-secondary);
+      transition: all 0.3s ease;
     }
     .city-chip .chip-order {
       display: flex;
@@ -979,21 +1064,21 @@
       gap: 4px;
       padding: 6px 8px;
       border-radius: 6px;
-      background: #fafafa;
+      background: var(--input-bg);
       cursor: pointer;
       transition: background 0.15s ease;
       font-size: 12px;
       border: 2px solid transparent;
     }
     .city-option:hover {
-      background: #f0f0f0;
+      background: var(--button-hover-bg);
     }
     .city-option:focus-visible {
       outline: 2px solid #3949ab;
       outline-offset: 1px;
     }
     .city-option.checked {
-      background: #e8eaf6;
+      background: var(--button-bg);
     }
     .city-option.hidden {
       display: none;
@@ -1022,12 +1107,13 @@
       color: #fff;
     }
     .city-name {
-      color: #333;
+      color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       flex: 1;
       font-size: 12px;
+      transition: color 0.3s ease;
     }
     .offset-input {
       display: none;
@@ -1363,12 +1449,14 @@
     .footer {
       margin-top: 28px;
       text-align: center;
-      color: #666666;
+      color: var(--text-tertiary);
       font-size: 12px;
+      transition: color 0.3s ease;
     }
     .footer a {
-      color: #3949ab;
+      color: var(--text-secondary);
       text-decoration: none;
+      transition: color 0.3s ease;
     }
     .footer a:hover {
       text-decoration: underline;
@@ -1379,8 +1467,9 @@
     }
     .divider {
       height: 1px;
-      background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
+      background: linear-gradient(90deg, transparent, var(--divider-color), transparent);
       margin: 24px 0;
+      transition: background 0.3s ease;
     }
     /* Copy link button */
     .btn-copy-link {
@@ -1467,6 +1556,9 @@
 <body>
   <div class="container">
     <div class="header">
+      <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode" title="החלף מצב תצוגה">
+        <span id="themeIcon">🌙</span>
+      </button>
       <div class="logo"><img src="/static/watermark.png" alt="לוגו" class="logo-img" /></div>
       <h1>יוצר זְמוּנָה לשבת וחג</h1>
       <div class="subtitle">צור תמונה יפה עם זמני הדלקת נרות לשבת או לחג</div>
@@ -1684,6 +1776,55 @@ CITY_CHECKBOXES_PLACEHOLDER
   </div>
 
   <script>
+    // ===== Dark Mode Functionality =====
+    const themeToggle = document.getElementById("themeToggle");
+    const themeIcon = document.getElementById("themeIcon");
+    const htmlElement = document.documentElement;
+
+    // Check for saved theme preference or default to system preference
+    function getPreferredTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        return savedTheme;
+      }
+      // Check system preference
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    // Apply theme to the page
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        htmlElement.setAttribute('data-theme', 'dark');
+        themeIcon.textContent = '☀️';
+      } else {
+        htmlElement.removeAttribute('data-theme');
+        themeIcon.textContent = '🌙';
+      }
+    }
+
+    // Toggle theme
+    function toggleTheme() {
+      const currentTheme = htmlElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      applyTheme(newTheme);
+      localStorage.setItem('theme', newTheme);
+    }
+
+    // Initialize theme on page load
+    applyTheme(getPreferredTheme());
+
+    // Add click event listener to toggle button
+    themeToggle.addEventListener('click', toggleTheme);
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      // Only auto-switch if user hasn't set a preference
+      if (!localStorage.getItem('theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+
+    // ===== Main App Functionality =====
     const btn = document.getElementById("generateBtn");
     const downloadBtn = document.getElementById("downloadBtn");
     const downloadBtnText = document.getElementById("downloadBtnText");
