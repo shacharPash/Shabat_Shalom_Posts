@@ -27,6 +27,7 @@ from make_shabbat_posts import (
     jewcal_times_for_sequence,
     is_end_of_holiday_sequence,
     get_parsha_from_hebcal,
+    clear_hebcal_cache,
     _get_saturday_for_date,
     CITIES,
 )
@@ -223,6 +224,9 @@ class TestGetParshaFromHebcal(unittest.TestCase):
     @patch('make_shabbat_posts.requests.get')
     def test_get_parsha_handles_network_error(self, mock_get):
         """get_parsha_from_hebcal should handle network errors gracefully."""
+        # Clear cache to ensure mock is called
+        clear_hebcal_cache()
+
         mock_get.side_effect = Exception("Network error")
 
         result = get_parsha_from_hebcal(date(2025, 1, 25))
@@ -232,6 +236,9 @@ class TestGetParshaFromHebcal(unittest.TestCase):
     @patch('make_shabbat_posts.requests.get')
     def test_get_parsha_handles_empty_response(self, mock_get):
         """get_parsha_from_hebcal should handle empty API response."""
+        # Clear cache to ensure mock is called
+        clear_hebcal_cache()
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"items": []}
