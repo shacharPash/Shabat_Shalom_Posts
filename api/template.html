@@ -1283,6 +1283,11 @@
       align-items: center;
       gap: 8px;
     }
+    .preview-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
     .btn-download {
       padding: 10px 20px;
       border-radius: 10px;
@@ -1304,6 +1309,29 @@
     }
     .btn-download:focus-visible {
       outline: 2px solid #1a237e;
+      outline-offset: 2px;
+    }
+    .btn-whatsapp {
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: 2px solid #25D366;
+      background: #25D366;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+    .btn-whatsapp:hover {
+      background: #128C7E;
+      border-color: #128C7E;
+    }
+    .btn-whatsapp:focus-visible {
+      outline: 2px solid #25D366;
       outline-offset: 2px;
     }
     .preview-image-container {
@@ -1458,8 +1486,13 @@
         gap: 12px;
         align-items: stretch;
       }
-      .btn-download {
+      .preview-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+      .btn-download, .btn-whatsapp {
         justify-content: center;
+        width: 100%;
       }
     }
   </style>
@@ -1669,9 +1702,14 @@ CITY_CHECKBOXES_PLACEHOLDER
       <div class="divider"></div>
       <div class="preview-header">
         <h3 class="preview-title" id="previewTitle">🎉 הזְמוּנָה מוכנה!</h3>
-        <button id="downloadBtn" class="btn-download">
-          <span>⬇️</span> <span id="downloadBtnText">הורד תמונה</span>
-        </button>
+        <div class="preview-actions">
+          <button id="whatsappBtn" class="btn-whatsapp">
+            <span>📱</span> <span id="whatsappBtnText">שתף בוואטסאפ</span>
+          </button>
+          <button id="downloadBtn" class="btn-download">
+            <span>⬇️</span> <span id="downloadBtnText">הורד תמונה</span>
+          </button>
+        </div>
       </div>
       <div class="preview-gallery" id="previewGallery">
         <!-- Gallery items will be added dynamically -->
@@ -1687,6 +1725,8 @@ CITY_CHECKBOXES_PLACEHOLDER
     const btn = document.getElementById("generateBtn");
     const downloadBtn = document.getElementById("downloadBtn");
     const downloadBtnText = document.getElementById("downloadBtnText");
+    const whatsappBtn = document.getElementById("whatsappBtn");
+    const whatsappBtnText = document.getElementById("whatsappBtnText");
     const statusEl = document.getElementById("status");
     const previewEl = document.getElementById("preview");
     const previewTitle = document.getElementById("previewTitle");
