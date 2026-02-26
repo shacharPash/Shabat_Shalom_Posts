@@ -448,36 +448,45 @@
       align-items: center;
       gap: 12px;
       padding: 12px;
-      background: #fff;
+      background: var(--input-bg);
       border-radius: 8px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--input-border);
+      transition: all 0.3s ease;
     }
     .weeks-selector label {
       font-size: 13px;
-      color: #3949ab;
+      color: var(--text-primary);
       margin: 0;
+      transition: color 0.3s ease;
     }
     .weeks-input {
       width: 60px;
       padding: 8px;
-      border: 1px solid #c5cae9;
+      border: 1px solid var(--input-border);
       border-radius: 6px;
       font-size: 14px;
       text-align: center;
-      color: #3949ab;
+      color: var(--text-primary);
+      background: var(--input-bg);
+      transition: all 0.3s ease;
     }
     .weeks-input:focus {
       outline: none;
-      border-color: #5c6bc0;
+      border-color: var(--input-border-focus);
     }
     .selected-range-info {
       margin-top: 12px;
       padding: 10px 14px;
-      background: #e8f5e9;
+      background: rgba(76, 175, 80, 0.15);
       border-radius: 8px;
       font-size: 13px;
       color: #2e7d32;
       display: none;
+      transition: all 0.3s ease;
+    }
+    [data-theme="dark"] .selected-range-info {
+      background: rgba(76, 175, 80, 0.15);
+      color: #81c784;
     }
     .selected-range-info.show {
       display: block;
@@ -496,24 +505,24 @@
     .date-format-option {
       padding: 8px 16px;
       border-radius: 8px;
-      border: 2px solid #e8eaf6;
-      background: #fff;
-      color: #3949ab;
+      border: 2px solid var(--input-border);
+      background: var(--input-bg);
+      color: var(--text-primary);
       font-size: 13px;
       cursor: pointer;
       transition: all 0.15s ease;
     }
     .date-format-option:hover {
-      border-color: #c5cae9;
-      background: #f5f5ff;
+      border-color: var(--button-border);
+      background: var(--button-hover-bg);
     }
     .date-format-option:focus-visible {
-      outline: 2px solid #3949ab;
+      outline: 2px solid var(--text-primary);
       outline-offset: 2px;
     }
     .date-format-option.selected {
-      border-color: #5c6bc0;
-      background: #e8eaf6;
+      border-color: var(--input-border-focus);
+      background: var(--button-bg);
       font-weight: 600;
     }
     /* Manual override section */
@@ -1127,15 +1136,17 @@
     .candle-offset {
       width: 36px;
       padding: 3px 2px;
-      border: 1px solid #c5cae9;
+      border: 1px solid var(--input-border);
       border-radius: 4px;
       font-size: 11px;
       text-align: center;
-      background: #fff;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
     }
     .candle-offset:focus {
       outline: none;
-      border-color: #5c6bc0;
+      border-color: var(--input-border-focus);
     }
     .offset-label {
       font-size: 10px;
@@ -1391,18 +1402,19 @@
     .preview-title {
       font-size: 18px;
       font-weight: 600;
-      color: #1a237e;
+      color: var(--text-primary);
       margin: 0;
       display: flex;
       align-items: center;
       gap: 8px;
+      transition: color 0.3s ease;
     }
     .btn-download {
       padding: 10px 20px;
       border-radius: 10px;
-      border: 2px solid #1a237e;
+      border: 2px solid var(--text-primary);
       background: transparent;
-      color: #1a237e;
+      color: var(--text-primary);
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
@@ -1413,11 +1425,11 @@
       font-family: inherit;
     }
     .btn-download:hover {
-      background: #1a237e;
-      color: #fff;
+      background: var(--text-primary);
+      color: var(--container-bg);
     }
     .btn-download:focus-visible {
-      outline: 2px solid #1a237e;
+      outline: 2px solid var(--text-primary);
       outline-offset: 2px;
     }
     .preview-image-container {
@@ -1505,9 +1517,9 @@
       width: 100%;
       padding: 12px 16px;
       border-radius: 10px;
-      border: 2px solid #c5cae9;
-      background: #f5f5ff;
-      color: #3949ab;
+      border: 2px solid var(--button-border);
+      background: var(--button-bg);
+      color: var(--text-primary);
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
@@ -1519,11 +1531,11 @@
       font-family: inherit;
     }
     .btn-copy-link:hover {
-      border-color: #5c6bc0;
-      background: #ede7f6;
+      border-color: var(--input-border-focus);
+      background: var(--button-hover-bg);
     }
     .btn-copy-link:focus-visible {
-      outline: 2px solid #3949ab;
+      outline: 2px solid var(--text-primary);
       outline-offset: 2px;
     }
     .btn-copy-link.copied {
