@@ -344,11 +344,11 @@
       background: var(--button-bg);
     }
     .date-dropdown-trigger:focus-visible {
-      outline: 2px solid #3949ab;
+      outline: 2px solid var(--text-primary);
       outline-offset: 2px;
     }
     .date-dropdown-trigger.open {
-      border-color: #5c6bc0;
+      border-color: var(--input-border-focus);
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
     }
@@ -359,10 +359,13 @@
     }
     .date-dropdown-trigger .selected-event-name {
       font-weight: 600;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
     }
     .date-dropdown-trigger .selected-event-date {
       font-size: 12px;
-      color: #3949ab;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
     }
     .date-dropdown-trigger .dropdown-arrow {
       transition: transform 0.2s ease;
@@ -416,13 +419,13 @@
       justify-content: space-between;
       align-items: center;
       transition: background 0.15s ease;
-      border-bottom: 1px solid #f5f5f5;
+      border-bottom: 1px solid var(--divider-color);
     }
     .date-dropdown-item:hover {
-      background: #f5f5ff;
+      background: var(--button-hover-bg);
     }
     .date-dropdown-item.selected {
-      background: #e8eaf6;
+      background: var(--button-bg);
     }
     .date-dropdown-item.hidden {
       display: none;
@@ -430,18 +433,21 @@
     .date-dropdown-item .item-name {
       font-weight: 600;
       font-size: 13px;
-      color: #3949ab;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
     }
     .date-dropdown-item .item-date {
       font-size: 12px;
-      color: #3949ab;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
     }
     .date-no-results {
       padding: 16px;
       text-align: center;
-      color: #999;
+      color: var(--text-tertiary);
       font-size: 13px;
       display: none;
+      transition: color 0.3s ease;
     }
     .weeks-selector {
       display: flex;
@@ -555,30 +561,34 @@
     }
     .override-label {
       font-size: 12px;
-      color: #666;
+      color: var(--text-secondary);
       font-weight: 500;
+      transition: color 0.3s ease;
     }
     .override-input {
       padding: 10px 12px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--input-border);
       border-radius: 8px;
       font-size: 14px;
       font-family: inherit;
       direction: rtl;
-      transition: border-color 0.15s ease;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      transition: all 0.15s ease;
     }
     .override-input:focus {
       outline: none;
-      border-color: #5c6bc0;
+      border-color: var(--input-border-focus);
     }
     .override-input::placeholder {
-      color: #bbb;
+      color: var(--text-tertiary);
     }
     .override-note {
       font-size: 11px;
-      color: #999;
+      color: var(--text-tertiary);
       margin-top: 8px;
       text-align: center;
+      transition: color 0.3s ease;
     }
     /* File upload styling */
     .file-upload-wrapper {
@@ -599,9 +609,9 @@
       width: 100%;
       padding: 14px 16px;
       border-radius: 12px;
-      border: 2px dashed #c5cae9;
-      background: #f5f5ff;
-      color: #3949ab;
+      border: 2px dashed var(--button-border);
+      background: var(--button-bg);
+      color: var(--text-primary);
       font-size: 15px;
       font-weight: 500;
       cursor: pointer;
@@ -609,25 +619,26 @@
       font-family: inherit;
     }
     .file-upload-btn:hover {
-      border-color: #5c6bc0;
-      background: #ede7f6;
+      border-color: var(--input-border-focus);
+      background: var(--button-hover-bg);
     }
     .file-upload-btn:focus-visible {
-      outline: 2px solid #3949ab;
+      outline: 2px solid var(--text-primary);
       outline-offset: 2px;
     }
     .file-upload-btn.has-file {
       border-style: solid;
-      border-color: #5c6bc0;
-      background: #e8eaf6;
+      border-color: var(--input-border-focus);
+      background: var(--button-hover-bg);
     }
     .file-name {
       font-size: 13px;
-      color: #5c6bc0;
+      color: var(--text-secondary);
       margin-top: 8px;
       display: none;
       align-items: center;
       gap: 6px;
+      transition: color 0.3s ease;
     }
     .file-name.show {
       display: flex;
@@ -640,9 +651,16 @@
       font-size: 16px;
       padding: 0 4px;
       line-height: 1;
+      transition: color 0.2s ease;
     }
     .file-name .clear-file:hover {
       color: #c62828;
+    }
+    [data-theme="dark"] .file-name .clear-file {
+      color: #ff8a8a;
+    }
+    [data-theme="dark"] .file-name .clear-file:hover {
+      color: #ffb3b3;
     }
     /* Crop preview */
     .crop-toggle-btn {
@@ -1172,7 +1190,8 @@
     .custom-city-section {
       margin-top: 16px;
       padding-top: 16px;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--divider-color);
+      transition: border-color 0.3s ease;
     }
     .custom-city-header {
       display: flex;
@@ -1184,28 +1203,29 @@
     .custom-city-title {
       font-size: 12px;
       font-weight: 400;
-      color: #3949ab;
+      color: var(--text-secondary);
       display: flex;
       align-items: center;
       gap: 6px;
+      transition: color 0.3s ease;
     }
     .add-custom-city-btn {
       padding: 6px 12px;
       border-radius: 6px;
-      border: 1px dashed #c5cae9;
-      background: #f5f5ff;
-      color: #3949ab;
+      border: 1px dashed var(--button-border);
+      background: var(--button-bg);
+      color: var(--text-primary);
       font-size: 12px;
       cursor: pointer;
       transition: all 0.15s ease;
       font-family: inherit;
     }
     .add-custom-city-btn:hover {
-      border-color: #5c6bc0;
-      background: #ede7f6;
+      border-color: var(--input-border-focus);
+      background: var(--button-hover-bg);
     }
     .add-custom-city-btn:focus-visible {
-      outline: 2px solid #3949ab;
+      outline: 2px solid var(--text-primary);
       outline-offset: 2px;
     }
     .custom-cities-list {
@@ -1219,24 +1239,28 @@
       gap: 8px;
       align-items: center;
       padding: 8px;
-      background: #f5f5ff;
+      background: var(--button-bg);
       border-radius: 8px;
-      border: 1px solid #c5cae9;
+      border: 1px solid var(--button-border);
+      transition: all 0.3s ease;
     }
     .custom-city-input {
       padding: 8px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--input-border);
       border-radius: 6px;
       font-size: 13px;
       font-family: inherit;
       direction: rtl;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
     }
     .custom-city-input:focus {
       outline: none;
-      border-color: #5c6bc0;
+      border-color: var(--input-border-focus);
     }
     .custom-city-input::placeholder {
-      color: #bbb;
+      color: var(--text-tertiary);
     }
     .remove-custom-city-btn {
       width: 28px;
