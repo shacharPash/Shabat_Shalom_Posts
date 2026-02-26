@@ -3152,6 +3152,36 @@ CITY_CHECKBOXES_PLACEHOLDER
         }
       }
     });
+
+    whatsappBtn.addEventListener("click", async () => {
+      if (generatedPosters.length === 0) return;
+
+      // Get first poster blob
+      const posterBlob = generatedPosters[0].blob;
+
+      // Build share message
+      const eventName = selectedEventName.textContent || 'שבת';
+      const message = `שבת שלום! 🕯️\n${eventName}\n\nנוצר באמצעות: https://shabat-shalom-posts.vercel.app`;
+
+      // Try Web Share API first (best for mobile - can share image directly)
+      if (navigator.canShare && navigator.canShare({ files: [new File([posterBlob], 'shabbat-poster.png', { type: 'image/png' })] })) {
+        try {
+          await navigator.share({
+            files: [new File([posterBlob], 'shabbat-poster.png', { type: 'image/png' })],
+            title: 'שבת שלום',
+            text: message
+          });
+          return;
+        } catch (err) {
+          // User cancelled or error - fall through to WhatsApp URL
+          if (err.name === 'AbortError') return;
+        }
+      }
+
+      // Fallback: Open WhatsApp with text message
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + '\n\n(הורד/י את התמונה מהאתר)')}`;
+      window.open(whatsappUrl, '_blank');
+    });
   </script>
 </body>
 </html>
