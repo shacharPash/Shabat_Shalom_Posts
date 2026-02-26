@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from make_shabbat_posts import generate_poster, DEFAULT_CITIES
-from cities import get_cities_list, build_city_lookup
+from cities import get_cities_list, build_city_lookup, map_city_payload
 
 # Load cities once at module level (cached internally)
 GEOJSON_CITIES = get_cities_list()
@@ -192,36 +192,7 @@ class handler(BaseHTTPRequestHandler):
             payload = json.loads(body.decode("utf-8")) if body else {}
 
             # Map city names to full city objects with coordinates
-            if "cities" in payload and isinstance(payload["cities"], list):
-                city_items = payload["cities"]
-                mapped_cities = []
-                for item in city_items:
-                    # Handle both old format (string) and new format (object with name and candle_offset)
-                    if isinstance(item, str):
-                        name = item
-                        candle_offset = 20
-                    elif isinstance(item, dict):
-                        name = item.get("name", "")
-                        candle_offset = item.get("candle_offset", 20)
-                    else:
-                        continue
-
-                    if name in CITY_BY_NAME:
-                        city = CITY_BY_NAME[name].copy()
-                        city["candle_offset"] = candle_offset  # Override with user's offset
-                        mapped_cities.append(city)
-
-                # Only use mapped cities if we found at least one
-                if mapped_cities:
-                    payload["cities"] = mapped_cities
-                else:
-                    # No valid predefined cities found
-                    # If user has custom cities, set empty list (don't fall back to defaults)
-                    # Otherwise, remove to trigger default cities
-                    if "customCities" in payload and payload["customCities"]:
-                        payload["cities"] = []
-                    else:
-                        del payload["cities"]
+            map_city_payload(payload, CITY_BY_NAME)
 
             # Generate poster
             poster_bytes = build_poster_from_payload(payload)

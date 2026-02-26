@@ -95,14 +95,64 @@ def get_cities_list(geojson_path: str = None) -> List[CityDict]:
 def build_city_lookup(cities: List[CityDict] = None) -> Dict[str, CityDict]:
     """
     Build a lookup dictionary mapping city names to their full data.
-    
+
     Args:
         cities: Optional list of cities. If not provided, loads from GeoJSON.
-    
+
     Returns:
         Dict mapping city name to city data.
     """
     if cities is None:
         cities = get_cities_list()
     return {city["name"]: city for city in cities}
+
+
+def map_city_payload(payload: Dict[str, Any], city_lookup: Dict[str, CityDict]) -> None:
+    """
+    Map city names in payload to full city objects with coordinates.
+
+    This function mutates the payload dict in-place, converting city names
+    (or city objects with name and candle_offset) to full city objects
+    from the city_lookup dictionary.
+
+    Args:
+        payload: The payload dict containing a "cities" key with city data
+        city_lookup: Dictionary mapping city names to full city objects
+
+    The function handles:
+    - Old format: list of city name strings
+    - New format: list of objects with "name" and "candle_offset" fields
+    - Fallback logic for custom cities
+    """
+    # Map city names to full city objects with coordinates
+    if "cities" in payload and isinstance(payload["cities"], list):
+        city_items = payload["cities"]
+        mapped_cities = []
+        for item in city_items:
+            # Handle both old format (string) and new format (object with name and candle_offset)
+            if isinstance(item, str):
+                name = item
+                candle_offset = 20
+            elif isinstance(item, dict):
+                name = item.get("name", "")
+                candle_offset = item.get("candle_offset", 20)
+            else:
+                continue
+
+            if name in city_lookup:
+                city = city_lookup[name].copy()
+                city["candle_offset"] = candle_offset  # Override with user's offset
+                mapped_cities.append(city)
+
+        # Only use mapped cities if we found at least one
+        if mapped_cities:
+            payload["cities"] = mapped_cities
+        else:
+            # No valid predefined cities found
+            # If user has custom cities, set empty list (don't fall back to defaults)
+            # Otherwise, remove to trigger default cities
+            if "customCities" in payload and payload["customCities"]:
+                payload["cities"] = []
+            else:
+                del payload["cities"]
 

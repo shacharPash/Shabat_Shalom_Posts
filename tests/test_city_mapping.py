@@ -17,7 +17,7 @@ from unittest.mock import patch
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from cities import build_city_lookup
+from cities import build_city_lookup, map_city_payload
 
 
 class TestCityMapping(unittest.TestCase):
@@ -35,39 +35,10 @@ class TestCityMapping(unittest.TestCase):
 
     def map_cities(self, payload):
         """
-        Simulate the city mapping logic from service.py lines 69-99.
+        Use the shared city mapping logic from cities.py.
         This is the function under test.
         """
-        if "cities" in payload and isinstance(payload["cities"], list):
-            city_items = payload["cities"]
-            mapped_cities = []
-            for item in city_items:
-                # Handle both old format (string) and new format (object with name and candle_offset)
-                if isinstance(item, str):
-                    name = item
-                    candle_offset = 20
-                elif isinstance(item, dict):
-                    name = item.get("name", "")
-                    candle_offset = item.get("candle_offset", 20)
-                else:
-                    continue
-
-                if name in self.CITY_BY_NAME:
-                    city = self.CITY_BY_NAME[name].copy()
-                    city["candle_offset"] = candle_offset  # Override with user's offset
-                    mapped_cities.append(city)
-
-            # Only use mapped cities if we found at least one
-            if mapped_cities:
-                payload["cities"] = mapped_cities
-            else:
-                # No valid predefined cities found
-                # If user has custom cities, set empty list (don't fall back to defaults)
-                # Otherwise, remove to trigger default cities
-                if "customCities" in payload and payload["customCities"]:
-                    payload["cities"] = []
-                else:
-                    del payload["cities"]
+        map_city_payload(payload, self.CITY_BY_NAME)
 
     def test_string_city_name_maps_to_full_object(self):
         """String city names should map to full city objects with coordinates."""
