@@ -159,6 +159,36 @@ _PARASHA_NORMALIZED_LOOKUP: Dict[str, str] = {
 }
 
 
+def translate_parsha(english_name: str) -> str:
+    """
+    Translate English parsha name to Hebrew.
+
+    Uses O(1) dictionary lookup instead of iterating through all translations.
+    Handles various spelling variations (apostrophes, hyphens, spacing).
+
+    Args:
+        english_name: English name of the parsha (e.g., "Bereshit", "Ha'Azinu")
+
+    Returns:
+        Hebrew parsha name with פרשת prefix, or original name if not found.
+    """
+    # Normalize apostrophe types
+    clean_name = english_name.replace("\u2019", "'").replace("\u2018", "'")
+
+    # Try exact match (case-insensitive)
+    hebrew = _PARASHA_EXACT_LOOKUP.get(clean_name.lower())
+    if hebrew:
+        return f"פרשת {hebrew}"
+
+    # Try normalized match (remove apostrophes, hyphens, spaces)
+    hebrew = _PARASHA_NORMALIZED_LOOKUP.get(_normalize_parsha_key(clean_name))
+    if hebrew:
+        return f"פרשת {hebrew}"
+
+    # Fallback: return original name with prefix
+    return f"פרשת {clean_name}"
+
+
 # ========= HEBREW MONTH TRANSLATION =========
 HEBREW_MONTH_NAMES: Dict[str, str] = {
     "Nisan": "ניסן",

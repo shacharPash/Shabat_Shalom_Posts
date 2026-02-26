@@ -10,7 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from api.poster import build_poster_from_payload
 from api.upcoming_events import get_upcoming_events
 from cities import get_cities_list, build_city_lookup, map_city_payload
-from make_shabbat_posts import find_next_sequence, get_parsha_from_hebcal
+from make_shabbat_posts import find_next_sequence
+from hebcal_api import get_parsha_from_hebcal
 from translations import YOMTOV_TRANSLATIONS
 
 

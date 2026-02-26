@@ -26,10 +26,12 @@ from make_shabbat_posts import (
     jewcal_times_for_date,
     jewcal_times_for_sequence,
     is_end_of_holiday_sequence,
+    CITIES,
+)
+from hebcal_api import (
     get_parsha_from_hebcal,
     clear_hebcal_cache,
     _get_saturday_for_date,
-    CITIES,
 )
 
 
@@ -221,7 +223,7 @@ class TestMultipleCities(unittest.TestCase):
 class TestGetParshaFromHebcal(unittest.TestCase):
     """Tests for Hebcal API integration."""
 
-    @patch('make_shabbat_posts.requests.get')
+    @patch('hebcal_api.requests.get')
     def test_get_parsha_handles_network_error(self, mock_get):
         """get_parsha_from_hebcal should handle network errors gracefully."""
         # Clear cache to ensure mock is called
@@ -233,7 +235,7 @@ class TestGetParshaFromHebcal(unittest.TestCase):
         # Should return None on error
         self.assertIsNone(result)
 
-    @patch('make_shabbat_posts.requests.get')
+    @patch('hebcal_api.requests.get')
     def test_get_parsha_handles_empty_response(self, mock_get):
         """get_parsha_from_hebcal should handle empty API response."""
         # Clear cache to ensure mock is called
