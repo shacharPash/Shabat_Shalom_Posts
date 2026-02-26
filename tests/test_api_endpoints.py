@@ -277,11 +277,9 @@ class TestUpcomingEventsEndpoint(unittest.TestCase):
 
     def test_upcoming_events_returns_list(self):
         """Test that upcoming events endpoint returns a list of events."""
-        from service import get_upcoming_events
-        import asyncio
+        from api.upcoming_events import get_upcoming_events
 
-        # Run the async function
-        result = asyncio.run(get_upcoming_events())
+        result = get_upcoming_events()
 
         # Should return a list
         self.assertIsInstance(result, list)
@@ -291,10 +289,9 @@ class TestUpcomingEventsEndpoint(unittest.TestCase):
 
     def test_upcoming_events_structure(self):
         """Test that each event has required fields."""
-        from service import get_upcoming_events
-        import asyncio
+        from api.upcoming_events import get_upcoming_events
 
-        result = asyncio.run(get_upcoming_events())
+        result = get_upcoming_events()
 
         for event in result:
             self.assertIn("startDate", event)
@@ -307,10 +304,9 @@ class TestUpcomingEventsEndpoint(unittest.TestCase):
 
     def test_first_event_is_next(self):
         """Test that the first event is marked as next."""
-        from service import get_upcoming_events
-        import asyncio
+        from api.upcoming_events import get_upcoming_events
 
-        result = asyncio.run(get_upcoming_events())
+        result = get_upcoming_events()
 
         self.assertTrue(result[0]["isNext"])
         # Other events should not be marked as next
