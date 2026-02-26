@@ -24,10 +24,10 @@ from make_shabbat_posts import (
     jewcal_times_for_sequence,
     iso_to_hhmm,
     translate_parsha,
-    fix_hebrew,
     _get_saturday_for_date,
     CITIES,
 )
+from image_utils import fix_hebrew
 from cities import (
     load_cities_from_geojson,
     get_cities_list,

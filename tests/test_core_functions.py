@@ -21,14 +21,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PIL import Image
 
 from make_shabbat_posts import (
-    fix_hebrew,
     translate_parsha,
     iso_to_hhmm,
-    load_font,
-    get_text_width,
-    get_fitted_font,
-    fix_image_orientation,
-    fit_background,
     compose_poster,
     generate_poster,
     next_friday,
@@ -36,6 +30,14 @@ from make_shabbat_posts import (
     IMG_SIZE,
     PARASHA_TRANSLATION,
     _normalize_parsha_key,
+)
+from image_utils import (
+    fix_hebrew,
+    load_font,
+    get_text_width,
+    get_fitted_font,
+    fix_image_orientation,
+    fit_background,
 )
 
 
