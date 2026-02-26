@@ -16,39 +16,8 @@ from datetime import date
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Define the translation dictionary (from api/upcoming-events.py and service.py)
-# This is the canonical translation dictionary used across the codebase
-YOMTOV_TRANSLATIONS = {
-    "Rosh Hashana": "ראש השנה",
-    "Rosh Hashanah": "ראש השנה",
-    "Yom Kippur": "יום כיפור",
-    "Sukkos": "סוכות",
-    "Sukkot": "סוכות",
-    "Shmini Atzeres": "שמיני עצרת",
-    "Shemini Atzeret": "שמיני עצרת",
-    "Simchas Torah": "שמחת תורה",
-    "Simchat Torah": "שמחת תורה",
-    "Pesach": "פסח",
-    "Passover": "פסח",
-    "Shavuos": "שבועות",
-    "Shavuot": "שבועות",
-    "Chanukah": "חנוכה",
-    "Hanukkah": "חנוכה",
-    "Purim": "פורים",
-    "Tu BiShvat": "ט״ו בשבט",
-    "Tu B'Shvat": "ט״ו בשבט",
-    "Lag BaOmer": "ל״ג בעומר",
-    "Lag B'Omer": "ל״ג בעומר",
-    "Tisha B'Av": "תשעה באב",
-    "Yom HaShoah": "יום השואה",
-    "Yom HaZikaron": "יום הזיכרון",
-    "Yom HaAtzmaut": "יום העצמאות",
-    "Yom Yerushalayim": "יום ירושלים",
-    "Chol HaMoed": "חול המועד",
-    "Shmini Atzeret": "שמיני עצרת",
-    "Simchat Tora": "שמחת תורה",
-    "Shmini Atzeret / Simchat Tora": "שמיני עצרת / שמחת תורה",
-}
+# Import the canonical translation dictionary from the shared module
+from translations import YOMTOV_TRANSLATIONS
 
 
 def translate_yomtov(event_name):
