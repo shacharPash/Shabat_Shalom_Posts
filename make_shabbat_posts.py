@@ -20,6 +20,16 @@ from jewcal import JewCal
 from jewcal.models.zmanim import Location
 from PIL import Image, ImageDraw, ImageFont
 
+# Import shared translation dictionaries
+from translations import (
+    PARASHA_TRANSLATION,
+    HEBREW_MONTH_NAMES,
+    YOMTOV_TRANSLATIONS,
+    _PARASHA_EXACT_LOOKUP,
+    _PARASHA_NORMALIZED_LOOKUP,
+    _normalize_parsha_key,
+)
+
 # Type aliases for clarity
 CityDict = Dict[str, Any]
 CityRow = Tuple[str, str, str]  # (city_name, candle_time, havdalah_time)
@@ -45,88 +55,6 @@ DEFAULT_CITIES = [
 CITIES = DEFAULT_CITIES
 
 IMG_SIZE = (1080, 1080)  # Wider rectangle (5:4 ratio)
-
-# ========= FULL PARASHA TRANSLATION =========
-PARASHA_TRANSLATION: Dict[str, str] = {
-    # ספר בראשית
-    "Bereshit": "בראשית", "Noach": "נח", "Lech-Lecha": "לך לך", "Vayera": "וירא",
-    "Chayei Sara": "חיי שרה", "Toldot": "תולדות", "Vayetzei": "ויצא",
-    "Vayishlach": "וישלח", "Vayeshev": "וישב", "Miketz": "מקץ", "Vayigash": "ויגש",
-    "Vayechi": "ויחי",
-
-    # ספר שמות
-    "Shemot": "שמות", "Vaera": "וארא", "Bo": "בא",
-    "Beshalach": "בשלח", "Yitro": "יתרו", "Mishpatim": "משפטים", "Terumah": "תרומה",
-    "Tetzaveh": "תצוה", "Ki Tisa": "כי תשא", "Vayakhel": "ויקהל", "Pekudei": "פקודי",
-
-    # ספר ויקרא
-    "Vayikra": "ויקרא", "Tzav": "צו", "Shemini": "שמיני", "Shmini": "שמיני", "Tazria": "תזריע",
-    "Metzora": "מצורע", "Achrei Mot": "אחרי מות", "Kedoshim": "קדושים",
-    "Emor": "אמור", "Behar": "בהר", "Bechukotai": "בחוקותי",
-
-    # ספר במדבר
-    "Bamidbar": "במדבר", "Nasso": "נשא", "Beha'alotcha": "בהעלותך", "Shelach": "שלח",
-    "Korach": "קרח", "Chukat": "חוקת", "Balak": "בלק", "Pinchas": "פנחס",
-    "Matot": "מטות", "Masei": "מסעי",
-
-    # ספר דברים
-    "Devarim": "דברים", "Vaetchanan": "ואתחנן", "Ekev": "עקב",
-    "Re'eh": "ראה", "Shoftim": "שופטים", "Ki Tetzei": "כי תצא", "Ki Tavo": "כי תבוא",
-    "Nitzavim": "נצבים", "Vayelech": "וילך", "Ha'Azinu": "האזינו",
-    "Vezot Haberakhah": "וזאת הברכה",
-
-    # וריאציות נוספות שעלולות להופיע ב-API
-    "Lech Lecha": "לך לך", "Chayei Sarah": "חיי שרה", "Vayeitzei": "ויצא",
-    "Ki Sisa": "כי תשא", "Acharei Mot": "אחרי מות", "Bechukosai": "בחוקותי",
-    "Beha'aloscha": "בהעלותך", "Shlach": "שלח", "Chukas": "חוקת",
-    "Matos": "מטות", "Mas'ei": "מסעי", "Va'eschanan": "ואתחנן",
-    "Re'e": "ראה", "Ki Seitzei": "כי תצא", "Ki Savo": "כי תבוא",
-    "Vayeilech": "וילך", "Haazinu": "האזינו", "Ha'azinu": "האזינו", "Ha'Azinu": "האזינו",
-    "V'Zot HaBerachah": "וזאת הברכה", "Vzot Haberachah": "וזאת הברכה",
-    # וריאציות נוספות מ-Hebcal API
-    "Eikev": "עקב", "Ki Teitzei": "כי תצא", "Ki Tetze": "כי תצא",
-
-    # פרשות מחוברות (כשקוראים שתי פרשות באותה שבת)
-    "Vayakhel-Pekudei": "ויקהל-פקודי", "Vayakhel-Pekudey": "ויקהל-פקודי",
-    "Tazria-Metzora": "תזריע-מצורע", "Tazria-Metsora": "תזריע-מצורע",
-    "Achrei Mot-Kedoshim": "אחרי מות-קדושים", "Acharei Mot-Kedoshim": "אחרי מות-קדושים",
-    "Behar-Bechukotai": "בהר-בחוקותי", "Behar-Bechukosai": "בהר-בחוקותי",
-    "Chukat-Balak": "חוקת-בלק", "Chukas-Balak": "חוקת-בלק",
-    "Matot-Masei": "מטות-מסעי", "Matos-Masei": "מטות-מסעי", "Matot-Mas'ei": "מטות-מסעי",
-    "Nitzavim-Vayelech": "נצבים-וילך", "Nitzavim-Vayeilech": "נצבים-וילך",
-}
-
-
-def _normalize_parsha_key(name: str) -> str:
-    """Normalize a parsha name for lookup (lowercase, remove apostrophes and hyphens)."""
-    return name.lower().replace("'", "").replace("-", "").replace(" ", "")
-
-
-# Build normalized lookup tables at module load time for O(1) lookup
-_PARASHA_EXACT_LOOKUP: Dict[str, str] = {k.lower(): v for k, v in PARASHA_TRANSLATION.items()}
-_PARASHA_NORMALIZED_LOOKUP: Dict[str, str] = {
-    _normalize_parsha_key(k): v for k, v in PARASHA_TRANSLATION.items()
-}
-
-
-# ========= HEBREW MONTH TRANSLATION =========
-HEBREW_MONTH_NAMES: Dict[str, str] = {
-    "Nisan": "ניסן",
-    "Iyar": "אייר",
-    "Sivan": "סיון",
-    "Tammuz": "תמוז",
-    "Av": "אב",
-    "Elul": "אלול",
-    "Tishrei": "תשרי",
-    "Cheshvan": "חשון",
-    "Kislev": "כסלו",
-    "Teves": "טבת",
-    "Tevet": "טבת",
-    "Shevat": "שבט",
-    "Adar": "אדר",
-    "Adar I": "אדר א'",
-    "Adar II": "אדר ב'",
-}
 
 
 def _convert_year_to_hebrew_letters(year: int) -> str:
@@ -259,7 +187,8 @@ def fix_hebrew(text: str) -> str:
 
 
 # Font cache to avoid reloading fonts repeatedly
-_font_cache: dict[tuple[int, bool], ImageFont.FreeTypeFont] = {}
+# Cache stores: (size, bold) -> (font, is_bold)
+_font_cache: dict[tuple[int, bool], tuple[ImageFont.FreeTypeFont, bool]] = {}
 
 # Font file candidates (searched in order)
 _FONT_CANDIDATES_BOLD = ["Alef-Bold.ttf", "Alef-Regular.ttf", "DejaVuSans.ttf"]
@@ -275,13 +204,14 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
         bold: Whether to use bold variant
 
     Returns:
-        Loaded font object
+        Loaded font object (with _is_bold attribute set)
     """
     cache_key = (size, bold)
 
     # Return cached font if available
     if cache_key in _font_cache:
-        return _font_cache[cache_key]
+        font, _ = _font_cache[cache_key]
+        return font
 
     candidates = _FONT_CANDIDATES_BOLD if bold else _FONT_CANDIDATES_REGULAR
 
@@ -289,13 +219,17 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
         if os.path.isfile(path):
             try:
                 font = ImageFont.truetype(path, size=size)
-                _font_cache[cache_key] = font
+                # Store font with its bold state
+                font._is_bold = bold  # type: ignore
+                _font_cache[cache_key] = (font, bold)
                 return font
             except Exception:
                 continue
 
     # Fall back to default font (not cached as it's a different type)
-    return ImageFont.load_default()
+    default_font = ImageFont.load_default()
+    default_font._is_bold = False  # type: ignore
+    return default_font
 
 
 
@@ -850,6 +784,7 @@ def get_fitted_font(
         Font that fits the text (or min_size font if nothing fits)
     """
     current_size = original_font.size
+    is_bold = getattr(original_font, '_is_bold', False)
 
     # Check if original font fits
     if get_text_width(text, original_font, rtl) <= max_width:
@@ -858,12 +793,12 @@ def get_fitted_font(
     # Find the largest font size that fits
     while current_size > min_size:
         current_size -= 2
-        test_font = load_font(current_size, bold=original_font.path.endswith('Bold.ttf'))
+        test_font = load_font(current_size, bold=is_bold)
         if get_text_width(text, test_font, rtl) <= max_width:
             return test_font
 
     # Return minimum size font if nothing fits
-    return load_font(min_size, bold=original_font.path.endswith('Bold.ttf'))
+    return load_font(min_size, bold=is_bold)
 
 def draw_text_with_stroke(draw, xy, text, font, fill, stroke_fill, stroke_width, anchor=None, rtl=False):
     if rtl:
@@ -1038,63 +973,7 @@ def compose_poster(
     # Add event name for Yom Tov
     if event_type == "yomtov" and event_name:
         # Translate common Yom Tov names to Hebrew
-        yomtov_translations = {
-            # Rosh Hashana
-            "Erev Rosh Hashana": "ערב ראש השנה",
-            "Rosh Hashana 1": "ראש השנה א'",
-            "Rosh Hashana 2": "ראש השנה ב'",
-            "Rosh Hashana": "ראש השנה",
-
-            # Yom Kippur
-            "Erev Yom Kippur": "ערב יום כיפור",
-            "Yom Kippur": "יום כיפור",
-
-            # Sukkot
-            "Erev Sukkos": "ערב סוכות",
-            "Erev Sukkot": "ערב סוכות",
-            "Sukkos 1": "סוכות א'",
-            "Sukkos 2": "סוכות ב'",
-            "Sukkot 1": "סוכות א'",
-            "Sukkot": "סוכות",
-            "Sukkos": "סוכות",
-            "Hoshana Rabba": "הושענא רבה",
-            "Shmini Atzeres": "שמיני עצרת",
-            "Shmini Atzeret": "שמיני עצרת",
-            "Simchas Tora": "שמחת תורה",
-            "Simchat Tora": "שמחת תורה",
-            "Shmini Atzeret / Simchat Tora": "שמיני עצרת / שמחת תורה",
-
-            # Pesach
-            "Erev Pesach": "ערב פסח",
-            "Pesach 1": "פסח א'",
-            "Pesach 2": "פסח ב'",
-            "Pesach 7": "שביעי של פסח",
-            "Pesach 8": "פסח ח'",
-            "Pesach": "פסח",
-
-            # Shavuos
-            "Erev Shavuos": "ערב שבועות",
-            "Erev Shavut": "ערב שבועות",
-            "Shavuos 1": "שבועות א'",
-            "Shavuos 2": "שבועות ב'",
-            "Shavuos": "שבועות",
-            "Shavut": "שבועות",
-
-            # Chol HaMoed
-            "Chol HaMoed": "חול המועד",
-            "Chol HaMoed 1": "חול המועד",
-            "Chol HaMoed 2": "חול המועד",
-            "Chol HaMoed 3": "חול המועד",
-            "Chol HaMoed 4": "חול המועד",
-            "Chol HaMoed 5": "חול המועד",
-            "Chol HaMoed 1 (Sukkot 2)": "חול המועד סוכות",
-            "Chol HaMoed 2 (Sukkot 3)": "חול המועד סוכות",
-            "Chol HaMoed 3 (Sukkot 4)": "חול המועד סוכות",
-            "Chol HaMoed 4 (Sukkot 5)": "חול המועד סוכות",
-            "Chol HaMoed 5 (Sukkot 6)": "חול המועד סוכות",
-            "Hoshana Rabba (Sukkot 7)": "הושענא רבה",
-        }
-        hebrew_event = yomtov_translations.get(event_name, event_name)
+        hebrew_event = YOMTOV_TRANSLATIONS.get(event_name, event_name)
         if parsha_txt:
             sub_line = f"{hebrew_event} | {parsha_txt} | {date_str}"
         else:
