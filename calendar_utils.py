@@ -6,10 +6,64 @@ including finding event sequences, calculating times, and determining event date
 """
 
 from datetime import date, datetime, timedelta
+from functools import lru_cache
 from typing import Any, Dict, Optional
 
 from jewcal import JewCal
 from jewcal.models.zmanim import Location
+
+
+@lru_cache(maxsize=128)
+def _get_jewcal_cached(gregorian_date: date, diaspora: bool = False) -> JewCal:
+    """Get a cached JewCal instance for a specific date (without location).
+
+    Args:
+        gregorian_date: The Gregorian date
+        diaspora: Whether to use diaspora customs (default: False for Israel)
+
+    Returns:
+        A JewCal instance for the given date
+    """
+    return JewCal(gregorian_date=gregorian_date, diaspora=diaspora)
+
+
+@lru_cache(maxsize=128)
+def _get_jewcal_with_location_cached(
+    gregorian_date: date,
+    diaspora: bool,
+    lat: float,
+    lon: float,
+    candle_offset: int
+) -> JewCal:
+    """Get a cached JewCal instance with location for a specific date.
+
+    Location objects are not hashable, so we cache based on the location parameters
+    and create the Location object inside this function.
+
+    Args:
+        gregorian_date: The Gregorian date
+        diaspora: Whether to use diaspora customs
+        lat: Latitude
+        lon: Longitude
+        candle_offset: Minutes before sunset for candle lighting
+
+    Returns:
+        A JewCal instance for the given date with location
+    """
+    location = Location(
+        latitude=lat,
+        longitude=lon,
+        use_tzeis_hakochavim=True,
+        hadlokas_haneiros_minutes=candle_offset,
+        tzeis_minutes=42
+    )
+    return JewCal(gregorian_date=gregorian_date, diaspora=diaspora, location=location)
+
+
+def clear_jewcal_cache() -> None:
+    """Clear the JewCal cache. Useful for testing."""
+    _get_jewcal_cached.cache_clear()
+    _get_jewcal_with_location_cached.cache_clear()
 
 
 def next_friday(d: date) -> date:
@@ -41,7 +95,7 @@ def is_end_of_holiday_sequence(target_date: date) -> bool:
         True if this is the last day of the sequence
     """
     next_day = target_date + timedelta(days=1)
-    next_jewcal = JewCal(gregorian_date=next_day, diaspora=False)
+    next_jewcal = _get_jewcal_cached(next_day, False)
 
     # If next day has events that require candle lighting, current day is not the end
     if (next_jewcal.has_events() and
@@ -65,7 +119,7 @@ def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
     # Only go back if the previous day is part of a continuous sequence
     while True:
         prev_day = current_date - timedelta(days=1)
-        prev_jewcal = JewCal(gregorian_date=prev_day, diaspora=False)
+        prev_jewcal = _get_jewcal_cached(prev_day, False)
 
         # Only continue backwards if:
         # 1. Previous day has events
@@ -84,7 +138,7 @@ def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
     # Find the end of the sequence
     current_date = start_date
     while True:
-        jewcal = JewCal(gregorian_date=current_date, diaspora=False)
+        jewcal = _get_jewcal_cached(current_date, False)
 
         if jewcal.has_events():
             if jewcal.events.yomtov:
@@ -99,7 +153,7 @@ def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
             # Check if sequence continues - only if current day is NOT the end (no Havdalah)
             # OR if the next day is the immediate continuation (like Yom Tov followed by Shabbat on the same day)
             next_day = current_date + timedelta(days=1)
-            next_jewcal = JewCal(gregorian_date=next_day, diaspora=False)
+            next_jewcal = _get_jewcal_cached(next_day, False)
 
             # Only continue if:
             # 1. Current day doesn't end with Havdalah (meaning it continues to next day)
@@ -130,7 +184,7 @@ def find_next_sequence(start_base: date) -> tuple[date, date, str, str]:
         check_date = current_date + timedelta(days=i)
 
         # Create a temporary jewcal object to check for events
-        temp_jewcal = JewCal(gregorian_date=check_date, diaspora=False)
+        temp_jewcal = _get_jewcal_cached(check_date, False)
 
         if temp_jewcal.has_events():
             # Check if this is an event that requires candle lighting (prioritize Yom Tov)
@@ -152,7 +206,7 @@ def find_next_event_date(start_base: date) -> tuple[date, str, str]:
         check_date = current_date + timedelta(days=i)
 
         # Create a temporary jewcal object to check for events
-        temp_jewcal = JewCal(gregorian_date=check_date, diaspora=False)
+        temp_jewcal = _get_jewcal_cached(check_date, False)
 
         if temp_jewcal.has_events():
             # Check if this is an event that requires candle lighting (prioritize Yom Tov)
@@ -174,17 +228,9 @@ def jewcal_times_for_date(lat: float, lon: float, target_date: date, candle_offs
     # Import here to avoid circular dependency
     from make_shabbat_posts import get_parsha_from_hebcal
 
-    # Create location object
-    location = Location(
-        latitude=lat,
-        longitude=lon,
-        use_tzeis_hakochavim=True,  # Use stars for havdalah calculation
-        hadlokas_haneiros_minutes=candle_offset,  # Custom candle lighting offset
-        tzeis_minutes=42  # 42 minutes after sunset for havdalah (backup)
-    )
-
     # Get JewCal info for the target date (Israel customs since we're in Israel)
-    jewcal = JewCal(gregorian_date=target_date, diaspora=False, location=location)
+    # Use cached version with location parameters
+    jewcal = _get_jewcal_with_location_cached(target_date, False, lat, lon, candle_offset)
 
     # Determine event type and get appropriate times
     event_name = None
@@ -261,17 +307,9 @@ def jewcal_times_for_sequence(
     # Import here to avoid circular dependency
     from make_shabbat_posts import get_parsha_from_hebcal
 
-    # Create location object
-    location = Location(
-        latitude=lat,
-        longitude=lon,
-        use_tzeis_hakochavim=True,
-        hadlokas_haneiros_minutes=candle_offset,
-        tzeis_minutes=42
-    )
-
     # Get candle lighting time from the start of the sequence
-    start_jewcal = JewCal(gregorian_date=start_date, diaspora=False, location=location)
+    # Use cached version with location parameters
+    start_jewcal = _get_jewcal_with_location_cached(start_date, False, lat, lon, candle_offset)
     candle_time = None
     if start_jewcal.zmanim:
         start_zmanim = start_jewcal.zmanim.to_dict()
@@ -279,7 +317,7 @@ def jewcal_times_for_sequence(
             candle_time = start_zmanim['hadlokas_haneiros']
 
     # Get havdalah time from the end of the sequence
-    end_jewcal = JewCal(gregorian_date=end_date, diaspora=False, location=location)
+    end_jewcal = _get_jewcal_with_location_cached(end_date, False, lat, lon, candle_offset)
     havdalah_time = None
     if end_jewcal.zmanim:
         end_zmanim = end_jewcal.zmanim.to_dict()
