@@ -1,0 +1,75 @@
+name: Update Parsha Data
+
+on:
+  schedule:
+    # Run at midnight UTC on January 1st every year
+    - cron: '0 0 1 1 *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  update-parsha:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install requests
+        run: pip install requests
+      
+      - name: Update parsha data
+        run: |
+          python3 << 'EOF'
+          import json
+          import requests
+          from datetime import datetime
+
+          current_year = datetime.now().year
+          end_year = current_year + 20  # Always keep 20 years ahead
+
+          all_parshiot = {}
+          for year in range(2024, end_year + 1):
+              print(f"Fetching {year}...")
+              url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&year={year}&month=x&ss=on&s=on'
+              
+              try:
+                  resp = requests.get(url, timeout=30)
+                  resp.raise_for_status()
+                  data = resp.json()
+                  
+                  for item in data.get('items', []):
+                      if 'Parashat' in item.get('title', ''):
+                          date_str = item['date']
+                          parsha = item['title'].replace('Parashat ', '')
+                          all_parshiot[date_str] = parsha
+              
+              except Exception as e:
+                  print(f"Error fetching year {year}: {e}")
+                  continue
+
+          sorted_data = dict(sorted(all_parshiot.items()))
+          
+          with open('parsha_data.json', 'w', encoding='utf-8') as f:
+              json.dump(sorted_data, f, ensure_ascii=False, indent=2)
+          
+          print(f"✅ Updated with {len(sorted_data)} parshiot through {end_year}")
+          EOF
+      
+      - name: Commit and push if changed
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add parsha_data.json
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update parsha data through $(date +%Y)"
+            git push
+          fi
+

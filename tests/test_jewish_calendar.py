@@ -225,19 +225,20 @@ class TestGetParshaFromHebcal(unittest.TestCase):
 
     @patch('hebcal_api.requests.get')
     def test_get_parsha_handles_network_error(self, mock_get):
-        """get_parsha_from_hebcal should handle network errors gracefully."""
+        """get_parsha_from_hebcal should use local data when API fails."""
         # Clear cache to ensure mock is called
         clear_hebcal_cache()
 
         mock_get.side_effect = Exception("Network error")
 
         result = get_parsha_from_hebcal(date(2025, 1, 25))
-        # Should return None on error
-        self.assertIsNone(result)
+        # Should return parsha from local data even when API fails
+        self.assertIsNotNone(result)
+        self.assertIn("פרשת", result)  # Should have Hebrew parsha prefix
 
     @patch('hebcal_api.requests.get')
     def test_get_parsha_handles_empty_response(self, mock_get):
-        """get_parsha_from_hebcal should handle empty API response."""
+        """get_parsha_from_hebcal should use local data when API returns empty."""
         # Clear cache to ensure mock is called
         clear_hebcal_cache()
 
@@ -247,8 +248,9 @@ class TestGetParshaFromHebcal(unittest.TestCase):
         mock_get.return_value = mock_response
 
         result = get_parsha_from_hebcal(date(2025, 1, 25))
-        # Should return None when no parsha found
-        self.assertIsNone(result)
+        # Should return parsha from local data even when API returns empty
+        self.assertIsNotNone(result)
+        self.assertIn("פרשת", result)  # Should have Hebrew parsha prefix
 
 
 if __name__ == "__main__":

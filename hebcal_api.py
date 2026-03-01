@@ -4,8 +4,13 @@ Hebcal API integration for fetching parsha information.
 This module provides functions to interact with the Hebcal API to retrieve
 Torah portion (parsha) information for specific dates. It includes caching
 to minimize API calls and helper functions for date calculations.
+
+Local parsha data (parsha_data.json) is used first for fast lookups,
+with API fallback for dates not in the local dataset.
 """
 
+import json
+import os
 from datetime import date, timedelta
 from typing import Any, Dict, Optional
 
@@ -16,6 +21,19 @@ from translations import translate_parsha
 
 # Timezone constant for Hebcal API
 TZID = "Asia/Jerusalem"
+
+
+# ========= LOCAL PARSHA DATA =========
+# Load local parsha data for fast lookups without API calls
+# Key: date string (YYYY-MM-DD), Value: parsha name (English)
+_LOCAL_PARSHA_DATA: Dict[str, str] = {}
+_parsha_file = os.path.join(os.path.dirname(__file__), 'parsha_data.json')
+if os.path.exists(_parsha_file):
+    try:
+        with open(_parsha_file, 'r', encoding='utf-8') as f:
+            _LOCAL_PARSHA_DATA = json.load(f)
+    except Exception as e:
+        print(f"Warning: Could not load local parsha data: {e}")
 
 
 # ========= HEBCAL API CACHE =========
@@ -61,10 +79,11 @@ def clear_hebcal_cache() -> None:
 
 def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     """
-    Get parsha information from Hebcal API for the week containing target_date.
+    Get parsha information for the week containing target_date.
 
-    Uses a cache to store API responses by year, significantly reducing
-    the number of API calls when fetching multiple dates.
+    First checks local parsha data (fast path), then falls back to Hebcal API
+    if the date is not found locally. Uses a cache to store API responses by year,
+    significantly reducing the number of API calls when fetching multiple dates.
 
     Args:
         target_date: The date to get parsha for
@@ -83,7 +102,14 @@ def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     # Find the Saturday of the week containing target_date
     saturday = _get_saturday_for_date(target_date)
 
-    # Get cached or fresh data for the year
+    # FAST PATH: Check local parsha data first (no API call needed)
+    date_key = saturday.isoformat()  # YYYY-MM-DD format
+    if date_key in _LOCAL_PARSHA_DATA:
+        parsha_english = _LOCAL_PARSHA_DATA[date_key]
+        return translate_parsha(parsha_english)
+
+    # SLOW PATH: Fallback to Hebcal API if date not in local data
+    # (e.g., for dates beyond 2040 or if local data file is missing)
     data = _get_hebcal_data_for_year(saturday.year)
     if not data:
         return None
