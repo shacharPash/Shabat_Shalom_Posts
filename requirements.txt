@@ -14,3 +14,6 @@ uvicorn[standard]~=0.41.0
 # Redis (Upstash compatible)
 redis~=5.0.0
 
+# Telegram bot
+python-telegram-bot~=21.0
+

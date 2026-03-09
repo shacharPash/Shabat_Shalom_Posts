@@ -3,7 +3,8 @@
     { "source": "/", "destination": "/api/index" },
     { "source": "/poster", "destination": "/api/poster" },
     { "source": "/api/poster", "destination": "/api/poster" },
-    { "source": "/upcoming-events", "destination": "/api/upcoming_events" }
+    { "source": "/upcoming-events", "destination": "/api/upcoming_events" },
+    { "source": "/api/telegram", "destination": "/api/telegram_webhook" }
   ]
 }
 
