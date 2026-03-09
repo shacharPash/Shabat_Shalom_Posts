@@ -216,6 +216,7 @@ def _build_help_keyboard() -> List[List[Dict[str, str]]]:
     ]
 
 
+
 CITIES_PER_PAGE = 12
 
 
