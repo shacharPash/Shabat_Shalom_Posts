@@ -8,6 +8,7 @@ Shabbat time posters via Telegram.
 import base64
 import io
 import os
+import re
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -27,7 +28,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 USER_STATE_KEY = "zmunah:state:{user_id}"
 
 # Website URL for web version
-WEB_APP_URL = os.getenv("WEB_APP_URL", "https://shabat-shalom-posts.vercel.app")
+WEB_APP_URL = os.getenv("WEB_APP_URL", "https://shabat-posts.vercel.app/")
 
 # Date format display names
 DATE_FORMAT_LABELS = {
@@ -257,7 +258,7 @@ def _build_cities_keyboard(
     buttons.append(nav_row)
 
     # Search and done buttons
-    buttons.append([{"text": "🔍 חפש עיר", "callback_data": "cities:search"}])
+    buttons.append([{"text": "🔍 חפשו ערים", "callback_data": "cities:search"}])
     buttons.append([{"text": "✅ סיום", "callback_data": "cities:done"}])
     return buttons
 
@@ -270,8 +271,8 @@ def _build_search_results_keyboard(
         c.get("name", c) if isinstance(c, dict) else c for c in selected_cities
     }
 
-    # Split query by comma and search for each term
-    search_terms = [term.strip().lower() for term in query.split(",") if term.strip()]
+    # Split query by comma or spaces and search for each term
+    search_terms = [term.strip().lower() for term in re.split(r'[,\s]+', query) if term.strip()]
 
     # Find matches for all search terms (union of results)
     matches = []
@@ -679,7 +680,7 @@ def handle_cities_search_start(chat_id: int, message_id: int, user_id: str) -> N
     edit_message_with_keyboard(
         chat_id,
         message_id,
-        "🔍 הקלד שם עיר לחיפוש:\n(או /skip לביטול)",
+        "🔍 הקלידו שמות ערים לחיפוש:\n(אפשר לכתוב מספר ערים עם פסיק או רווח, או /skip לביטול)",
         [],  # Remove keyboard
     )
 
