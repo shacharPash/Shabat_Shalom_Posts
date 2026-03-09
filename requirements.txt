@@ -11,3 +11,6 @@ pytz~=2025.2
 fastapi~=0.129.2
 uvicorn[standard]~=0.41.0
 
+# Redis (Upstash compatible)
+redis~=5.0.0
+
