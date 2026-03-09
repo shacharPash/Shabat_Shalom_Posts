@@ -196,31 +196,84 @@ def _build_settings_keyboard() -> List[List[Dict[str, str]]]:
         [{"text": "📅 פורמט תאריך", "callback_data": "edit:date"}],
         [
             {"text": "💬 ערוך ברכה", "callback_data": "edit:blessing"},
-            {"text": "🕯️ ערוך הקדשה", "callback_data": "edit:dedication"},
+            {"text": "🕯️ לעילוי נשמת", "callback_data": "edit:dedication"},
         ],
     ]
 
 
-def _build_cities_keyboard(selected_cities: List[Dict[str, Any]]) -> List[List[Dict[str, str]]]:
-    """Build city selection grid with toggles."""
+CITIES_PER_PAGE = 12
+
+
+def _build_cities_keyboard(
+    selected_cities: List[Dict[str, Any]], page: int = 0
+) -> List[List[Dict[str, str]]]:
+    """Build city selection grid with toggles and pagination."""
     selected_names = {
         c.get("name", c) if isinstance(c, dict) else c for c in selected_cities
     }
 
+    total_cities = len(AVAILABLE_CITIES)
+    total_pages = (total_cities + CITIES_PER_PAGE - 1) // CITIES_PER_PAGE
+    page = max(0, min(page, total_pages - 1))  # Clamp to valid range
+
+    start = page * CITIES_PER_PAGE
+    end = min(start + CITIES_PER_PAGE, total_cities)
+
     buttons = []
     row = []
-    # Show top 15 cities for reasonable grid size
-    for city in AVAILABLE_CITIES[:15]:
+    for city in AVAILABLE_CITIES[start:end]:
         name = city["name"]
         prefix = "✓ " if name in selected_names else ""
-        row.append({"text": f"{prefix}{name}", "callback_data": f"city:{name}"})
+        row.append({"text": f"{prefix}{name}", "callback_data": f"city:{name}:{page}"})
         if len(row) == 3:
             buttons.append(row)
             row = []
     if row:
         buttons.append(row)
 
+    # Navigation row
+    nav_row = []
+    if page > 0:
+        nav_row.append({"text": "← הקודם", "callback_data": f"cities:page:{page - 1}"})
+    nav_row.append({"text": f"עמוד {page + 1}/{total_pages}", "callback_data": "cities:noop"})
+    if page < total_pages - 1:
+        nav_row.append({"text": "הבא →", "callback_data": f"cities:page:{page + 1}"})
+    buttons.append(nav_row)
+
+    # Search and done buttons
+    buttons.append([{"text": "🔍 חפש עיר", "callback_data": "cities:search"}])
     buttons.append([{"text": "✅ סיום", "callback_data": "cities:done"}])
+    return buttons
+
+
+def _build_search_results_keyboard(
+    query: str, selected_cities: List[Dict[str, Any]]
+) -> List[List[Dict[str, str]]]:
+    """Build keyboard with search results."""
+    selected_names = {
+        c.get("name", c) if isinstance(c, dict) else c for c in selected_cities
+    }
+
+    # Search for matching cities
+    query_lower = query.lower()
+    matches = [c for c in AVAILABLE_CITIES if query_lower in c["name"].lower()]
+
+    buttons = []
+    row = []
+    for city in matches[:12]:  # Limit to 12 results
+        name = city["name"]
+        prefix = "✓ " if name in selected_names else ""
+        row.append({"text": f"{prefix}{name}", "callback_data": f"city:{name}:search"})
+        if len(row) == 3:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    if not matches:
+        buttons.append([{"text": "לא נמצאו תוצאות", "callback_data": "cities:noop"}])
+
+    buttons.append([{"text": "⬅️ חזרה לרשימה", "callback_data": "cities:cancel_search"}])
     return buttons
 
 
@@ -253,7 +306,7 @@ def format_settings(prefs: Dict[str, Any]) -> str:
         f"🏙 <b>ערים:</b> {', '.join(city_names)}\n"
         f"📅 <b>פורמט תאריך:</b> {date_format_display}\n"
         f"✨ <b>ברכה:</b> {blessing}\n"
-        f"🕯 <b>הקדשה:</b> {dedication}\n\n"
+        f"🕯 <b>לעילוי נשמת:</b> {dedication}\n\n"
         "לשינוי הגדרות, השתמש בכפתורים למטה."
     )
 
@@ -275,20 +328,65 @@ def handle_start(update: Dict[str, Any]) -> None:
         "/settings - צפה בהגדרות שלך\n"
         "/reset - אפס להגדרות ברירת מחדל\n"
         "/clear_blessing - נקה טקסט ברכה\n"
-        "/clear_dedication - נקה טקסט הקדשה\n\n"
+        "/clear_memorial - נקה לעילוי נשמת\n\n"
         "שלח תמונה כדי להתחיל! 📸"
     )
-    send_message(chat_id, welcome_text)
+    keyboard = [
+        [
+            {"text": "⚙️ הגדרות", "callback_data": "start:settings"},
+            {"text": "🔄 איפוס", "callback_data": "start:reset"},
+        ]
+    ]
+    send_message_with_keyboard(chat_id, welcome_text, keyboard, parse_mode="HTML")
 
 
 def handle_settings(update: Dict[str, Any]) -> None:
-    """Handle /settings command - show current user settings with inline keyboard."""
+    """Handle /settings command - show preview poster then settings with inline keyboard."""
     chat_id = get_chat_id(update)
     user_id = get_user_id(update)
     if not chat_id or not user_id:
         return
 
     prefs = get_user_prefs(user_id)
+
+    # Generate preview poster with current settings (uses default image)
+    try:
+        preview_payload = {
+            "dateFormat": prefs.get("date_format", "both"),
+        }
+
+        # Add cities if defined
+        cities = prefs.get("cities")
+        if cities:
+            mapped_cities = []
+            for city in cities:
+                name = city.get("name") if isinstance(city, dict) else city
+                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
+                if name in CITY_BY_NAME:
+                    full_city = CITY_BY_NAME[name].copy()
+                    full_city["candle_offset"] = offset
+                    mapped_cities.append(full_city)
+            if mapped_cities:
+                preview_payload["cities"] = mapped_cities
+
+        # Add blessing text if defined
+        blessing = prefs.get("blessing_text")
+        if blessing:
+            preview_payload["message"] = blessing
+
+        # Add dedication text if defined
+        dedication = prefs.get("dedication_text")
+        if dedication:
+            preview_payload["leiluyNeshama"] = dedication
+
+        # Generate and send preview poster
+        poster_bytes = build_poster_from_payload(preview_payload)
+        send_photo(chat_id, poster_bytes, "👆 כך ייראה הפוסטר שלך עם ההגדרות הנוכחיות")
+    except Exception:
+        # If preview fails, continue to show settings menu
+        pass
+
+    # Show settings menu
     settings_text = format_settings(prefs)
     keyboard = _build_settings_keyboard()
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
@@ -306,7 +404,7 @@ def handle_reset(update: Dict[str, Any]) -> None:
 
 
 def handle_skip(update: Dict[str, Any]) -> None:
-    """Handle /skip command - cancel text editing and show settings."""
+    """Handle /skip command - cancel text editing or city search."""
     chat_id = get_chat_id(update)
     user_id = get_user_id(update)
     if not chat_id or not user_id:
@@ -321,6 +419,15 @@ def handle_skip(update: Dict[str, Any]) -> None:
         settings_text = format_settings(prefs)
         keyboard = _build_settings_keyboard()
         send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
+    elif state in ("searching_city",) or (state and state.startswith("search_results:")):
+        _clear_user_state(user_id)
+        send_message(chat_id, "⏭️ ביטלת את החיפוש")
+        # Show city selection
+        prefs = get_user_prefs(user_id)
+        keyboard = _build_cities_keyboard(prefs.get("cities", []))
+        send_message_with_keyboard(
+            chat_id, "🏙️ בחר ערים (לחץ להוספה/הסרה):", keyboard
+        )
     else:
         send_message(chat_id, "אין מה לדלג - אתה לא במצב עריכה")
 
@@ -350,7 +457,7 @@ def handle_clear_dedication(update: Dict[str, Any]) -> None:
     prefs["dedication_text"] = None
     set_user_prefs(user_id, prefs)
     _clear_user_state(user_id)  # Clear any editing state
-    send_message(chat_id, "✅ ההקדשה נמחקה")
+    send_message(chat_id, "✅ לעילוי נשמת נמחק")
 
 
 def handle_photo(update: Dict[str, Any]) -> None:
@@ -450,9 +557,21 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
     # Route based on callback data
     if data == "edit:cities":
         handle_edit_cities(chat_id, message_id, user_id)
+    elif data.startswith("cities:page:"):
+        page = int(data.split(":")[2])
+        handle_cities_page(chat_id, message_id, user_id, page)
+    elif data == "cities:search":
+        handle_cities_search_start(chat_id, message_id, user_id)
+    elif data == "cities:cancel_search":
+        handle_cities_cancel_search(chat_id, message_id, user_id)
+    elif data == "cities:noop":
+        pass  # Do nothing for informational buttons
     elif data.startswith("city:"):
-        city_name = data.split(":", 1)[1]
-        handle_city_toggle(chat_id, message_id, user_id, city_name)
+        parts = data.split(":")
+        city_name = parts[1]
+        # parts[2] is page number or "search"
+        context = parts[2] if len(parts) > 2 else "0"
+        handle_city_toggle(chat_id, message_id, user_id, city_name, context)
     elif data == "cities:done":
         handle_cities_done(chat_id, message_id, user_id)
     elif data == "edit:date":
@@ -466,6 +585,10 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_edit_text(chat_id, message_id, user_id, "dedication")
     elif data == "settings:back":
         handle_settings_back(chat_id, message_id, user_id)
+    elif data == "start:settings":
+        handle_start_settings(chat_id, user_id)
+    elif data == "start:reset":
+        handle_start_reset(chat_id, user_id)
 
 
 def handle_edit_cities(chat_id: int, message_id: int, user_id: str) -> None:
@@ -477,7 +600,37 @@ def handle_edit_cities(chat_id: int, message_id: int, user_id: str) -> None:
     )
 
 
-def handle_city_toggle(chat_id: int, message_id: int, user_id: str, city_name: str) -> None:
+def handle_cities_page(chat_id: int, message_id: int, user_id: str, page: int) -> None:
+    """Show a specific page of cities."""
+    prefs = get_user_prefs(user_id)
+    keyboard = _build_cities_keyboard(prefs.get("cities", []), page)
+    edit_message_keyboard_only(chat_id, message_id, keyboard)
+
+
+def handle_cities_search_start(chat_id: int, message_id: int, user_id: str) -> None:
+    """Start city search mode."""
+    _set_user_state(user_id, "searching_city")
+    edit_message_with_keyboard(
+        chat_id,
+        message_id,
+        "🔍 הקלד שם עיר לחיפוש:\n(או /skip לביטול)",
+        [],  # Remove keyboard
+    )
+
+
+def handle_cities_cancel_search(chat_id: int, message_id: int, user_id: str) -> None:
+    """Cancel city search and return to city list."""
+    _clear_user_state(user_id)
+    prefs = get_user_prefs(user_id)
+    keyboard = _build_cities_keyboard(prefs.get("cities", []))
+    edit_message_with_keyboard(
+        chat_id, message_id, "🏙️ בחר ערים (לחץ להוספה/הסרה):", keyboard
+    )
+
+
+def handle_city_toggle(
+    chat_id: int, message_id: int, user_id: str, city_name: str, context: str = "0"
+) -> None:
     """Toggle city selection."""
     prefs = get_user_prefs(user_id)
     current_cities = prefs.get("cities", [])
@@ -499,8 +652,19 @@ def handle_city_toggle(chat_id: int, message_id: int, user_id: str, city_name: s
 
     set_user_prefs(user_id, prefs)
 
-    # Refresh keyboard
-    keyboard = _build_cities_keyboard(prefs.get("cities", []))
+    # Refresh keyboard based on context
+    if context == "search":
+        # Get the last search query from state if available
+        state = _get_user_state(user_id)
+        if state and state.startswith("search_results:"):
+            query = state.split(":", 1)[1]
+            keyboard = _build_search_results_keyboard(query, prefs.get("cities", []))
+        else:
+            # Fallback to city list
+            keyboard = _build_cities_keyboard(prefs.get("cities", []))
+    else:
+        page = int(context) if context.isdigit() else 0
+        keyboard = _build_cities_keyboard(prefs.get("cities", []), page)
     edit_message_keyboard_only(chat_id, message_id, keyboard)
 
 
@@ -531,7 +695,7 @@ def handle_edit_text(chat_id: int, message_id: int, user_id: str, field: str) ->
     """Start conversation flow for blessing/dedication text input."""
     _set_user_state(user_id, f"editing_{field}")
 
-    field_name = "ברכה" if field == "blessing" else "הקדשה"
+    field_name = "ברכה" if field == "blessing" else "לעילוי נשמת"
     clear_cmd = f"/clear_{field}"
     edit_message_with_keyboard(
         chat_id,
@@ -549,39 +713,67 @@ def handle_settings_back(chat_id: int, message_id: int, user_id: str) -> None:
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
+def handle_start_settings(chat_id: int, user_id: str) -> None:
+    """Handle start:settings callback - send settings as new message."""
+    prefs = get_user_prefs(user_id)
+    settings_text = format_settings(prefs)
+    keyboard = _build_settings_keyboard()
+    send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
+
+
+def handle_start_reset(chat_id: int, user_id: str) -> None:
+    """Handle start:reset callback - reset to default settings."""
+    set_user_prefs(user_id, DEFAULT_PREFERENCES.copy())
+    send_message(chat_id, "✅ ההגדרות אופסו לברירת מחדל.")
+
+
 def handle_text_message(update: Dict[str, Any]) -> None:
-    """Handle text messages - check if user is in editing state."""
+    """Handle text messages - check if user is in editing or searching state."""
     chat_id = get_chat_id(update)
     user_id = get_user_id(update)
     if not chat_id or not user_id:
         return
 
     state = _get_user_state(user_id)
-    if not state or not state.startswith("editing_"):
-        return  # Not in editing mode, ignore
+    if not state:
+        return  # No active state, ignore
 
-    field = state.replace("editing_", "")  # "blessing" or "dedication"
     message = update.get("message", {})
     text = message.get("text", "").strip()
 
     if not text:
         return
 
-    # Save the text
-    prefs = get_user_prefs(user_id)
-    prefs[f"{field}_text"] = text
-    set_user_prefs(user_id, prefs)
+    # Handle city search
+    if state == "searching_city":
+        prefs = get_user_prefs(user_id)
+        # Store search query in state for refreshing after toggle
+        _set_user_state(user_id, f"search_results:{text}")
+        keyboard = _build_search_results_keyboard(text, prefs.get("cities", []))
+        send_message_with_keyboard(
+            chat_id, f"🔍 תוצאות חיפוש עבור \"{text}\":", keyboard
+        )
+        return
 
-    # Clear state
-    _clear_user_state(user_id)
+    # Handle editing blessing/dedication
+    if state.startswith("editing_"):
+        field = state.replace("editing_", "")  # "blessing" or "dedication"
 
-    field_name = "הברכה" if field == "blessing" else "ההקדשה"
-    send_message(chat_id, f"✅ {field_name} עודכנה!")
+        # Save the text
+        prefs = get_user_prefs(user_id)
+        prefs[f"{field}_text"] = text
+        set_user_prefs(user_id, prefs)
 
-    # Show updated settings
-    settings_text = format_settings(prefs)
-    keyboard = _build_settings_keyboard()
-    send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
+        # Clear state
+        _clear_user_state(user_id)
+
+        field_name = "הברכה" if field == "blessing" else "לעילוי נשמת"
+        send_message(chat_id, f"✅ {field_name} עודכן!")
+
+        # Show updated settings
+        settings_text = format_settings(prefs)
+        keyboard = _build_settings_keyboard()
+        send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
 
 
 def process_update(update: Dict[str, Any]) -> None:
@@ -609,6 +801,8 @@ def process_update(update: Dict[str, Any]) -> None:
             handle_clear_blessing(update)
         elif command == "/clear_dedication":
             handle_clear_dedication(update)
+        elif command == "/clear_memorial":
+            handle_clear_dedication(update)  # Alias for /clear_dedication
         return
 
     # Check for photo
