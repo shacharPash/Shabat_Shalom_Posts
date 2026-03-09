@@ -264,14 +264,22 @@ def _build_cities_keyboard(
 def _build_search_results_keyboard(
     query: str, selected_cities: List[Dict[str, Any]]
 ) -> List[List[Dict[str, str]]]:
-    """Build keyboard with search results."""
+    """Build keyboard with search results. Supports multiple cities separated by commas."""
     selected_names = {
         c.get("name", c) if isinstance(c, dict) else c for c in selected_cities
     }
 
-    # Search for matching cities
-    query_lower = query.lower()
-    matches = [c for c in AVAILABLE_CITIES if query_lower in c["name"].lower()]
+    # Split query by comma and search for each term
+    search_terms = [term.strip().lower() for term in query.split(",") if term.strip()]
+
+    # Find matches for all search terms (union of results)
+    matches = []
+    seen_names = set()
+    for term in search_terms:
+        for city in AVAILABLE_CITIES:
+            if term in city["name"].lower() and city["name"] not in seen_names:
+                matches.append(city)
+                seen_names.add(city["name"])
 
     buttons = []
     row = []
@@ -872,21 +880,19 @@ def handle_show_preview(chat_id: int, user_id: str) -> None:
 
 
 def handle_text_message(update: Dict[str, Any]) -> None:
-    """Handle text messages - check if user is in editing or searching state."""
+    """Handle text messages - check if user is in editing or searching state, or show help."""
     chat_id = get_chat_id(update)
     user_id = get_user_id(update)
     if not chat_id or not user_id:
         return
-
-    state = _get_user_state(user_id)
-    if not state:
-        return  # No active state, ignore
 
     message = update.get("message", {})
     text = message.get("text", "").strip()
 
     if not text:
         return
+
+    state = _get_user_state(user_id)
 
     # Handle city search
     if state == "searching_city":
@@ -900,7 +906,7 @@ def handle_text_message(update: Dict[str, Any]) -> None:
         return
 
     # Handle editing blessing/dedication
-    if state.startswith("editing_"):
+    if state and state.startswith("editing_"):
         field = state.replace("editing_", "")  # "blessing" or "dedication"
 
         # Save the text
@@ -918,6 +924,19 @@ def handle_text_message(update: Dict[str, Any]) -> None:
         settings_text = format_settings(prefs)
         keyboard = _build_settings_keyboard()
         send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
+        return
+
+    # No active state - show help menu for unrecognized messages
+    help_text = (
+        "🤔 לא הבנתי את ההודעה שלך.\n\n"
+        "💡 <b>מה אפשר לעשות?</b>\n"
+        "• שלח <b>תמונה</b> ואני אצור ממנה פוסטר שבת\n"
+        "• לחץ על <b>הגדרות</b> להתאמה אישית\n"
+        "• לחץ על <b>צור פוסטר</b> עם תמונת ברירת מחדל\n\n"
+        "💻 לתצוגה נגישה ויכולות נוספות, נסו את האתר!"
+    )
+    keyboard = _build_help_keyboard()
+    send_message_with_keyboard(chat_id, help_text, keyboard, parse_mode="HTML")
 
 
 def process_update(update: Dict[str, Any]) -> None:
