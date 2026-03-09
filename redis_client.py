@@ -17,7 +17,7 @@ USER_PREFS_KEY_PREFIX = "zmunah:user:"
 DEFAULT_PREFERENCES: Dict[str, Any] = {
     "cities": [
         {"name": "ירושלים", "candle_offset": 40},
-        {"name": "תל אביב - יפו", "candle_offset": 20},
+        {"name": "תל אביב -יפו", "candle_offset": 20},
         {"name": "חיפה", "candle_offset": 20}
     ],
     "date_format": "both",
