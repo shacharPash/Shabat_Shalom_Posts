@@ -62,7 +62,7 @@ def load_cities_from_geojson(geojson_path: str = None) -> Tuple[List[CityDict], 
             geometry = feature.get("geometry", {})
             coords = geometry.get("coordinates", [])
 
-            name = props.get("MGLSDE_L_3", "").strip()
+            name = props.get("MGLSDE_LOC", "").strip()
             population = props.get("MGLSDE_L_1", 0)
             
             if name and len(coords) >= 2:
