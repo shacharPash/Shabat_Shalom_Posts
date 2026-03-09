@@ -460,6 +460,25 @@ def handle_clear_dedication(update: Dict[str, Any]) -> None:
     send_message(chat_id, "✅ לעילוי נשמת נמחק")
 
 
+def handle_help(update: Dict[str, Any]) -> None:
+    """Handle /help command - show available commands."""
+    chat_id = get_chat_id(update)
+    if not chat_id:
+        return
+
+    help_text = (
+        "📋 <b>פקודות זמינות:</b>\n\n"
+        "/start - התחל מחדש\n"
+        "/settings - ⚙️ הגדרות\n"
+        "/reset - 🔄 איפוס להגדרות ברירת מחדל\n"
+        "/clear_blessing - נקה טקסט ברכה\n"
+        "/clear_memorial - נקה לעילוי נשמת\n\n"
+        "💡 <b>שימוש:</b>\n"
+        "שלח תמונה ואני אצור ממנה פוסטר שבת!"
+    )
+    send_message(chat_id, help_text)
+
+
 def handle_photo(update: Dict[str, Any]) -> None:
     """Handle photo message - generate poster from user photo."""
     chat_id = get_chat_id(update)
@@ -803,6 +822,8 @@ def process_update(update: Dict[str, Any]) -> None:
             handle_clear_dedication(update)
         elif command == "/clear_memorial":
             handle_clear_dedication(update)  # Alias for /clear_dedication
+        elif command == "/help":
+            handle_help(update)
         return
 
     # Check for photo
