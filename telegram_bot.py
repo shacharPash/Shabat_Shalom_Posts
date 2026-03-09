@@ -26,6 +26,9 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 # State key pattern for conversation flow
 USER_STATE_KEY = "zmunah:state:{user_id}"
 
+# Website URL for web version
+WEB_APP_URL = os.getenv("WEB_APP_URL", "https://shabat-shalom-posts.vercel.app")
+
 # Date format display names
 DATE_FORMAT_LABELS = {
     "hebrew": "עברי",
@@ -198,6 +201,18 @@ def _build_settings_keyboard() -> List[List[Dict[str, str]]]:
             {"text": "💬 ערוך ברכה", "callback_data": "edit:blessing"},
             {"text": "🕯️ לעילוי נשמת", "callback_data": "edit:dedication"},
         ],
+        [{"text": "👁️ הצג דוגמה", "callback_data": "show:preview"}],
+    ]
+
+
+def _build_help_keyboard() -> List[List[Dict[str, str]]]:
+    """Build help keyboard for unrecognized messages."""
+    return [
+        [
+            {"text": "⚙️ הגדרות", "callback_data": "start:settings"},
+            {"text": "📸 צור פוסטר", "callback_data": "start:poster"},
+        ],
+        [{"text": "💻 לאתר", "url": WEB_APP_URL}],
     ]
 
 
@@ -325,6 +340,7 @@ def handle_start(update: Dict[str, Any]) -> None:
         "2️⃣ אני אוסיף את זמני השבת והפרשה\n"
         "3️⃣ תקבל פוסטר מוכן לשיתוף!\n\n"
         "<b>פקודות:</b>\n"
+        "/poster - צור פוסטר עם תמונת ברירת מחדל\n"
         "/settings - צפה בהגדרות שלך\n"
         "/reset - אפס להגדרות ברירת מחדל\n"
         "/clear_blessing - נקה טקסט ברכה\n"
@@ -332,6 +348,7 @@ def handle_start(update: Dict[str, Any]) -> None:
         "שלח תמונה כדי להתחיל! 📸"
     )
     keyboard = [
+        [{"text": "📸 צור פוסטר עכשיו", "callback_data": "start:poster"}],
         [
             {"text": "⚙️ הגדרות", "callback_data": "start:settings"},
             {"text": "🔄 איפוס", "callback_data": "start:reset"},
@@ -341,7 +358,7 @@ def handle_start(update: Dict[str, Any]) -> None:
 
 
 def handle_settings(update: Dict[str, Any]) -> None:
-    """Handle /settings command - show preview poster then settings with inline keyboard."""
+    """Handle /settings command - show settings with inline keyboard."""
     chat_id = get_chat_id(update)
     user_id = get_user_id(update)
     if not chat_id or not user_id:
@@ -349,44 +366,7 @@ def handle_settings(update: Dict[str, Any]) -> None:
 
     prefs = get_user_prefs(user_id)
 
-    # Generate preview poster with current settings (uses default image)
-    try:
-        preview_payload = {
-            "dateFormat": prefs.get("date_format", "both"),
-        }
-
-        # Add cities if defined
-        cities = prefs.get("cities")
-        if cities:
-            mapped_cities = []
-            for city in cities:
-                name = city.get("name") if isinstance(city, dict) else city
-                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
-                if name in CITY_BY_NAME:
-                    full_city = CITY_BY_NAME[name].copy()
-                    full_city["candle_offset"] = offset
-                    mapped_cities.append(full_city)
-            if mapped_cities:
-                preview_payload["cities"] = mapped_cities
-
-        # Add blessing text if defined
-        blessing = prefs.get("blessing_text")
-        if blessing:
-            preview_payload["message"] = blessing
-
-        # Add dedication text if defined
-        dedication = prefs.get("dedication_text")
-        if dedication:
-            preview_payload["leiluyNeshama"] = dedication
-
-        # Generate and send preview poster
-        poster_bytes = build_poster_from_payload(preview_payload)
-        send_photo(chat_id, poster_bytes, "👆 כך ייראה הפוסטר שלך עם ההגדרות הנוכחיות")
-    except Exception:
-        # If preview fails, continue to show settings menu
-        pass
-
-    # Show settings menu
+    # Show settings menu (preview is now shown on-demand via button)
     settings_text = format_settings(prefs)
     keyboard = _build_settings_keyboard()
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
@@ -469,6 +449,7 @@ def handle_help(update: Dict[str, Any]) -> None:
     help_text = (
         "📋 <b>פקודות זמינות:</b>\n\n"
         "/start - התחל מחדש\n"
+        "/poster - 📸 צור פוסטר עם תמונת ברירת מחדל\n"
         "/settings - ⚙️ הגדרות\n"
         "/reset - 🔄 איפוס להגדרות ברירת מחדל\n"
         "/clear_blessing - נקה טקסט ברכה\n"
@@ -477,6 +458,59 @@ def handle_help(update: Dict[str, Any]) -> None:
         "שלח תמונה ואני אצור ממנה פוסטר שבת!"
     )
     send_message(chat_id, help_text)
+
+
+def handle_poster(update: Dict[str, Any]) -> None:
+    """Handle /poster command - generate poster with default image."""
+    chat_id = get_chat_id(update)
+    user_id = get_user_id(update)
+    if not chat_id or not user_id:
+        return
+
+    # Notify user we're working
+    send_message(chat_id, "⏳ יוצר את הפוסטר שלך...")
+
+    try:
+        # Get user preferences
+        prefs = get_user_prefs(user_id)
+
+        # Build payload for poster generation (no image = uses default)
+        payload = {
+            "dateFormat": prefs.get("date_format", "both"),
+        }
+
+        # Add cities if defined
+        cities = prefs.get("cities")
+        if cities:
+            mapped_cities = []
+            for city in cities:
+                name = city.get("name") if isinstance(city, dict) else city
+                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
+                if name in CITY_BY_NAME:
+                    full_city = CITY_BY_NAME[name].copy()
+                    full_city["candle_offset"] = offset
+                    mapped_cities.append(full_city)
+            if mapped_cities:
+                payload["cities"] = mapped_cities
+
+        # Add blessing text if defined
+        blessing = prefs.get("blessing_text")
+        if blessing:
+            payload["message"] = blessing
+
+        # Add dedication text if defined
+        dedication = prefs.get("dedication_text")
+        if dedication:
+            payload["leiluyNeshama"] = dedication
+
+        # Generate poster with default image
+        poster_bytes = build_poster_from_payload(payload)
+
+        # Send poster back to user
+        send_photo(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!")
+
+    except Exception as e:
+        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
 
 
 def handle_photo(update: Dict[str, Any]) -> None:
@@ -608,6 +642,10 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_start_settings(chat_id, user_id)
     elif data == "start:reset":
         handle_start_reset(chat_id, user_id)
+    elif data == "start:poster":
+        handle_start_poster(chat_id, user_id)
+    elif data == "show:preview":
+        handle_show_preview(chat_id, user_id)
 
 
 def handle_edit_cities(chat_id: int, message_id: int, user_id: str) -> None:
@@ -746,6 +784,93 @@ def handle_start_reset(chat_id: int, user_id: str) -> None:
     send_message(chat_id, "✅ ההגדרות אופסו לברירת מחדל.")
 
 
+def handle_start_poster(chat_id: int, user_id: str) -> None:
+    """Handle start:poster callback - generate poster with default image."""
+    # Notify user we're working
+    send_message(chat_id, "⏳ יוצר את הפוסטר שלך...")
+
+    try:
+        # Get user preferences
+        prefs = get_user_prefs(user_id)
+
+        # Build payload for poster generation (no image = uses default)
+        payload = {
+            "dateFormat": prefs.get("date_format", "both"),
+        }
+
+        # Add cities if defined
+        cities = prefs.get("cities")
+        if cities:
+            mapped_cities = []
+            for city in cities:
+                name = city.get("name") if isinstance(city, dict) else city
+                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
+                if name in CITY_BY_NAME:
+                    full_city = CITY_BY_NAME[name].copy()
+                    full_city["candle_offset"] = offset
+                    mapped_cities.append(full_city)
+            if mapped_cities:
+                payload["cities"] = mapped_cities
+
+        # Add blessing text if defined
+        blessing = prefs.get("blessing_text")
+        if blessing:
+            payload["message"] = blessing
+
+        # Add dedication text if defined
+        dedication = prefs.get("dedication_text")
+        if dedication:
+            payload["leiluyNeshama"] = dedication
+
+        # Generate poster with default image
+        poster_bytes = build_poster_from_payload(payload)
+
+        # Send poster back to user
+        send_photo(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!")
+
+    except Exception as e:
+        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+
+
+def handle_show_preview(chat_id: int, user_id: str) -> None:
+    """Handle show:preview callback - show preview poster with current settings."""
+    try:
+        prefs = get_user_prefs(user_id)
+        preview_payload = {
+            "dateFormat": prefs.get("date_format", "both"),
+        }
+
+        # Add cities if defined
+        cities = prefs.get("cities")
+        if cities:
+            mapped_cities = []
+            for city in cities:
+                name = city.get("name") if isinstance(city, dict) else city
+                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
+                if name in CITY_BY_NAME:
+                    full_city = CITY_BY_NAME[name].copy()
+                    full_city["candle_offset"] = offset
+                    mapped_cities.append(full_city)
+            if mapped_cities:
+                preview_payload["cities"] = mapped_cities
+
+        # Add blessing text if defined
+        blessing = prefs.get("blessing_text")
+        if blessing:
+            preview_payload["message"] = blessing
+
+        # Add dedication text if defined
+        dedication = prefs.get("dedication_text")
+        if dedication:
+            preview_payload["leiluyNeshama"] = dedication
+
+        # Generate and send preview poster
+        poster_bytes = build_poster_from_payload(preview_payload)
+        send_photo(chat_id, poster_bytes, "👆 כך ייראה הפוסטר שלך עם ההגדרות הנוכחיות")
+    except Exception as e:
+        send_message(chat_id, f"❌ שגיאה ביצירת הדוגמה: {str(e)}")
+
+
 def handle_text_message(update: Dict[str, Any]) -> None:
     """Handle text messages - check if user is in editing or searching state."""
     chat_id = get_chat_id(update)
@@ -810,6 +935,8 @@ def process_update(update: Dict[str, Any]) -> None:
         command = text.split()[0].lower()
         if command == "/start":
             handle_start(update)
+        elif command == "/poster":
+            handle_poster(update)
         elif command == "/settings":
             handle_settings(update)
         elif command == "/reset":
@@ -852,6 +979,7 @@ def set_bot_commands() -> Dict[str, Any]:
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setMyCommands"
     commands = [
         {"command": "start", "description": "התחל מחדש"},
+        {"command": "poster", "description": "📸 צור פוסטר עם תמונת ברירת מחדל"},
         {"command": "settings", "description": "⚙️ הגדרות"},
         {"command": "help", "description": "📋 עזרה"},
         {"command": "reset", "description": "🔄 איפוס להגדרות ברירת מחדל"},
