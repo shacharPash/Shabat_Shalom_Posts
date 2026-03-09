@@ -224,12 +224,21 @@ CITIES_PER_PAGE = 12
 def _build_cities_keyboard(
     selected_cities: List[Dict[str, Any]], page: int = 0
 ) -> List[List[Dict[str, str]]]:
-    """Build city selection grid with toggles and pagination."""
+    """Build city selection grid with toggles and pagination.
+
+    Selected cities appear first on page 0, then unselected cities continue.
+    """
     selected_names = {
         c.get("name", c) if isinstance(c, dict) else c for c in selected_cities
     }
 
-    total_cities = len(AVAILABLE_CITIES)
+    # Separate selected and unselected cities
+    selected_list = [c for c in AVAILABLE_CITIES if c["name"] in selected_names]
+    unselected_list = [c for c in AVAILABLE_CITIES if c["name"] not in selected_names]
+
+    # Combined list: selected first, then unselected (maintains population sort within each group)
+    combined_cities = selected_list + unselected_list
+    total_cities = len(combined_cities)
     total_pages = (total_cities + CITIES_PER_PAGE - 1) // CITIES_PER_PAGE
     page = max(0, min(page, total_pages - 1))  # Clamp to valid range
 
@@ -238,7 +247,7 @@ def _build_cities_keyboard(
 
     buttons = []
     row = []
-    for city in AVAILABLE_CITIES[start:end]:
+    for city in combined_cities[start:end]:
         name = city["name"]
         prefix = "✓ " if name in selected_names else ""
         row.append({"text": f"{prefix}{name}", "callback_data": f"city:{name}:{page}"})
