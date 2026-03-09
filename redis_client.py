@@ -31,23 +31,25 @@ _redis_client: Optional[redis.Redis] = None
 
 def get_redis_client() -> redis.Redis:
     """
-    Get Redis connection using REDIS_URL environment variable.
-    
+    Get Redis connection using REDIS_URL or KV_URL environment variable.
+
+    Supports both standard Redis URL (REDIS_URL) and Vercel KV integration (KV_URL).
+
     Returns:
         redis.Redis: Redis client instance
-        
+
     Raises:
-        ValueError: If REDIS_URL environment variable is not set
+        ValueError: If neither REDIS_URL nor KV_URL environment variable is set
     """
     global _redis_client
-    
+
     if _redis_client is not None:
         return _redis_client
-    
-    redis_url = os.getenv("REDIS_URL")
+
+    redis_url = os.getenv("REDIS_URL") or os.getenv("KV_URL")
     if not redis_url:
-        raise ValueError("REDIS_URL environment variable is not set")
-    
+        raise ValueError("REDIS_URL or KV_URL environment variable is not set")
+
     _redis_client = redis.from_url(redis_url, decode_responses=True)
     return _redis_client
 
