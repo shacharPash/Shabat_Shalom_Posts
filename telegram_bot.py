@@ -815,3 +815,27 @@ def process_update(update: Dict[str, Any]) -> None:
         handle_text_message(update)
         return
 
+
+# --- Bot Commands Menu ---
+
+
+def set_bot_commands() -> Dict[str, Any]:
+    """Set the bot's command menu via Telegram API (setMyCommands).
+
+    This registers the command menu that appears when users press / in the chat.
+    Call once at setup or via /api/setup_commands endpoint.
+
+    Returns:
+        dict: Telegram API response
+    """
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setMyCommands"
+    commands = [
+        {"command": "start", "description": "התחל מחדש"},
+        {"command": "settings", "description": "⚙️ הגדרות"},
+        {"command": "help", "description": "📋 עזרה"},
+        {"command": "reset", "description": "🔄 איפוס להגדרות ברירת מחדל"},
+    ]
+    payload = {"commands": commands}
+    response = requests.post(url, json=payload, timeout=30)
+    return response.json()
+
