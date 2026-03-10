@@ -1652,6 +1652,80 @@
       outline: 2px solid #ffb300;
       outline-offset: 2px;
     }
+    /* Step Container */
+    .step-container {
+      position: relative;
+      padding-right: 60px;
+      margin-bottom: 24px;
+    }
+
+    .step-container::before {
+      content: '';
+      position: absolute;
+      right: 18px;
+      top: 40px;
+      bottom: -24px;
+      width: 2px;
+      background: var(--input-border);
+    }
+
+    .step-container:last-of-type::before,
+    .step-final::before {
+      display: none;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .step-number {
+      position: absolute;
+      right: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .step-info {
+      flex: 1;
+    }
+
+    .step-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .step-subtitle {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .step-content {
+      /* Content styling */
+    }
+
+    /* Dark mode step adjustments */
+    [data-theme="dark"] .step-number {
+      background: var(--text-secondary);
+    }
+
+    [data-theme="dark"] .step-container::before {
+      background: var(--input-border);
+    }
+
     /* Respect user's motion preferences */
     @media (prefers-reduced-motion: reduce) {
       * {
@@ -1708,71 +1782,81 @@
       <div class="subtitle" style="font-size: 11px; opacity: 0.7;">זְמוּנָה = זְמַן + תְּמוּנָה 🕐🖼️</div>
     </div>
 
-    <div class="form-group">
-      <label>תמונת רקע <span class="optional">(לא חובה)</span></label>
-      <div class="file-upload-wrapper">
-        <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" multiple />
-        <button type="button" id="fileUploadBtn" class="file-upload-btn">
-          <span>📷</span> העלה תמונה
-        </button>
-        <div id="fileName" class="file-name">
-          <span id="fileNameText"></span>
-          <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
+    <!-- Step 1: Image -->
+    <div class="step-container">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-info">
+          <div class="step-title">תמונת רקע</div>
+          <div class="step-subtitle">לא חובה - יש תמונת ברירת מחדל יפה</div>
         </div>
       </div>
-      <!-- Image crop toggle button -->
-      <button type="button" id="cropToggleBtn" class="crop-toggle-btn">✂️ התאם חיתוך תמונה</button>
-      <!-- Image crop preview -->
-      <div id="cropPreviewContainer" class="crop-preview-container">
-        <div class="crop-preview-header">
-          <div>
-            <span>📐 כיוון החיתוך</span>
-            <span class="crop-hint" id="cropHintText">גרור את התמונה לבחירת האזור</span>
-          </div>
-          <button type="button" id="cropCloseBtn" class="crop-close-btn" title="סגור">✕</button>
-        </div>
-        <div class="crop-area-wrapper">
-          <div id="cropArea" class="crop-area">
-            <div id="cropImageWrapper" class="crop-image-wrapper">
-              <img id="cropPreviewImage" alt="תצוגה מקדימה" />
+      <div class="step-content">
+        <div class="form-group">
+          <div class="file-upload-wrapper">
+            <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" multiple />
+            <button type="button" id="fileUploadBtn" class="file-upload-btn">
+              <span>📷</span> העלה תמונה
+            </button>
+            <div id="fileName" class="file-name">
+              <span id="fileNameText"></span>
+              <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
             </div>
-            <div class="crop-overlay"></div>
-            <!-- Poster preview overlay -->
-            <div class="crop-poster-preview">
-              <div class="crop-poster-top">
-                <div class="crop-poster-title">שבת שלום</div>
-                <div class="crop-poster-subtitle">פרשת ... | תאריך</div>
+          </div>
+          <!-- Image crop toggle button -->
+          <button type="button" id="cropToggleBtn" class="crop-toggle-btn">✂️ התאם חיתוך תמונה</button>
+          <!-- Image crop preview -->
+          <div id="cropPreviewContainer" class="crop-preview-container">
+            <div class="crop-preview-header">
+              <div>
+                <span>📐 כיוון החיתוך</span>
+                <span class="crop-hint" id="cropHintText">גרור את התמונה לבחירת האזור</span>
               </div>
-              <div class="crop-poster-bottom">
-                <div class="crop-poster-table">
-                  <div class="crop-poster-headers">
-                    <span>עיר</span>
-                    <span>כניסת שבת</span>
-                    <span>צאת שבת</span>
+              <button type="button" id="cropCloseBtn" class="crop-close-btn" title="סגור">✕</button>
+            </div>
+            <div class="crop-area-wrapper">
+              <div id="cropArea" class="crop-area">
+                <div id="cropImageWrapper" class="crop-image-wrapper">
+                  <img id="cropPreviewImage" alt="תצוגה מקדימה" />
+                </div>
+                <div class="crop-overlay"></div>
+                <!-- Poster preview overlay -->
+                <div class="crop-poster-preview">
+                  <div class="crop-poster-top">
+                    <div class="crop-poster-title">שבת שלום</div>
+                    <div class="crop-poster-subtitle">פרשת ... | תאריך</div>
                   </div>
-                  <div class="crop-poster-row">
-                    <span>ירושלים</span>
-                    <span>00:00</span>
-                    <span>00:00</span>
+                  <div class="crop-poster-bottom">
+                    <div class="crop-poster-table">
+                      <div class="crop-poster-headers">
+                        <span>עיר</span>
+                        <span>כניסת שבת</span>
+                        <span>צאת שבת</span>
+                      </div>
+                      <div class="crop-poster-row">
+                        <span>ירושלים</span>
+                        <span>00:00</span>
+                        <span>00:00</span>
+                      </div>
+                    </div>
+                    <div id="cropPosterDedication" class="crop-poster-dedication">זמני השבת לע"נ ...</div>
                   </div>
                 </div>
-                <div id="cropPosterDedication" class="crop-poster-dedication">זמני השבת לע"נ ...</div>
+                <div id="noCropMsg" class="crop-no-need-msg" style="display: none;">✓ מרובעת</div>
               </div>
             </div>
-            <div id="noCropMsg" class="crop-no-need-msg" style="display: none;">✓ מרובעת</div>
+            <div id="cropImageNav" class="crop-image-nav" style="display: none;">
+              <button type="button" id="cropPrevBtn">◀ הקודם</button>
+              <span class="nav-indicator"><span id="cropCurrentNum">1</span> / <span id="cropTotalNum">1</span></span>
+              <button type="button" id="cropNextBtn">הבא ▶</button>
+            </div>
+            <div class="crop-actions">
+              <button type="button" id="cropDoneBtn" class="crop-done-btn">✓ סיימתי</button>
+              <button type="button" id="cropRemoveBtn" class="crop-remove-btn">🗑️ הסר תמונה</button>
+            </div>
           </div>
         </div>
-        <div id="cropImageNav" class="crop-image-nav" style="display: none;">
-          <button type="button" id="cropPrevBtn">◀ הקודם</button>
-          <span class="nav-indicator"><span id="cropCurrentNum">1</span> / <span id="cropTotalNum">1</span></span>
-          <button type="button" id="cropNextBtn">הבא ▶</button>
-        </div>
-        <div class="crop-actions">
-          <button type="button" id="cropDoneBtn" class="crop-done-btn">✓ סיימתי</button>
-          <button type="button" id="cropRemoveBtn" class="crop-remove-btn">🗑️ הסר תמונה</button>
-        </div>
       </div>
-      <div class="hint" id="uploadHint">השאר ריק לשימוש בתמונת ברירת המחדל</div>
     </div>
 
     <div class="form-group" id="blessingGroup">
@@ -1794,29 +1878,40 @@
       </div>
     </div>
 
-    <div class="form-group">
-      <label>בחר ערים ויישובים <span id="cityCounter" class="city-counter">(0/8)</span></label>
-      <div class="cities-section">
-        <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר או יישוב..." />
-        <div id="selectedChips" class="selected-chips"></div>
-        <button type="button" id="showAllCitiesBtn" class="show-all-toggle">
-          <span>הצג את כל הערים</span>
-          <span class="arrow">▼</span>
-        </button>
-        <div id="citiesGridWrapper" class="cities-grid-wrapper">
-          <div class="cities-grid" id="citiesGrid">
-CITY_CHECKBOXES_PLACEHOLDER
-            <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
-          </div>
+    <!-- Step 2: Cities -->
+    <div class="step-container">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-info">
+          <div class="step-title">ערים להצגת זמנים</div>
+          <div class="step-subtitle">בחרו את הערים שיופיעו בזמונה</div>
         </div>
+      </div>
+      <div class="step-content">
+        <div class="form-group">
+          <div class="cities-section">
+            <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר או יישוב..." />
+            <div id="selectedChips" class="selected-chips"></div>
+            <button type="button" id="showAllCitiesBtn" class="show-all-toggle">
+              <span>הצג את כל הערים</span>
+              <span class="arrow">▼</span>
+            </button>
+            <div id="citiesGridWrapper" class="cities-grid-wrapper">
+              <div class="cities-grid" id="citiesGrid">
+CITY_CHECKBOXES_PLACEHOLDER
+                <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
+              </div>
+            </div>
 
-        <!-- Custom City Section -->
-        <div class="custom-city-section">
-          <div class="custom-city-header">
-            <span class="custom-city-title">🔍 לא מוצא את העיר שלך?</span>
-            <button type="button" id="addCustomCityBtn" class="add-custom-city-btn">+ הוסף עיר מותאמת</button>
+            <!-- Custom City Section -->
+            <div class="custom-city-section">
+              <div class="custom-city-header">
+                <span class="custom-city-title">🔍 לא מוצא את העיר שלך?</span>
+                <button type="button" id="addCustomCityBtn" class="add-custom-city-btn">+ הוסף עיר מותאמת</button>
+              </div>
+              <div id="customCitiesList" class="custom-cities-list"></div>
+            </div>
           </div>
-          <div id="customCitiesList" class="custom-cities-list"></div>
         </div>
       </div>
     </div>
@@ -1882,16 +1977,27 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
-    <button id="generateBtn" class="btn-generate">
-      <span class="btn-text">✨ צור זְמוּנָה</span>
-      <div class="spinner"></div>
-    </button>
+    <!-- Step 3: Generate -->
+    <div class="step-container step-final">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-info">
+          <div class="step-title">יוצרים!</div>
+        </div>
+      </div>
+      <div class="step-content">
+        <button id="generateBtn" class="btn-generate">
+          <span class="btn-text">✨ צור זְמוּנָה</span>
+          <div class="spinner"></div>
+        </button>
+      </div>
+    </div>
 
     <button id="copyLinkBtn" class="btn-copy-link">
-      <span id="copyLinkIcon">📋</span>
-      <span id="copyLinkText">שמור קישור לפעם הבאה</span>
+      <span id="copyLinkIcon">💾</span>
+      <span id="copyLinkText">שמרו את ההגדרות 💾</span>
     </button>
-    <div class="copy-link-hint">רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎</div>
+    <div class="copy-link-hint">בפעם הבאה תכנסו מהקישור - והכל יהיה מוכן!</div>
 
     <div id="urlParamsNotice" class="url-params-notice">
       ⚠️ הטופס מולא אוטומטית מהקישור
