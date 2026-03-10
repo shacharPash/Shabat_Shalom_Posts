@@ -319,6 +319,70 @@
       gap: 6px;
       transition: color 0.3s ease;
     }
+    .advanced-subsection {
+      margin-bottom: 16px;
+    }
+    .subsection-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: block;
+      transition: color 0.3s ease;
+    }
+    /* Customization panel toggle */
+    .customization-toggle {
+      width: 100%;
+      padding: 14px 20px;
+      margin-top: 16px;
+      background: var(--button-bg);
+      border: 1px solid var(--button-border);
+      border-radius: 12px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+    .customization-toggle:hover {
+      background: var(--button-hover-bg);
+    }
+    .customization-toggle:focus-visible {
+      outline: 2px solid var(--input-border-focus);
+      outline-offset: 2px;
+    }
+    .customization-toggle .toggle-arrow {
+      transition: transform 0.3s ease;
+    }
+    .customization-toggle.expanded .toggle-arrow {
+      transform: rotate(180deg);
+    }
+    .customization-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease, padding 0.3s ease;
+      padding: 0 16px;
+      margin-top: 0;
+      background: var(--input-bg);
+      border-radius: 0 0 12px 12px;
+      border: 1px solid var(--button-border);
+      border-top: none;
+    }
+    .customization-panel.expanded {
+      max-height: 1500px;
+      padding: 20px 16px;
+      margin-top: -1px;
+    }
+    .customization-panel .form-group {
+      margin-bottom: 16px;
+    }
+    .customization-panel .form-group:last-child {
+      margin-bottom: 0;
+    }
     /* Searchable date dropdown */
     .date-dropdown-container {
       position: relative;
@@ -1859,25 +1923,6 @@
       </div>
     </div>
 
-    <div class="form-group" id="blessingGroup">
-      <div id="blessingSection" class="dedication-section show">
-        <div class="dedication-header">
-          <label for="message">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
-        </div>
-        <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
-        <div class="hint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
-      </div>
-    </div>
-
-    <div class="form-group" id="dedicationGroup">
-      <div id="dedicationSection" class="dedication-section show">
-        <div class="dedication-header">
-          <label for="neshama">🕯️ לעילוי נשמת <span class="optional-hint">(לא חובה)</span></label>
-        </div>
-        <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
-      </div>
-    </div>
-
     <!-- Step 2: Cities -->
     <div class="step-container">
       <div class="step-header">
@@ -1916,67 +1961,6 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
-    <!-- Date Format Selector (Main Menu) -->
-    <div class="form-group">
-      <label>🗓️ פורמט תאריך בזְמוּנָה</label>
-      <div id="dateFormatSelector" class="date-format-selector">
-        <div class="date-format-option" data-format="gregorian">לועזי</div>
-        <div class="date-format-option" data-format="hebrew">עברי</div>
-        <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
-      </div>
-    </div>
-
-    <!-- Advanced Options Toggle -->
-    <button type="button" id="advancedToggle" class="advanced-toggle">
-      <span>⚙️ אפשרויות מתקדמות</span>
-      <span class="arrow">▼</span>
-    </button>
-
-    <div id="advancedSection" class="advanced-section">
-      <div class="advanced-title">📅 בחירת תאריך התחלה</div>
-
-      <!-- Searchable Date Dropdown -->
-      <div class="date-dropdown-container">
-        <button type="button" id="dateDropdownTrigger" class="date-dropdown-trigger">
-          <div class="selected-date-info">
-            <span class="selected-event-name" id="selectedEventName">⏳ טוען...</span>
-            <span class="selected-event-date" id="selectedEventDate"></span>
-          </div>
-          <span class="dropdown-arrow">▼</span>
-        </button>
-        <div id="dateDropdownMenu" class="date-dropdown-menu">
-          <input type="text" id="dateSearchInput" class="date-search-input" placeholder="🔍 חפש לפי פרשה או תאריך..." />
-          <div id="dateDropdownList" class="date-dropdown-list">
-            <!-- Items will be populated by JavaScript -->
-          </div>
-          <div id="dateNoResults" class="date-no-results">לא נמצאו תוצאות</div>
-        </div>
-      </div>
-
-      <div class="weeks-selector">
-        <label>מספר שבתות/חגים קדימה:</label>
-        <input type="number" id="weeksAhead" class="weeks-input" min="1" max="20" value="1" />
-      </div>
-
-      <div id="selectedRangeInfo" class="selected-range-info"></div>
-
-      <!-- Manual Override Section -->
-      <div class="override-section">
-        <div class="override-title">✏️ דריסה ידנית (אופציונלי)</div>
-        <div class="override-grid">
-          <div class="override-field full-width">
-            <label class="override-label">כותרת ראשית</label>
-            <input type="text" id="overrideMainTitle" class="override-input" placeholder="לדוגמה: שבת שלום, חג שמח, שנה טובה" />
-          </div>
-          <div class="override-field full-width">
-            <label class="override-label">כותרת משנית (פרשה + תאריך)</label>
-            <input type="text" id="overrideSubtitle" class="override-input" placeholder="לדוגמה: פרשת וישלח | 13-14.12.2025" />
-          </div>
-        </div>
-        <div class="override-note">💡 שדות ריקים ישתמשו בערכים האוטומטיים</div>
-      </div>
-    </div>
-
     <!-- Step 3: Generate -->
     <div class="step-container step-final">
       <div class="step-header">
@@ -1987,9 +1971,97 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
       <div class="step-content">
         <button id="generateBtn" class="btn-generate">
-          <span class="btn-text">✨ צור זְמוּנָה</span>
+          <span class="btn-text">✨ צור זְמוּנָה לשבת!</span>
           <div class="spinner"></div>
         </button>
+      </div>
+    </div>
+
+    <!-- Customization Toggle -->
+    <button type="button" id="customizationToggle" class="customization-toggle">
+      <span>⚙️ התאמה אישית</span>
+      <span class="toggle-arrow">▼</span>
+    </button>
+
+    <div id="customizationPanel" class="customization-panel">
+      <!-- Blessing Section -->
+      <div class="form-group" id="blessingGroup">
+        <div id="blessingSection" class="dedication-section show">
+          <div class="dedication-header">
+            <label for="message">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
+          </div>
+          <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
+          <div class="hint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
+        </div>
+      </div>
+
+      <!-- Memorial Section -->
+      <div class="form-group" id="dedicationGroup">
+        <div id="dedicationSection" class="dedication-section show">
+          <div class="dedication-header">
+            <label for="neshama">🕯️ לעילוי נשמת <span class="optional-hint">(לא חובה)</span></label>
+          </div>
+          <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
+        </div>
+      </div>
+
+      <!-- Date Format Selector -->
+      <div class="form-group">
+        <label>📅 פורמט תאריך בזְמוּנָה</label>
+        <div id="dateFormatSelector" class="date-format-selector">
+          <div class="date-format-option" data-format="gregorian">לועזי</div>
+          <div class="date-format-option" data-format="hebrew">עברי</div>
+          <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
+        </div>
+      </div>
+
+      <!-- Advanced Options Section -->
+      <div class="form-group">
+        <div class="advanced-title">⚙️ אפשרויות מתקדמות</div>
+
+        <!-- Date Selection -->
+        <div class="advanced-subsection">
+          <label class="subsection-label">📅 בחירת תאריך התחלה</label>
+          <div class="date-dropdown-container">
+            <button type="button" id="dateDropdownTrigger" class="date-dropdown-trigger">
+              <div class="selected-date-info">
+                <span class="selected-event-name" id="selectedEventName">⏳ טוען...</span>
+                <span class="selected-event-date" id="selectedEventDate"></span>
+              </div>
+              <span class="dropdown-arrow">▼</span>
+            </button>
+            <div id="dateDropdownMenu" class="date-dropdown-menu">
+              <input type="text" id="dateSearchInput" class="date-search-input" placeholder="🔍 חפש לפי פרשה או תאריך..." />
+              <div id="dateDropdownList" class="date-dropdown-list">
+                <!-- Items will be populated by JavaScript -->
+              </div>
+              <div id="dateNoResults" class="date-no-results">לא נמצאו תוצאות</div>
+            </div>
+          </div>
+
+          <div class="weeks-selector">
+            <label>מספר שבתות/חגים קדימה:</label>
+            <input type="number" id="weeksAhead" class="weeks-input" min="1" max="20" value="1" />
+          </div>
+
+          <div id="selectedRangeInfo" class="selected-range-info"></div>
+        </div>
+
+        <!-- Manual Override Section -->
+        <div class="override-section">
+          <div class="override-title">✏️ דריסה ידנית (אופציונלי)</div>
+          <div class="override-grid">
+            <div class="override-field full-width">
+              <label class="override-label">כותרת ראשית</label>
+              <input type="text" id="overrideMainTitle" class="override-input" placeholder="לדוגמה: שבת שלום, חג שמח, שנה טובה" />
+            </div>
+            <div class="override-field full-width">
+              <label class="override-label">כותרת משנית (פרשה + תאריך)</label>
+              <input type="text" id="overrideSubtitle" class="override-input" placeholder="לדוגמה: פרשת וישלח | 13-14.12.2025" />
+            </div>
+          </div>
+          <div class="override-note">💡 שדות ריקים ישתמשו בערכים האוטומטיים</div>
+        </div>
       </div>
     </div>
 
@@ -2096,8 +2168,8 @@ CITY_CHECKBOXES_PLACEHOLDER
     const fileNameEl = document.getElementById("fileName");
     const fileNameText = document.getElementById("fileNameText");
     const clearFileBtn = document.getElementById("clearFileBtn");
-    const advancedToggle = document.getElementById("advancedToggle");
-    const advancedSection = document.getElementById("advancedSection");
+    const customizationToggle = document.getElementById("customizationToggle");
+    const customizationPanel = document.getElementById("customizationPanel");
     const weeksAhead = document.getElementById("weeksAhead");
     const citySearch = document.getElementById("citySearch");
     const citiesGrid = document.getElementById("citiesGrid");
@@ -2175,11 +2247,13 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     });
 
-    // Advanced options toggle
-    advancedToggle.addEventListener("click", () => {
-      advancedToggle.classList.toggle("open");
-      advancedSection.classList.toggle("show");
-    });
+    // Customization panel toggle
+    if (customizationToggle && customizationPanel) {
+      customizationToggle.addEventListener('click', () => {
+        customizationToggle.classList.toggle('expanded');
+        customizationPanel.classList.toggle('expanded');
+      });
+    }
 
     // ===== Date Dropdown Functionality =====
 
