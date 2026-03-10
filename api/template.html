@@ -1538,27 +1538,6 @@
         grid-template-columns: 1fr;
       }
     }
-    .share-section {
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    .share-whatsapp {
-      display: inline-block;
-      background: #25D366;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 25px;
-      text-decoration: none;
-      font-weight: 500;
-      transition: background 0.3s ease, transform 0.2s ease;
-    }
-    .share-whatsapp:hover {
-      background: #128C7E;
-      transform: scale(1.05);
-    }
-    [data-theme="dark"] .share-whatsapp {
-      background: #25D366;
-    }
     .footer {
       margin-top: 28px;
       text-align: center;
@@ -1912,7 +1891,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       <span id="copyLinkIcon">📋</span>
       <span id="copyLinkText">שמור קישור לפעם הבאה</span>
     </button>
-    <div class="copy-link-hint">שמרו את הקישור כדי למלא מהר גם לחגים ולשבתות הבאות 📎</div>
+    <div class="copy-link-hint">רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎</div>
 
     <div id="urlParamsNotice" class="url-params-notice">
       ⚠️ הטופס מולא אוטומטית מהקישור
@@ -1927,7 +1906,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         <h3 class="preview-title" id="previewTitle">🎉 הזְמוּנָה מוכנה!</h3>
         <div class="preview-actions">
           <button id="whatsappBtn" class="btn-whatsapp">
-            <span>📱</span> <span id="whatsappBtnText">שתף</span>
+            <span>📱</span> <span id="whatsappBtnText">שתף את הזמונה</span>
           </button>
           <button id="downloadBtn" class="btn-download">
             <span>⬇️</span> <span id="downloadBtnText">הורד תמונה</span>
@@ -1939,15 +1918,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
-    <div class="share-section">
-      <a href="https://wa.me/?text=%D7%92%D7%99%D7%9C%D7%99%D7%AA%D7%99%20%D7%90%D7%AA%D7%A8%20%D7%9E%D7%93%D7%94%D7%99%D7%9D%20%D7%9C%D7%99%D7%A6%D7%99%D7%A8%D7%AA%20%D7%96%D7%9E%D7%95%D7%A0%D7%95%D7%AA%20%D7%9C%D7%A9%D7%91%D7%AA%20%E2%9C%A1%EF%B8%8F%0Ahttps://shabat-posts.vercel.app" target="_blank" rel="noopener noreferrer" class="share-whatsapp">
-        💬 שתפו עם המשפחה
-      </a>
-    </div>
     <div class="footer">
       🕯️ לזכר <a href="https://www.izkor.gov.il/%D7%90%D7%95%D7%A8%D7%99%20%D7%9E%D7%A9%D7%94%20%D7%91%D7%95%D7%A8%D7%A0%D7%A9%D7%98%D7%99%D7%99%D7%9F/en_afdfb0c864fda6c94fb84ac656761710" target="_blank" rel="noopener noreferrer">אורי בורנשטיין</a> הי״ד
       <div class="share-invite">
-        מוזמנים <a href="https://wa.me/?text=%D7%92%D7%99%D7%9C%D7%99%D7%AA%D7%99%20%D7%90%D7%AA%D7%A8%20%D7%9E%D7%93%D7%94%D7%99%D7%9D%20%D7%9C%D7%99%D7%A6%D7%99%D7%A8%D7%AA%20%D7%96%D7%9E%D7%95%D7%A0%D7%95%D7%AA%20%D7%9C%D7%A9%D7%91%D7%AA%20%E2%9C%A1%EF%B8%8F%0Ahttps://shabat-posts.vercel.app" target="_blank" rel="noopener noreferrer">לשתף את האתר</a> עם המשפחה 💬
+        אהבתם? מוזמנים <a href="https://wa.me/?text=%D7%92%D7%99%D7%9C%D7%99%D7%AA%D7%99%20%D7%90%D7%AA%D7%A8%20%D7%9E%D7%93%D7%94%D7%99%D7%9D%20%D7%9C%D7%99%D7%A6%D7%99%D7%A8%D7%AA%20%D7%96%D7%9E%D7%95%D7%A0%D7%95%D7%AA%20%D7%9C%D7%A9%D7%91%D7%AA%20%E2%9C%A1%EF%B8%8F%0Ahttps://shabat-posts.vercel.app" target="_blank" rel="noopener noreferrer">לשתף עם חברים ומשפחה</a> 💬
       </div>
     </div>
   </div>
