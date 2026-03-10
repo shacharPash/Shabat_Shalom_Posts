@@ -330,14 +330,23 @@
       display: block;
       transition: color 0.3s ease;
     }
+    /* Customization panel wrapper - for unified look */
+    .customization-wrapper {
+      margin-top: 16px;
+      margin-bottom: 24px;
+      border-radius: 12px;
+      border: 1px solid var(--button-border);
+      background: var(--input-bg);
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
     /* Customization panel toggle */
     .customization-toggle {
       width: 100%;
       padding: 14px 20px;
-      margin-top: 16px;
       background: var(--button-bg);
-      border: 1px solid var(--button-border);
-      border-radius: 12px;
+      border: none;
+      border-radius: 0;
       color: var(--text-secondary);
       font-size: 14px;
       font-weight: 500;
@@ -364,18 +373,16 @@
     .customization-panel {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.4s ease, padding 0.3s ease, margin 0.3s ease, opacity 0.3s ease;
+      transition: max-height 0.4s ease, padding 0.3s ease, opacity 0.3s ease;
       padding: 0 16px;
-      margin-top: 0;
       background: var(--input-bg);
-      border-radius: 12px;
-      border: 1px solid var(--button-border);
+      border-top: none;
       opacity: 0;
     }
     .customization-panel.expanded {
       max-height: 2000px;
       padding: 20px 16px;
-      margin-top: 12px;
+      border-top: 1px solid var(--button-border);
       opacity: 1;
     }
     .customization-panel .form-group {
@@ -2001,23 +2008,24 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
-    <!-- Customization Toggle -->
-    <button type="button" id="customizationToggle" class="customization-toggle">
-      <span>⚙️ התאמה אישית</span>
-      <span class="toggle-arrow">▼</span>
-    </button>
+    <!-- Customization Panel (unified wrapper) -->
+    <div class="customization-wrapper">
+      <button type="button" id="customizationToggle" class="customization-toggle">
+        <span>⚙️ התאמה אישית</span>
+        <span class="toggle-arrow">▼</span>
+      </button>
 
-    <div id="customizationPanel" class="customization-panel">
-      <!-- Button Grid -->
-      <div class="customization-grid">
-        <button type="button" class="customize-btn" id="toggleBlessingBtn" data-section="blessing">
-          <span class="customize-icon">✨</span>
-          <span class="customize-text">הוסף ברכה</span>
-        </button>
-        <button type="button" class="customize-btn" id="toggleMemorialBtn" data-section="memorial">
-          <span class="customize-icon">🕯️</span>
-          <span class="customize-text">הוסף הקדשה</span>
-        </button>
+      <div id="customizationPanel" class="customization-panel">
+        <!-- Button Grid -->
+        <div class="customization-grid">
+          <button type="button" class="customize-btn" id="toggleBlessingBtn" data-section="blessing">
+            <span class="customize-icon">✨</span>
+            <span class="customize-text">הוסף משפט/ציטוט</span>
+          </button>
+          <button type="button" class="customize-btn" id="toggleMemorialBtn" data-section="memorial">
+            <span class="customize-icon">🕯️</span>
+            <span class="customize-text">הוסף הקדשה (לעילוי נשמת)</span>
+          </button>
         <button type="button" class="customize-btn" id="toggleDateFormatBtn" data-section="dateFormat">
           <span class="customize-icon">📅</span>
           <span class="customize-text">פורמט תאריך</span>
@@ -2106,6 +2114,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         </div>
       </div>
     </div>
+    </div><!-- End customization-wrapper -->
 
     <!-- Step 3: Generate -->
     <div class="step-container step-final">
