@@ -3,10 +3,16 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler
 
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from cities import get_cities_list
+
+# FastAPI app for local development with `vercel dev`
+app = FastAPI()
 
 
 def generate_html() -> str:
@@ -45,3 +51,9 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(error_msg)
 
+
+# FastAPI route for local development with `vercel dev`
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Serve the main HTML page (for local dev)."""
+    return generate_html()
