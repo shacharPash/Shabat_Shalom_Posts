@@ -1578,6 +1578,18 @@
       outline: 2px solid #3949ab;
       outline-offset: 2px;
     }
+    .share-invite {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+    .share-invite a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+    .share-invite a:hover {
+      text-decoration: underline;
+    }
     .divider {
       height: 1px;
       background: linear-gradient(90deg, transparent, var(--divider-color), transparent);
@@ -1898,9 +1910,9 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     <button id="copyLinkBtn" class="btn-copy-link">
       <span id="copyLinkIcon">📋</span>
-      <span id="copyLinkText">העתק קישור אישי</span>
+      <span id="copyLinkText">שמור קישור לפעם הבאה</span>
     </button>
-    <div class="copy-link-hint">🔗 יוצר קישור עם הערים והברכות שבחרת - שלח לאחרים או שמור לעצמך לשימוש חוזר</div>
+    <div class="copy-link-hint">שמרו את הקישור כדי למלא מהר גם לחגים ולשבתות הבאות 📎</div>
 
     <div id="urlParamsNotice" class="url-params-notice">
       ⚠️ הטופס מולא אוטומטית מהקישור
@@ -1934,6 +1946,9 @@ CITY_CHECKBOXES_PLACEHOLDER
     </div>
     <div class="footer">
       🕯️ לזכר <a href="https://www.izkor.gov.il/%D7%90%D7%95%D7%A8%D7%99%20%D7%9E%D7%A9%D7%94%20%D7%91%D7%95%D7%A8%D7%A0%D7%A9%D7%98%D7%99%D7%99%D7%9F/en_afdfb0c864fda6c94fb84ac656761710" target="_blank" rel="noopener noreferrer">אורי בורנשטיין</a> הי״ד
+      <div class="share-invite">
+        מוזמנים <a href="https://wa.me/?text=%D7%92%D7%99%D7%9C%D7%99%D7%AA%D7%99%20%D7%90%D7%AA%D7%A8%20%D7%9E%D7%93%D7%94%D7%99%D7%9D%20%D7%9C%D7%99%D7%A6%D7%99%D7%A8%D7%AA%20%D7%96%D7%9E%D7%95%D7%A0%D7%95%D7%AA%20%D7%9C%D7%A9%D7%91%D7%AA%20%E2%9C%A1%EF%B8%8F%0Ahttps://shabat-posts.vercel.app" target="_blank" rel="noopener noreferrer">לשתף את האתר</a> עם המשפחה 💬
+      </div>
     </div>
   </div>
 
@@ -2381,7 +2396,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         setTimeout(() => {
           copyLinkBtn.classList.remove("copied");
           copyLinkIcon.textContent = "📋";
-          copyLinkText.textContent = "העתק קישור אישי";
+          copyLinkText.textContent = "שמור קישור לפעם הבאה";
         }, 2000);
       } catch (err) {
         // Fallback for older browsers
@@ -2397,7 +2412,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         setTimeout(() => {
           copyLinkBtn.classList.remove("copied");
           copyLinkIcon.textContent = "📋";
-          copyLinkText.textContent = "העתק קישור אישי";
+          copyLinkText.textContent = "שמור קישור לפעם הבאה";
         }, 2000);
       }
     });
