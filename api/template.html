@@ -319,6 +319,138 @@
       gap: 6px;
       transition: color 0.3s ease;
     }
+    .advanced-subsection {
+      margin-bottom: 16px;
+    }
+    .subsection-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: block;
+      transition: color 0.3s ease;
+    }
+    /* Customization panel wrapper - for unified look */
+    .customization-wrapper {
+      margin-top: 16px;
+      margin-bottom: 24px;
+      border-radius: 12px;
+      border: 1px solid var(--button-border);
+      background: var(--input-bg);
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    /* Customization panel toggle */
+    .customization-toggle {
+      width: 100%;
+      padding: 14px 20px;
+      background: var(--button-bg);
+      border: none;
+      border-radius: 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+    .customization-toggle:hover {
+      background: var(--button-hover-bg);
+    }
+    .customization-toggle:focus-visible {
+      outline: 2px solid var(--input-border-focus);
+      outline-offset: 2px;
+    }
+    .customization-toggle .toggle-arrow {
+      transition: transform 0.3s ease;
+    }
+    .customization-toggle.expanded .toggle-arrow {
+      transform: rotate(180deg);
+    }
+    .customization-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease, padding 0.3s ease, opacity 0.3s ease;
+      padding: 0 16px;
+      background: var(--input-bg);
+      border-top: none;
+      opacity: 0;
+    }
+    .customization-panel.expanded {
+      max-height: 2000px;
+      padding: 20px 16px;
+      border-top: 1px solid var(--button-border);
+      opacity: 1;
+    }
+    .customization-panel .form-group {
+      margin-bottom: 16px;
+    }
+    .customization-panel .form-group:last-child {
+      margin-bottom: 0;
+    }
+    /* Customization grid buttons */
+    .customization-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .customize-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 16px 12px;
+      background: var(--container-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .customize-btn:hover {
+      background: var(--button-hover-bg);
+      border-color: var(--input-border-focus);
+      transform: translateY(-1px);
+    }
+    .customize-btn:focus-visible {
+      outline: 2px solid var(--input-border-focus);
+      outline-offset: 2px;
+    }
+    .customize-btn.active {
+      background: var(--button-hover-bg);
+      border-color: var(--text-secondary);
+      box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.2);
+    }
+    .customize-icon {
+      font-size: 24px;
+    }
+    .customize-text {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .customize-section {
+      display: none;
+      padding: 16px;
+      background: var(--container-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 12px;
+      margin-top: 12px;
+      animation: fadeIn 0.3s ease;
+    }
+    .customize-section.visible {
+      display: block;
+    }
+    .customize-section .form-group {
+      margin-bottom: 0;
+    }
+    .customize-section label {
+      margin-bottom: 8px;
+    }
     /* Searchable date dropdown */
     .date-dropdown-container {
       position: relative;
@@ -1652,6 +1784,59 @@
       outline: 2px solid #ffb300;
       outline-offset: 2px;
     }
+    /* Step Container */
+    .step-container {
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c8ce8 0%, #5c6bc0 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(92, 107, 192, 0.3);
+    }
+
+    [data-theme="dark"] .step-number {
+      background: linear-gradient(135deg, #7986cb 0%, #5c6bc0 100%);
+      box-shadow: 0 2px 8px rgba(92, 107, 192, 0.4);
+    }
+
+    .step-info {
+      flex: 1;
+    }
+
+    .step-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .step-subtitle {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .step-content {
+      /* Content styling */
+    }
+
     /* Respect user's motion preferences */
     @media (prefers-reduced-motion: reduce) {
       * {
@@ -1708,188 +1893,248 @@
       <div class="subtitle" style="font-size: 11px; opacity: 0.7;">זְמוּנָה = זְמַן + תְּמוּנָה 🕐🖼️</div>
     </div>
 
-    <div class="form-group">
-      <label>תמונת רקע <span class="optional">(לא חובה)</span></label>
-      <div class="file-upload-wrapper">
-        <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" multiple />
-        <button type="button" id="fileUploadBtn" class="file-upload-btn">
-          <span>📷</span> העלה תמונה
-        </button>
-        <div id="fileName" class="file-name">
-          <span id="fileNameText"></span>
-          <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
+    <!-- Step 1: Image -->
+    <div class="step-container">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-info">
+          <div class="step-title">תמונת רקע</div>
+          <div class="step-subtitle">לא חובה - יש תמונת ברירת מחדל יפה</div>
         </div>
       </div>
-      <!-- Image crop toggle button -->
-      <button type="button" id="cropToggleBtn" class="crop-toggle-btn">✂️ התאם חיתוך תמונה</button>
-      <!-- Image crop preview -->
-      <div id="cropPreviewContainer" class="crop-preview-container">
-        <div class="crop-preview-header">
-          <div>
-            <span>📐 כיוון החיתוך</span>
-            <span class="crop-hint" id="cropHintText">גרור את התמונה לבחירת האזור</span>
-          </div>
-          <button type="button" id="cropCloseBtn" class="crop-close-btn" title="סגור">✕</button>
-        </div>
-        <div class="crop-area-wrapper">
-          <div id="cropArea" class="crop-area">
-            <div id="cropImageWrapper" class="crop-image-wrapper">
-              <img id="cropPreviewImage" alt="תצוגה מקדימה" />
+      <div class="step-content">
+        <div class="form-group">
+          <div class="file-upload-wrapper">
+            <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" multiple />
+            <button type="button" id="fileUploadBtn" class="file-upload-btn">
+              <span>📷</span> העלה תמונה
+            </button>
+            <div id="fileName" class="file-name">
+              <span id="fileNameText"></span>
+              <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
             </div>
-            <div class="crop-overlay"></div>
-            <!-- Poster preview overlay -->
-            <div class="crop-poster-preview">
-              <div class="crop-poster-top">
-                <div class="crop-poster-title">שבת שלום</div>
-                <div class="crop-poster-subtitle">פרשת ... | תאריך</div>
+          </div>
+          <!-- Image crop toggle button -->
+          <button type="button" id="cropToggleBtn" class="crop-toggle-btn">✂️ התאם חיתוך תמונה</button>
+          <!-- Image crop preview -->
+          <div id="cropPreviewContainer" class="crop-preview-container">
+            <div class="crop-preview-header">
+              <div>
+                <span>📐 כיוון החיתוך</span>
+                <span class="crop-hint" id="cropHintText">גרור את התמונה לבחירת האזור</span>
               </div>
-              <div class="crop-poster-bottom">
-                <div class="crop-poster-table">
-                  <div class="crop-poster-headers">
-                    <span>עיר</span>
-                    <span>כניסת שבת</span>
-                    <span>צאת שבת</span>
+              <button type="button" id="cropCloseBtn" class="crop-close-btn" title="סגור">✕</button>
+            </div>
+            <div class="crop-area-wrapper">
+              <div id="cropArea" class="crop-area">
+                <div id="cropImageWrapper" class="crop-image-wrapper">
+                  <img id="cropPreviewImage" alt="תצוגה מקדימה" />
+                </div>
+                <div class="crop-overlay"></div>
+                <!-- Poster preview overlay -->
+                <div class="crop-poster-preview">
+                  <div class="crop-poster-top">
+                    <div class="crop-poster-title">שבת שלום</div>
+                    <div class="crop-poster-subtitle">פרשת ... | תאריך</div>
                   </div>
-                  <div class="crop-poster-row">
-                    <span>ירושלים</span>
-                    <span>00:00</span>
-                    <span>00:00</span>
+                  <div class="crop-poster-bottom">
+                    <div class="crop-poster-table">
+                      <div class="crop-poster-headers">
+                        <span>עיר</span>
+                        <span>כניסת שבת</span>
+                        <span>צאת שבת</span>
+                      </div>
+                      <div class="crop-poster-row">
+                        <span>ירושלים</span>
+                        <span>00:00</span>
+                        <span>00:00</span>
+                      </div>
+                    </div>
+                    <div id="cropPosterDedication" class="crop-poster-dedication">זמני השבת לע"נ ...</div>
                   </div>
                 </div>
-                <div id="cropPosterDedication" class="crop-poster-dedication">זמני השבת לע"נ ...</div>
+                <div id="noCropMsg" class="crop-no-need-msg" style="display: none;">✓ מרובעת</div>
               </div>
             </div>
-            <div id="noCropMsg" class="crop-no-need-msg" style="display: none;">✓ מרובעת</div>
+            <div id="cropImageNav" class="crop-image-nav" style="display: none;">
+              <button type="button" id="cropPrevBtn">◀ הקודם</button>
+              <span class="nav-indicator"><span id="cropCurrentNum">1</span> / <span id="cropTotalNum">1</span></span>
+              <button type="button" id="cropNextBtn">הבא ▶</button>
+            </div>
+            <div class="crop-actions">
+              <button type="button" id="cropDoneBtn" class="crop-done-btn">✓ סיימתי</button>
+              <button type="button" id="cropRemoveBtn" class="crop-remove-btn">🗑️ הסר תמונה</button>
+            </div>
           </div>
         </div>
-        <div id="cropImageNav" class="crop-image-nav" style="display: none;">
-          <button type="button" id="cropPrevBtn">◀ הקודם</button>
-          <span class="nav-indicator"><span id="cropCurrentNum">1</span> / <span id="cropTotalNum">1</span></span>
-          <button type="button" id="cropNextBtn">הבא ▶</button>
-        </div>
-        <div class="crop-actions">
-          <button type="button" id="cropDoneBtn" class="crop-done-btn">✓ סיימתי</button>
-          <button type="button" id="cropRemoveBtn" class="crop-remove-btn">🗑️ הסר תמונה</button>
-        </div>
-      </div>
-      <div class="hint" id="uploadHint">השאר ריק לשימוש בתמונת ברירת המחדל</div>
-    </div>
-
-    <div class="form-group" id="blessingGroup">
-      <div id="blessingSection" class="dedication-section show">
-        <div class="dedication-header">
-          <label for="message">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
-        </div>
-        <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
-        <div class="hint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
       </div>
     </div>
 
-    <div class="form-group" id="dedicationGroup">
-      <div id="dedicationSection" class="dedication-section show">
-        <div class="dedication-header">
-          <label for="neshama">🕯️ לעילוי נשמת <span class="optional-hint">(לא חובה)</span></label>
+    <!-- Step 2: Cities -->
+    <div class="step-container">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-info">
+          <div class="step-title">ערים להצגת זמנים</div>
+          <div class="step-subtitle">בחרו את הערים שיופיעו בזמונה</div>
         </div>
-        <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
       </div>
-    </div>
-
-    <div class="form-group">
-      <label>בחר ערים ויישובים <span id="cityCounter" class="city-counter">(0/8)</span></label>
-      <div class="cities-section">
-        <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר או יישוב..." />
-        <div id="selectedChips" class="selected-chips"></div>
-        <button type="button" id="showAllCitiesBtn" class="show-all-toggle">
-          <span>הצג את כל הערים</span>
-          <span class="arrow">▼</span>
-        </button>
-        <div id="citiesGridWrapper" class="cities-grid-wrapper">
-          <div class="cities-grid" id="citiesGrid">
+      <div class="step-content">
+        <div class="form-group">
+          <div class="cities-section">
+            <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר או יישוב..." />
+            <div id="selectedChips" class="selected-chips"></div>
+            <button type="button" id="showAllCitiesBtn" class="show-all-toggle">
+              <span>הצג את כל הערים</span>
+              <span class="arrow">▼</span>
+            </button>
+            <div id="citiesGridWrapper" class="cities-grid-wrapper">
+              <div class="cities-grid" id="citiesGrid">
 CITY_CHECKBOXES_PLACEHOLDER
-            <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
-          </div>
-        </div>
+                <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
+              </div>
+            </div>
 
-        <!-- Custom City Section -->
-        <div class="custom-city-section">
-          <div class="custom-city-header">
-            <span class="custom-city-title">🔍 לא מוצא את העיר שלך?</span>
-            <button type="button" id="addCustomCityBtn" class="add-custom-city-btn">+ הוסף עיר מותאמת</button>
+            <!-- Custom City Section -->
+            <div class="custom-city-section">
+              <div class="custom-city-header">
+                <span class="custom-city-title">🔍 לא מוצא את העיר שלך?</span>
+                <button type="button" id="addCustomCityBtn" class="add-custom-city-btn">+ הוסף עיר מותאמת</button>
+              </div>
+              <div id="customCitiesList" class="custom-cities-list"></div>
+            </div>
           </div>
-          <div id="customCitiesList" class="custom-cities-list"></div>
         </div>
       </div>
     </div>
 
-    <!-- Date Format Selector (Main Menu) -->
-    <div class="form-group">
-      <label>🗓️ פורמט תאריך בזְמוּנָה</label>
-      <div id="dateFormatSelector" class="date-format-selector">
-        <div class="date-format-option" data-format="gregorian">לועזי</div>
-        <div class="date-format-option" data-format="hebrew">עברי</div>
-        <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
-      </div>
-    </div>
+    <!-- Customization Panel (unified wrapper) -->
+    <div class="customization-wrapper">
+      <button type="button" id="customizationToggle" class="customization-toggle">
+        <span>⚙️ התאמה אישית</span>
+        <span class="toggle-arrow">▼</span>
+      </button>
 
-    <!-- Advanced Options Toggle -->
-    <button type="button" id="advancedToggle" class="advanced-toggle">
-      <span>⚙️ אפשרויות מתקדמות</span>
-      <span class="arrow">▼</span>
-    </button>
-
-    <div id="advancedSection" class="advanced-section">
-      <div class="advanced-title">📅 בחירת תאריך התחלה</div>
-
-      <!-- Searchable Date Dropdown -->
-      <div class="date-dropdown-container">
-        <button type="button" id="dateDropdownTrigger" class="date-dropdown-trigger">
-          <div class="selected-date-info">
-            <span class="selected-event-name" id="selectedEventName">⏳ טוען...</span>
-            <span class="selected-event-date" id="selectedEventDate"></span>
-          </div>
-          <span class="dropdown-arrow">▼</span>
+      <div id="customizationPanel" class="customization-panel">
+        <!-- Button Grid -->
+        <div class="customization-grid">
+          <button type="button" class="customize-btn" id="toggleBlessingBtn" data-section="blessing">
+            <span class="customize-icon">✨</span>
+            <span class="customize-text">הוסף משפט/ציטוט</span>
+          </button>
+          <button type="button" class="customize-btn" id="toggleMemorialBtn" data-section="memorial">
+            <span class="customize-icon">🕯️</span>
+            <span class="customize-text">הוסף הקדשה (לעילוי נשמת)</span>
+          </button>
+        <button type="button" class="customize-btn" id="toggleDateFormatBtn" data-section="dateFormat">
+          <span class="customize-icon">📅</span>
+          <span class="customize-text">פורמט תאריך</span>
         </button>
-        <div id="dateDropdownMenu" class="date-dropdown-menu">
-          <input type="text" id="dateSearchInput" class="date-search-input" placeholder="🔍 חפש לפי פרשה או תאריך..." />
-          <div id="dateDropdownList" class="date-dropdown-list">
-            <!-- Items will be populated by JavaScript -->
-          </div>
-          <div id="dateNoResults" class="date-no-results">לא נמצאו תוצאות</div>
+        <button type="button" class="customize-btn" id="toggleAdvancedBtn" data-section="advanced">
+          <span class="customize-icon">⚙️</span>
+          <span class="customize-text">עוד אפשרויות</span>
+        </button>
+      </div>
+
+      <!-- Blessing Section -->
+      <div id="blessingSection" class="customize-section">
+        <div class="form-group">
+          <label for="message">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
+          <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
+          <div class="hint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
         </div>
       </div>
 
-      <div class="weeks-selector">
-        <label>מספר שבתות/חגים קדימה:</label>
-        <input type="number" id="weeksAhead" class="weeks-input" min="1" max="20" value="1" />
+      <!-- Memorial Section -->
+      <div id="memorialSection" class="customize-section">
+        <div class="form-group">
+          <label for="neshama">🕯️ לעילוי נשמת <span class="optional-hint">(לא חובה)</span></label>
+          <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
+        </div>
       </div>
 
-      <div id="selectedRangeInfo" class="selected-range-info"></div>
-
-      <!-- Manual Override Section -->
-      <div class="override-section">
-        <div class="override-title">✏️ דריסה ידנית (אופציונלי)</div>
-        <div class="override-grid">
-          <div class="override-field full-width">
-            <label class="override-label">כותרת ראשית</label>
-            <input type="text" id="overrideMainTitle" class="override-input" placeholder="לדוגמה: שבת שלום, חג שמח, שנה טובה" />
-          </div>
-          <div class="override-field full-width">
-            <label class="override-label">כותרת משנית (פרשה + תאריך)</label>
-            <input type="text" id="overrideSubtitle" class="override-input" placeholder="לדוגמה: פרשת וישלח | 13-14.12.2025" />
+      <!-- Date Format Section -->
+      <div id="dateFormatSection" class="customize-section">
+        <div class="form-group">
+          <label>📅 פורמט תאריך בזְמוּנָה</label>
+          <div id="dateFormatSelector" class="date-format-selector">
+            <div class="date-format-option" data-format="gregorian">לועזי</div>
+            <div class="date-format-option" data-format="hebrew">עברי</div>
+            <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
           </div>
         </div>
-        <div class="override-note">💡 שדות ריקים ישתמשו בערכים האוטומטיים</div>
+      </div>
+
+      <!-- Advanced Section -->
+      <div id="advancedSection" class="customize-section">
+        <div class="form-group">
+          <!-- Date Selection -->
+          <div class="advanced-subsection">
+            <label class="subsection-label">📅 בחירת תאריך התחלה</label>
+            <div class="date-dropdown-container">
+              <button type="button" id="dateDropdownTrigger" class="date-dropdown-trigger">
+                <div class="selected-date-info">
+                  <span class="selected-event-name" id="selectedEventName">⏳ טוען...</span>
+                  <span class="selected-event-date" id="selectedEventDate"></span>
+                </div>
+                <span class="dropdown-arrow">▼</span>
+              </button>
+              <div id="dateDropdownMenu" class="date-dropdown-menu">
+                <input type="text" id="dateSearchInput" class="date-search-input" placeholder="🔍 חפש לפי פרשה או תאריך..." />
+                <div id="dateDropdownList" class="date-dropdown-list">
+                  <!-- Items will be populated by JavaScript -->
+                </div>
+                <div id="dateNoResults" class="date-no-results">לא נמצאו תוצאות</div>
+              </div>
+            </div>
+
+            <div class="weeks-selector">
+              <label>מספר שבתות/חגים קדימה:</label>
+              <input type="number" id="weeksAhead" class="weeks-input" min="1" max="20" value="1" />
+            </div>
+
+            <div id="selectedRangeInfo" class="selected-range-info"></div>
+          </div>
+
+          <!-- Manual Override Section -->
+          <div class="override-section">
+            <div class="override-title">✏️ דריסה ידנית (אופציונלי)</div>
+            <div class="override-grid">
+              <div class="override-field full-width">
+                <label class="override-label">כותרת ראשית</label>
+                <input type="text" id="overrideMainTitle" class="override-input" placeholder="לדוגמה: שבת שלום, חג שמח, שנה טובה" />
+              </div>
+              <div class="override-field full-width">
+                <label class="override-label">כותרת משנית (פרשה + תאריך)</label>
+                <input type="text" id="overrideSubtitle" class="override-input" placeholder="לדוגמה: פרשת וישלח | 13-14.12.2025" />
+              </div>
+            </div>
+            <div class="override-note">💡 שדות ריקים ישתמשו בערכים האוטומטיים</div>
+          </div>
+        </div>
       </div>
     </div>
+    </div><!-- End customization-wrapper -->
 
-    <button id="generateBtn" class="btn-generate">
-      <span class="btn-text">✨ צור זְמוּנָה</span>
-      <div class="spinner"></div>
-    </button>
+    <!-- Step 3: Generate -->
+    <div class="step-container step-final">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-info">
+          <div class="step-title">יוצרים!</div>
+        </div>
+      </div>
+      <div class="step-content">
+        <button id="generateBtn" class="btn-generate">
+          <span class="btn-text">✨ צור זְמוּנָה לשבת!</span>
+          <div class="spinner"></div>
+        </button>
+      </div>
+    </div>
 
     <button id="copyLinkBtn" class="btn-copy-link">
-      <span id="copyLinkIcon">📋</span>
-      <span id="copyLinkText">שמור קישור לפעם הבאה</span>
+      <span id="copyLinkIcon">💾</span>
+      <span id="copyLinkText">שמרו את ההגדרות 💾</span>
     </button>
     <div class="copy-link-hint">רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎</div>
 
@@ -1990,8 +2235,8 @@ CITY_CHECKBOXES_PLACEHOLDER
     const fileNameEl = document.getElementById("fileName");
     const fileNameText = document.getElementById("fileNameText");
     const clearFileBtn = document.getElementById("clearFileBtn");
-    const advancedToggle = document.getElementById("advancedToggle");
-    const advancedSection = document.getElementById("advancedSection");
+    const customizationToggle = document.getElementById("customizationToggle");
+    const customizationPanel = document.getElementById("customizationPanel");
     const weeksAhead = document.getElementById("weeksAhead");
     const citySearch = document.getElementById("citySearch");
     const citiesGrid = document.getElementById("citiesGrid");
@@ -2069,10 +2314,34 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     });
 
-    // Advanced options toggle
-    advancedToggle.addEventListener("click", () => {
-      advancedToggle.classList.toggle("open");
-      advancedSection.classList.toggle("show");
+    // Customization panel toggle
+    if (customizationToggle && customizationPanel) {
+      customizationToggle.addEventListener('click', () => {
+        customizationToggle.classList.toggle('expanded');
+        customizationPanel.classList.toggle('expanded');
+      });
+    }
+
+    // Customization button toggles
+    document.querySelectorAll('.customize-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sectionMap = {
+          'blessing': 'blessingSection',
+          'memorial': 'memorialSection',
+          'dateFormat': 'dateFormatSection',
+          'advanced': 'advancedSection'
+        };
+        const sectionId = sectionMap[btn.dataset.section];
+        const section = document.getElementById(sectionId);
+
+        // Toggle active state
+        btn.classList.toggle('active');
+
+        // Toggle section visibility
+        if (section) {
+          section.classList.toggle('visible');
+        }
+      });
     });
 
     // ===== Date Dropdown Functionality =====
