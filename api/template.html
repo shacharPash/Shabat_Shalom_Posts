@@ -364,18 +364,19 @@
     .customization-panel {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.4s ease, padding 0.3s ease;
+      transition: max-height 0.4s ease, padding 0.3s ease, margin 0.3s ease, opacity 0.3s ease;
       padding: 0 16px;
       margin-top: 0;
       background: var(--input-bg);
-      border-radius: 0 0 12px 12px;
+      border-radius: 12px;
       border: 1px solid var(--button-border);
-      border-top: none;
+      opacity: 0;
     }
     .customization-panel.expanded {
       max-height: 2000px;
       padding: 20px 16px;
-      margin-top: -1px;
+      margin-top: 12px;
+      opacity: 1;
     }
     .customization-panel .form-group {
       margin-bottom: 16px;
@@ -1779,7 +1780,6 @@
     /* Step Container */
     .step-container {
       position: relative;
-      padding-right: 60px;
       margin-bottom: 24px;
     }
 
@@ -1791,8 +1791,6 @@
     }
 
     .step-number {
-      position: absolute;
-      right: 0;
       width: 32px;
       height: 32px;
       border-radius: 50%;
@@ -2003,22 +2001,6 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
-    <!-- Step 3: Generate -->
-    <div class="step-container step-final">
-      <div class="step-header">
-        <div class="step-number">3</div>
-        <div class="step-info">
-          <div class="step-title">יוצרים!</div>
-        </div>
-      </div>
-      <div class="step-content">
-        <button id="generateBtn" class="btn-generate">
-          <span class="btn-text">✨ צור זְמוּנָה לשבת!</span>
-          <div class="spinner"></div>
-        </button>
-      </div>
-    </div>
-
     <!-- Customization Toggle -->
     <button type="button" id="customizationToggle" class="customization-toggle">
       <span>⚙️ התאמה אישית</span>
@@ -2122,6 +2104,22 @@ CITY_CHECKBOXES_PLACEHOLDER
             <div class="override-note">💡 שדות ריקים ישתמשו בערכים האוטומטיים</div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Generate -->
+    <div class="step-container step-final">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-info">
+          <div class="step-title">יוצרים!</div>
+        </div>
+      </div>
+      <div class="step-content">
+        <button id="generateBtn" class="btn-generate">
+          <span class="btn-text">✨ צור זְמוּנָה לשבת!</span>
+          <div class="spinner"></div>
+        </button>
       </div>
     </div>
 
