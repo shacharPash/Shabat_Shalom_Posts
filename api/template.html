@@ -1103,102 +1103,201 @@
       border-color: var(--input-border-focus);
       background: var(--input-bg-focus);
     }
-    /* Selected cities chips */
-    .selected-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 10px;
-    }
-    .selected-chips:empty {
-      display: none;
-    }
-    .city-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: var(--button-bg);
-      border: 1px solid var(--button-border);
-      border-radius: 16px;
-      padding: 4px 8px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      transition: all 0.3s ease;
-    }
-    .city-chip .chip-order {
+    /* Selected cities vertical list */
+    .selected-cities-list {
       display: flex;
       flex-direction: column;
-      gap: 0;
-      margin-left: 2px;
+      gap: 8px;
+      min-height: 50px;
     }
-    .city-chip .chip-order-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 8px;
-      color: #3949ab;
-      padding: 0;
-      line-height: 1;
-      transition: color 0.15s ease;
-    }
-    .city-chip .chip-order-btn:hover {
-      color: #1a237e;
-    }
-    .city-chip .chip-order-btn:focus-visible {
-      outline: 2px solid #3949ab;
-      outline-offset: 1px;
-    }
-    .city-chip .chip-order-btn:disabled {
-      color: #ccc;
-      cursor: default;
-    }
-    .city-chip .chip-name {
-      max-width: 90px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .city-chip .chip-remove {
-      cursor: pointer;
+    .selected-cities-list:empty::before {
+      content: "לא נבחרו ערים עדיין";
+      display: block;
+      text-align: center;
+      color: var(--text-tertiary);
+      padding: 20px;
       font-size: 14px;
-      color: #3949ab;
-      line-height: 1;
     }
-    .city-chip .chip-remove:hover {
-      color: #c62828;
-    }
-    .city-chip .chip-remove:focus-visible {
-      outline: 2px solid #3949ab;
-      outline-offset: 1px;
-    }
-    /* Show all toggle */
-    .show-all-toggle {
+    .city-row {
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--input-bg);
+      border: 1px solid var(--divider-color);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    .city-row:hover {
+      background: var(--button-hover-bg);
+      border-color: var(--input-border-focus);
+    }
+    .city-row.dragging {
+      opacity: 0.5;
+      border-style: dashed;
+    }
+    .city-row.drag-over {
+      border-color: #3949ab;
+      background: var(--button-bg);
+    }
+    .drag-handle {
+      cursor: grab;
+      color: var(--text-tertiary);
+      font-size: 16px;
+      padding: 4px;
+      user-select: none;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    .city-row-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .city-offset {
+      display: flex;
+      align-items: center;
       gap: 6px;
-      margin-top: 10px;
-      padding: 8px;
-      border: none;
+    }
+    .city-offset .candle-offset {
+      width: 50px;
+      padding: 6px 8px;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      font-size: 14px;
+      text-align: center;
+      background: var(--input-bg-focus);
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+    }
+    .city-offset .candle-offset:focus {
+      outline: none;
+      border-color: var(--input-border-focus);
+    }
+    .city-offset .offset-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+    .city-offset .candle-icon {
+      font-size: 14px;
+    }
+    .city-remove {
       background: none;
-      color: #5c6bc0;
-      font-size: 13px;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px 6px;
+      margin-right: 4px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      color: var(--text-tertiary);
+    }
+    .city-remove:hover {
+      background: rgba(198, 40, 40, 0.1);
+      color: #c62828;
+    }
+
+    /* Default offset info */
+    .offset-default-info {
+      margin-top: 12px;
+      padding: 8px 12px;
+      background: var(--button-bg);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+    .offset-default-info .offset-hint {
+      color: var(--text-tertiary);
+      font-size: 12px;
+    }
+
+    /* Add city button */
+    .add-city-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: var(--button-bg);
+      border: 2px dashed var(--button-border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 15px;
+      font-weight: 500;
       font-family: inherit;
       cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .add-city-btn:hover {
+      background: var(--button-hover-bg);
+      border-color: var(--input-border-focus);
+      color: var(--text-primary);
+    }
+    .add-city-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* City picker dropdown */
+    .city-picker {
+      display: none;
+      position: relative;
+      margin-top: 8px;
+      border: 1px solid var(--divider-color);
+      border-radius: 10px;
+      background: var(--container-bg);
+      box-shadow: 0 4px 12px var(--shadow-color);
+      overflow: hidden;
+    }
+    .city-picker.show {
+      display: block;
+    }
+    .city-picker .city-search {
       width: 100%;
+      padding: 12px 14px;
+      border: none;
+      border-bottom: 1px solid var(--divider-color);
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--input-bg);
+      color: var(--text-primary);
     }
-    .show-all-toggle:hover {
-      color: #3949ab;
+    .city-picker .city-search:focus {
+      outline: none;
+      background: var(--input-bg-focus);
     }
-    .show-all-toggle:focus-visible {
-      outline: 2px solid #3949ab;
-      outline-offset: 2px;
+    .city-picker-list {
+      max-height: 250px;
+      overflow-y: auto;
     }
-    .show-all-toggle .arrow {
-      transition: transform 0.2s ease;
+    .city-picker-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      color: var(--text-primary);
+      font-size: 14px;
     }
-    .show-all-toggle.open .arrow {
-      transform: rotate(180deg);
+    .city-picker-item:hover {
+      background: var(--button-hover-bg);
+    }
+    .city-picker-item.selected {
+      background: var(--button-bg);
+      color: var(--text-secondary);
+    }
+    .city-picker-item.hidden {
+      display: none;
+    }
+    .city-picker-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--text-tertiary);
+      font-size: 13px;
+    }
+
+    /* Legacy show-all-toggle (keeping for compatibility) */
+    .show-all-toggle {
+      display: none;
     }
     /* Cities grid - hidden by default */
     .cities-grid-wrapper {
@@ -1975,20 +2074,35 @@
       <div class="step-header">
         <div class="step-number">2</div>
         <div class="step-info">
-          <div class="step-title">ערים להצגת זמנים <span id="cityCounter" class="city-counter">(0/8)</span></div>
+          <div class="step-title">🏙️ הערים בזמונה שלך <span id="cityCounter" class="city-counter">(0/8)</span></div>
           <div class="step-subtitle">בחרו את הערים שיופיעו בזמונה</div>
         </div>
       </div>
       <div class="step-content">
         <div class="form-group">
           <div class="cities-section">
-            <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר או יישוב..." />
-            <div id="selectedChips" class="selected-chips"></div>
-            <button type="button" id="showAllCitiesBtn" class="show-all-toggle">
-              <span>הצג את כל הערים</span>
-              <span class="arrow">▼</span>
+            <!-- Selected cities list (drag & drop) -->
+            <div class="selected-cities-list" id="selectedCitiesList"></div>
+
+            <!-- Default offset info -->
+            <div class="offset-default-info">
+              🕯️ ברירת מחדל: <strong>20 דקות</strong> לפני השקיעה
+              <span class="offset-hint">(כמנהג רוב הקהילות)</span>
+            </div>
+
+            <!-- Add city button -->
+            <button type="button" class="add-city-btn" id="addCityBtn">
+              + הוסף עיר
             </button>
-            <div id="citiesGridWrapper" class="cities-grid-wrapper">
+
+            <!-- City picker dropdown (hidden by default) -->
+            <div class="city-picker" id="cityPicker">
+              <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר..." />
+              <div class="city-picker-list" id="cityPickerList"></div>
+            </div>
+
+            <!-- Hidden grid for data source (keeps existing functionality) -->
+            <div id="citiesGridWrapper" class="cities-grid-wrapper" style="display:none !important;">
               <div class="cities-grid" id="citiesGrid">
 CITY_CHECKBOXES_PLACEHOLDER
                 <div class="no-results" id="noResults" style="display:none;">לא נמצאו ערים</div>
@@ -2241,8 +2355,10 @@ CITY_CHECKBOXES_PLACEHOLDER
     const citySearch = document.getElementById("citySearch");
     const citiesGrid = document.getElementById("citiesGrid");
     const citiesGridWrapper = document.getElementById("citiesGridWrapper");
-    const selectedChips = document.getElementById("selectedChips");
-    const showAllCitiesBtn = document.getElementById("showAllCitiesBtn");
+    const selectedCitiesList = document.getElementById("selectedCitiesList");
+    const addCityBtn = document.getElementById("addCityBtn");
+    const cityPicker = document.getElementById("cityPicker");
+    const cityPickerList = document.getElementById("cityPickerList");
     const noResults = document.getElementById("noResults");
     const cityOptions = document.querySelectorAll(".city-option");
     const neshamaInput = document.getElementById("neshama");
@@ -2487,8 +2603,11 @@ CITY_CHECKBOXES_PLACEHOLDER
       return val.replace(/"/g, '\\"');
     }
 
-    // Render selected cities as chips (using ordered list)
-    function renderChips() {
+    // Store city offsets (separate from hidden grid for better UX)
+    let cityOffsets = {}; // { cityName: offsetValue }
+
+    // Render selected cities as vertical list with drag & drop
+    function renderCityList() {
       // Sync orderedSelectedCities with currently checked cities
       const checkedCities = Array.from(document.querySelectorAll('.city-option.checked')).map(opt => opt.dataset.name);
 
@@ -2502,65 +2621,121 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Remove any cities from ordered list that are no longer checked
       orderedSelectedCities = orderedSelectedCities.filter(name => checkedCities.includes(name));
 
-      // Render chips in the user's preferred order
-      selectedChips.innerHTML = orderedSelectedCities.map((name, index) => {
+      // Show/hide the header based on whether cities are selected
+      const header = document.getElementById('selectedCitiesHeader');
+      if (header) {
+        header.style.display = orderedSelectedCities.length > 0 ? 'flex' : 'none';
+      }
+
+      // Render city rows in the user's preferred order
+      selectedCitiesList.innerHTML = orderedSelectedCities.map((name) => {
         const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
         const displayName = opt ? opt.querySelector('.city-name').textContent : name;
-        const isFirst = index === 0;
-        const isLast = index === orderedSelectedCities.length - 1;
+        // Get offset from our store or from the hidden grid
+        const gridOffset = opt ? (opt.querySelector('.candle-offset')?.value || 20) : 20;
+        const offset = cityOffsets[name] !== undefined ? cityOffsets[name] : gridOffset;
 
-        return `<span class="city-chip" data-name="${name}">
-          <span class="chip-order">
-            <button type="button" class="chip-order-btn chip-move-up" title="הזז למעלה" ${isFirst ? 'disabled' : ''}>▲</button>
-            <button type="button" class="chip-order-btn chip-move-down" title="הזז למטה" ${isLast ? 'disabled' : ''}>▼</button>
-          </span>
-          <span class="chip-name">${displayName}</span>
-          <span class="chip-remove">✕</span>
-        </span>`;
+        return `<div class="city-row" data-name="${name}" draggable="true">
+          <span class="drag-handle" title="גרור לשינוי סדר">☰</span>
+          <span class="city-row-name">${displayName}</span>
+          <div class="city-offset">
+            <span class="candle-icon">🕯️</span>
+            <input type="number" class="candle-offset" value="${offset}" min="0" max="60" />
+            <span class="offset-label">דק'</span>
+          </div>
+          <button type="button" class="city-remove" title="הסר עיר">🗑️</button>
+        </div>`;
       }).join('');
 
-      // Add click handlers for move up/down
-      selectedChips.querySelectorAll('.chip-move-up').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const chip = btn.closest('.city-chip');
-          const name = chip.dataset.name;
-          const index = orderedSelectedCities.indexOf(name);
-          if (index > 0) {
-            // Swap with previous
-            [orderedSelectedCities[index - 1], orderedSelectedCities[index]] =
-              [orderedSelectedCities[index], orderedSelectedCities[index - 1]];
-            renderChips();
-          }
-        });
-      });
+      // Add drag & drop event handlers
+      setupDragAndDrop();
 
-      selectedChips.querySelectorAll('.chip-move-down').forEach(btn => {
+      // Add click handlers to remove buttons
+      selectedCitiesList.querySelectorAll('.city-remove').forEach(btn => {
         btn.addEventListener('click', () => {
-          const chip = btn.closest('.city-chip');
-          const name = chip.dataset.name;
-          const index = orderedSelectedCities.indexOf(name);
-          if (index < orderedSelectedCities.length - 1) {
-            // Swap with next
-            [orderedSelectedCities[index], orderedSelectedCities[index + 1]] =
-              [orderedSelectedCities[index + 1], orderedSelectedCities[index]];
-            renderChips();
-          }
-        });
-      });
-
-      // Add click handlers to remove chips
-      selectedChips.querySelectorAll('.chip-remove').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const name = btn.closest('.city-chip').dataset.name;
+          const name = btn.closest('.city-row').dataset.name;
           // Remove from ordered list
           orderedSelectedCities = orderedSelectedCities.filter(n => n !== name);
-          // Uncheck the option
+          delete cityOffsets[name];
+          // Uncheck the option in hidden grid
           const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
           if (opt) { opt.classList.remove('checked'); opt.dataset.selected = 'false'; }
-          renderChips();
+          renderCityList();
           updateCityLimit();
         });
       });
+
+      // Add change handlers for offset inputs
+      selectedCitiesList.querySelectorAll('.candle-offset').forEach(input => {
+        input.addEventListener('change', () => {
+          const name = input.closest('.city-row').dataset.name;
+          cityOffsets[name] = parseInt(input.value) || 20;
+          // Sync back to hidden grid
+          const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+          if (opt) {
+            const gridInput = opt.querySelector('.candle-offset');
+            if (gridInput) gridInput.value = cityOffsets[name];
+          }
+        });
+      });
+    }
+
+    // Drag & drop functionality
+    let draggedItem = null;
+
+    function setupDragAndDrop() {
+      const rows = selectedCitiesList.querySelectorAll('.city-row');
+
+      rows.forEach(row => {
+        row.addEventListener('dragstart', (e) => {
+          draggedItem = row;
+          row.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', row.dataset.name);
+        });
+
+        row.addEventListener('dragend', () => {
+          row.classList.remove('dragging');
+          draggedItem = null;
+          // Remove drag-over from all rows
+          rows.forEach(r => r.classList.remove('drag-over'));
+        });
+
+        row.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (row !== draggedItem) {
+            row.classList.add('drag-over');
+          }
+        });
+
+        row.addEventListener('dragleave', () => {
+          row.classList.remove('drag-over');
+        });
+
+        row.addEventListener('drop', (e) => {
+          e.preventDefault();
+          row.classList.remove('drag-over');
+
+          if (draggedItem && row !== draggedItem) {
+            const draggedName = draggedItem.dataset.name;
+            const targetName = row.dataset.name;
+            const draggedIndex = orderedSelectedCities.indexOf(draggedName);
+            const targetIndex = orderedSelectedCities.indexOf(targetName);
+
+            // Remove dragged item and insert at new position
+            orderedSelectedCities.splice(draggedIndex, 1);
+            orderedSelectedCities.splice(targetIndex, 0, draggedName);
+
+            renderCityList();
+          }
+        });
+      });
+    }
+
+    // Backward compatibility alias
+    function renderChips() {
+      renderCityList();
     }
 
     // Get total cities count (predefined + custom)
@@ -2588,6 +2763,9 @@ CITY_CHECKBOXES_PLACEHOLDER
           opt.classList.toggle("disabled", atLimit);
         }
       });
+
+      // Disable/enable add city button
+      addCityBtn.disabled = atLimit;
 
       // Disable/enable add custom city button
       addCustomCityBtn.disabled = atLimit;
@@ -2757,42 +2935,120 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // ===== End URL Query Parameters Support =====
 
-    // Show all cities toggle
-    showAllCitiesBtn.addEventListener("click", () => {
-      showAllCitiesBtn.classList.toggle("open");
-      citiesGridWrapper.classList.toggle("show");
-      showAllCitiesBtn.querySelector("span:first-child").textContent =
-        citiesGridWrapper.classList.contains("show") ? "הסתר רשימה" : "הצג את כל הערים";
-    });
+    // ===== City Picker Functionality =====
 
-    // Make entire city option clickable
-    cityOptions.forEach(opt => {
-      opt.addEventListener("click", (e) => {
-        if (e.target.classList.contains("candle-offset")) return;
-        if (opt.classList.contains('disabled') && !opt.classList.contains('checked')) return;
-        const isChecked = opt.classList.toggle("checked");
-        opt.dataset.selected = isChecked ? 'true' : 'false';
-        renderChips();
-        updateCityLimit();
-      });
-    });
-
-    // City search - show grid when typing, filter results
-    citySearch.addEventListener("input", () => {
-      const query = citySearch.value.trim().toLowerCase();
-      if (query) {
-        citiesGridWrapper.classList.add("show");
-        showAllCitiesBtn.classList.add("open");
-        showAllCitiesBtn.querySelector("span:first-child").textContent = "הסתר רשימה";
-      }
-      let visibleCount = 0;
+    // Initialize city picker list with all available cities
+    function initCityPicker() {
+      cityPickerList.innerHTML = '';
       cityOptions.forEach(opt => {
-        const name = opt.querySelector(".city-name").textContent.toLowerCase();
-        if (name.includes(query)) { opt.classList.remove("hidden"); visibleCount++; }
-        else { opt.classList.add("hidden"); }
+        const name = opt.dataset.name;
+        const displayName = opt.querySelector('.city-name').textContent;
+        const item = document.createElement('div');
+        item.className = 'city-picker-item';
+        item.dataset.name = name;
+        item.textContent = displayName;
+
+        // Mark already selected cities
+        if (opt.classList.contains('checked')) {
+          item.classList.add('selected');
+        }
+
+        item.addEventListener('click', () => {
+          if (getTotalCitiesCount() >= MAX_CITIES) return;
+
+          // Add city to selection
+          opt.classList.add('checked');
+          opt.dataset.selected = 'true';
+
+          // Close picker and render list
+          closeCityPicker();
+          renderCityList();
+          updateCityLimit();
+        });
+
+        cityPickerList.appendChild(item);
       });
-      noResults.style.display = visibleCount === 0 ? "block" : "none";
+
+      // Add empty state
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'city-picker-empty';
+      emptyEl.textContent = 'לא נמצאו ערים';
+      emptyEl.style.display = 'none';
+      cityPickerList.appendChild(emptyEl);
+    }
+
+    // Toggle city picker visibility
+    function toggleCityPicker() {
+      const isOpen = cityPicker.classList.toggle('show');
+      if (isOpen) {
+        // Update selected state in picker
+        updateCityPickerState();
+        citySearch.value = '';
+        filterCityPicker('');
+        citySearch.focus();
+      }
+    }
+
+    function closeCityPicker() {
+      cityPicker.classList.remove('show');
+    }
+
+    // Update city picker to reflect current selection
+    function updateCityPickerState() {
+      cityPickerList.querySelectorAll('.city-picker-item').forEach(item => {
+        const name = item.dataset.name;
+        const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+        const isSelected = opt && opt.classList.contains('checked');
+        item.classList.toggle('selected', isSelected);
+        // Hide already selected cities from picker
+        item.classList.toggle('hidden', isSelected);
+      });
+    }
+
+    // Filter cities in picker
+    function filterCityPicker(query) {
+      const lowerQuery = query.toLowerCase();
+      let visibleCount = 0;
+
+      cityPickerList.querySelectorAll('.city-picker-item').forEach(item => {
+        const name = item.textContent.toLowerCase();
+        const isSelected = item.classList.contains('selected');
+        const matchesQuery = name.includes(lowerQuery);
+
+        // Hide if selected OR doesn't match query
+        const shouldHide = isSelected || !matchesQuery;
+        item.classList.toggle('hidden', shouldHide);
+
+        if (!shouldHide) visibleCount++;
+      });
+
+      // Show/hide empty state
+      const emptyEl = cityPickerList.querySelector('.city-picker-empty');
+      if (emptyEl) {
+        emptyEl.style.display = visibleCount === 0 ? 'block' : 'none';
+      }
+    }
+
+    // Add city button opens picker
+    addCityBtn.addEventListener('click', () => {
+      if (getTotalCitiesCount() >= MAX_CITIES) return;
+      toggleCityPicker();
     });
+
+    // City search filters picker
+    citySearch.addEventListener('input', () => {
+      filterCityPicker(citySearch.value.trim());
+    });
+
+    // Close picker when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!cityPicker.contains(e.target) && e.target !== addCityBtn) {
+        closeCityPicker();
+      }
+    });
+
+    // Initialize picker
+    initCityPicker();
 
     // Custom city functionality
     let customCityCounter = 0;
@@ -3306,8 +3562,10 @@ CITY_CHECKBOXES_PLACEHOLDER
         orderedSelectedCities.forEach(cityName => {
           const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(cityName)}"]`);
           if (opt && opt.classList.contains('checked')) {
-            const offsetInput = opt.querySelector(".candle-offset");
-            const offset = parseInt(offsetInput.value) || 20;
+            // Get offset from our stored offsets (preferred) or fall back to hidden grid
+            const offset = cityOffsets[cityName] !== undefined
+              ? cityOffsets[cityName]
+              : (parseInt(opt.querySelector(".candle-offset")?.value) || 20);
             selectedCities.push({ name: cityName, candle_offset: offset });
           }
         });
