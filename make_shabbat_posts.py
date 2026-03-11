@@ -324,7 +324,7 @@ def compose_poster(
 
     # התאמת גודל פונט לכותרת המשנה
     fitted_sub_font = get_fitted_font(sub_line, sub_font, W - 100, rtl=True)
-    draw_text_with_stroke(draw, (W//2, 140), sub_line, fitted_sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    draw_text_with_stroke(draw, (W//2, 145), sub_line, fitted_sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # Adjust font size and spacing based on number of cities
     num_cities = len(all_cities_rows)
