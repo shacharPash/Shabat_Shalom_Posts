@@ -1972,6 +1972,43 @@
         width: 100%;
       }
     }
+
+    /* Scroll indicator for mobile UX */
+    .scroll-indicator {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .scroll-indicator.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .scroll-indicator button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      animation: bounce 2s infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    /* Dark mode */
+    [data-theme="dark"] .scroll-indicator button {
+      background: linear-gradient(135deg, #5c6bc0 0%, #7c4dff 100%);
+      box-shadow: 0 4px 15px rgba(124, 77, 255, 0.4);
+    }
   </style>
 
   <!-- Vercel Analytics -->
@@ -2275,6 +2312,13 @@ CITY_CHECKBOXES_PLACEHOLDER
       <div class="preview-gallery" id="previewGallery">
         <!-- Gallery items will be added dynamically -->
       </div>
+    </div>
+
+    <!-- Scroll indicator for mobile UX -->
+    <div class="scroll-indicator" id="scrollIndicator">
+      <button type="button" id="scrollToPreview">
+        🎉 הזְמוּנָה מוכנה! ↓
+      </button>
     </div>
 
     <div class="footer">
@@ -3665,6 +3709,10 @@ CITY_CHECKBOXES_PLACEHOLDER
           statusEl.textContent = "✅ הזְמוּנָה נוצרה בהצלחה!";
         }
         statusEl.className = "status success show";
+
+        // Smooth scroll to the generated poster
+        previewEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        posterGenerated = true;
       } catch (err) {
         console.error(err);
         statusEl.textContent = "❌ " + err.message;
@@ -3729,6 +3777,36 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Fallback: Open WhatsApp with text message
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + '\n\n(הורד/י את התמונה מהאתר)')}`;
       window.open(whatsappUrl, '_blank');
+    });
+
+    // ===== Scroll Indicator for Mobile UX =====
+    const scrollIndicator = document.getElementById('scrollIndicator');
+    const scrollToPreviewBtn = document.getElementById('scrollToPreview');
+    let posterGenerated = false;
+
+    // Check if preview is visible
+    function isPreviewVisible() {
+      if (!previewEl.classList.contains('show')) return true; // No poster yet
+      const rect = previewEl.getBoundingClientRect();
+      return rect.top < window.innerHeight && rect.bottom > 0;
+    }
+
+    // Update indicator visibility
+    function updateScrollIndicator() {
+      if (posterGenerated && !isPreviewVisible()) {
+        scrollIndicator.classList.add('show');
+      } else {
+        scrollIndicator.classList.remove('show');
+      }
+    }
+
+    // Listen to scroll events
+    window.addEventListener('scroll', updateScrollIndicator);
+
+    // Click to scroll to preview
+    scrollToPreviewBtn.addEventListener('click', () => {
+      previewEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      scrollIndicator.classList.remove('show');
     });
   </script>
 </body>
