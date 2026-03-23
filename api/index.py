@@ -3,13 +3,14 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, Response
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from cities import get_cities_list
+from api.poster import build_poster_from_payload
 
 # FastAPI app for local development with `vercel dev`
 app = FastAPI()
@@ -57,3 +58,14 @@ class handler(BaseHTTPRequestHandler):
 async def root():
     """Serve the main HTML page (for local dev)."""
     return generate_html()
+
+
+@app.post("/poster")
+async def create_poster(request: Request):
+    """Create poster (for local dev)."""
+    try:
+        payload = await request.json()
+        png_bytes = build_poster_from_payload(payload)
+        return Response(content=png_bytes, media_type="image/png")
+    except Exception as e:
+        return Response(content=str(e), status_code=500)
