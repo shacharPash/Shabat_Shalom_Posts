@@ -1514,9 +1514,20 @@
       font-size: 16px;
       padding: 4px;
       user-select: none;
+      -webkit-user-select: none;
+      touch-action: none; /* Prevent browser scroll on touch */
     }
     .drag-handle:active {
       cursor: grabbing;
+    }
+    /* Touch drag feedback */
+    .city-row.touch-dragging {
+      opacity: 0.7;
+      background: var(--button-hover-bg);
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px var(--shadow-color);
+      z-index: 100;
+      position: relative;
     }
     .city-row-name {
       flex: 1;
@@ -3341,8 +3352,9 @@ CITY_CHECKBOXES_PLACEHOLDER
         </div>`;
       }).join('');
 
-      // Add drag & drop event handlers
+      // Add drag & drop event handlers (desktop + mobile)
       setupDragAndDrop();
+      initTouchDrag();
 
       // Add click handlers to remove buttons
       selectedCitiesList.querySelectorAll('.city-remove').forEach(btn => {
@@ -3428,6 +3440,85 @@ CITY_CHECKBOXES_PLACEHOLDER
           }
         });
       });
+    }
+
+    // ===== Touch-friendly drag and drop for mobile =====
+    let touchDraggedRow = null;
+    let touchStartY = 0;
+
+    function initTouchDrag() {
+      const handles = selectedCitiesList.querySelectorAll('.drag-handle');
+      handles.forEach(handle => {
+        // Remove any existing listeners first (prevent duplicates)
+        handle.removeEventListener('touchstart', handleTouchStart);
+        handle.removeEventListener('touchmove', handleTouchMove);
+        handle.removeEventListener('touchend', handleTouchEnd);
+
+        handle.addEventListener('touchstart', handleTouchStart, { passive: false });
+        handle.addEventListener('touchmove', handleTouchMove, { passive: false });
+        handle.addEventListener('touchend', handleTouchEnd);
+      });
+    }
+
+    function handleTouchStart(e) {
+      e.preventDefault(); // Prevent scroll immediately on handle touch
+      const handle = e.target.closest('.drag-handle');
+      if (!handle) return;
+
+      touchDraggedRow = handle.closest('.city-row');
+      if (!touchDraggedRow) return;
+
+      touchStartY = e.touches[0].clientY;
+      touchDraggedRow.classList.add('touch-dragging');
+    }
+
+    function handleTouchMove(e) {
+      if (!touchDraggedRow) return;
+      e.preventDefault();
+
+      const touchY = e.touches[0].clientY;
+      const rows = Array.from(selectedCitiesList.querySelectorAll('.city-row'));
+
+      // Find which row we're over and reorder
+      for (const row of rows) {
+        if (row === touchDraggedRow) continue;
+
+        const rect = row.getBoundingClientRect();
+        const middle = rect.top + rect.height / 2;
+        const draggedIdx = rows.indexOf(touchDraggedRow);
+        const rowIdx = rows.indexOf(row);
+
+        if (touchY < middle && rowIdx < draggedIdx) {
+          selectedCitiesList.insertBefore(touchDraggedRow, row);
+          break;
+        } else if (touchY > middle && rowIdx > draggedIdx) {
+          selectedCitiesList.insertBefore(touchDraggedRow, row.nextSibling);
+          break;
+        }
+      }
+    }
+
+    function handleTouchEnd() {
+      if (touchDraggedRow) {
+        touchDraggedRow.classList.remove('touch-dragging');
+        // Update orderedSelectedCities based on current DOM order
+        updateCityOrderFromDOM();
+        touchDraggedRow = null;
+        updateLivePreview();
+      }
+    }
+
+    function updateCityOrderFromDOM() {
+      const rows = selectedCitiesList.querySelectorAll('.city-row');
+      const newOrder = [];
+      rows.forEach(row => {
+        const name = row.dataset.name;
+        if (name && orderedSelectedCities.includes(name)) {
+          newOrder.push(name);
+        }
+      });
+      orderedSelectedCities.length = 0;
+      orderedSelectedCities.push(...newOrder);
     }
 
     // Backward compatibility alias
