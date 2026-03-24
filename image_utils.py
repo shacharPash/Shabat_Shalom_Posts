@@ -32,8 +32,17 @@ def fix_hebrew(text: str) -> str:
 _font_cache: dict[tuple[int, bool], tuple[ImageFont.FreeTypeFont, bool]] = {}
 
 # Font file candidates (searched in order)
-_FONT_CANDIDATES_BOLD = ["Alef-Bold.ttf", "Alef-Regular.ttf", "DejaVuSans.ttf"]
-_FONT_CANDIDATES_REGULAR = ["Alef-Regular.ttf", "DejaVuSans.ttf"]
+# Use absolute paths relative to this file's location for Vercel serverless compatibility
+_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+_FONT_CANDIDATES_BOLD = [
+    os.path.join(_PROJECT_ROOT, "Alef-Bold.ttf"),
+    os.path.join(_PROJECT_ROOT, "Alef-Regular.ttf"),
+    "DejaVuSans.ttf",  # System fallback
+]
+_FONT_CANDIDATES_REGULAR = [
+    os.path.join(_PROJECT_ROOT, "Alef-Regular.ttf"),
+    "DejaVuSans.ttf",  # System fallback
+]
 
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:

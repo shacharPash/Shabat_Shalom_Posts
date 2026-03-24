@@ -122,7 +122,9 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     # Priority 4: Fallback to first image from images/ folder
     elif image_path is None:
         exts = {".jpg", ".jpeg", ".png", ".webp"}
-        images_dir = "images"
+        # Use absolute path relative to project root (parent of api/ directory)
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        images_dir = os.path.join(project_root, "images")
         all_files = sorted(os.listdir(images_dir))
         image_files = [
             f for f in all_files
