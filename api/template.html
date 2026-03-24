@@ -1068,6 +1068,33 @@
     [data-theme="dark"] .preview-action-btn:hover {
       background: var(--button-hover-bg);
     }
+    /* Dark mode for crop elements in main form */
+    [data-theme="dark"] .crop-area,
+    [data-theme="dark"] .crop-preview-container,
+    [data-theme="dark"] #cropPreviewContainer {
+      background-color: #1e1e1e !important;
+      border-color: #444 !important;
+    }
+    [data-theme="dark"] .crop-preview-header,
+    [data-theme="dark"] .crop-hint,
+    [data-theme="dark"] .nav-indicator {
+      color: #ccc !important;
+    }
+    [data-theme="dark"] .crop-image-nav button {
+      background-color: #333 !important;
+      border-color: #555 !important;
+      color: #fff !important;
+    }
+    [data-theme="dark"] .crop-image-nav button:hover:not(:disabled) {
+      background-color: #444 !important;
+    }
+    [data-theme="dark"] .crop-image-nav button:disabled {
+      background-color: #222 !important;
+      color: #666 !important;
+    }
+    [data-theme="dark"] .crop-actions {
+      border-color: #444 !important;
+    }
 
     /* Live preview inside floating panel */
     .floating-preview-content .live-preview {
@@ -1268,6 +1295,34 @@
     }
     .live-preview-bg.dragging::after {
       opacity: 0;
+    }
+    /* Visible drag hint inside preview */
+    .preview-drag-hint {
+      display: none; /* Hidden by default, shown when has-image */
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.75);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      z-index: 10;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+      white-space: nowrap;
+      text-shadow: none;
+    }
+    .live-preview-bg.has-image .preview-drag-hint {
+      display: block;
+    }
+    /* Hide hint when dragging or after user has dragged */
+    .live-preview-bg.dragging .preview-drag-hint,
+    .live-preview-bg.has-dragged .preview-drag-hint {
+      opacity: 0;
+      pointer-events: none;
     }
     .live-preview-overlay {
       position: absolute;
@@ -2580,7 +2635,9 @@
       </div>
       <div class="floating-preview-content">
         <div class="live-preview" id="livePreview">
-          <div class="live-preview-bg" id="livePreviewBg"></div>
+          <div class="live-preview-bg" id="livePreviewBg">
+            <div class="preview-drag-hint" id="previewDragHint">✋ גרור את התמונה למיקום הרצוי</div>
+          </div>
           <div class="live-preview-overlay">
             <div class="live-preview-top">
               <div class="live-preview-title editable" id="livePreviewTitle" data-target="mainTitleInput" title="לחץ לעריכה">שבת שלום</div>
@@ -2646,10 +2703,10 @@
               <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
             </div>
           </div>
-          <!-- Image crop toggle button -->
-          <button type="button" id="cropToggleBtn" class="crop-toggle-btn">✂️ התאם חיתוך תמונה</button>
-          <!-- Image crop preview -->
-          <div id="cropPreviewContainer" class="crop-preview-container">
+          <!-- Image crop toggle button - hidden, crop done in preview -->
+          <button type="button" id="cropToggleBtn" class="crop-toggle-btn" style="display: none !important;">✂️ התאם חיתוך תמונה</button>
+          <!-- Image crop preview - hidden, crop done in preview -->
+          <div id="cropPreviewContainer" class="crop-preview-container" style="display: none !important;">
             <div class="crop-preview-header">
               <div>
                 <span>📐 כיוון החיתוך</span>
@@ -3376,6 +3433,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       } else {
         livePreviewBg.style.backgroundImage = "";
         livePreviewBg.classList.remove('has-image');
+        livePreviewBg.classList.remove('has-dragged'); // Reset hint visibility
         livePreviewBg.style.backgroundPosition = 'center';
         previewDragState.bgPosX = 50;
         previewDragState.bgPosY = 50;
@@ -3512,6 +3570,9 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       previewDragState.isDragging = false;
       livePreviewBg.classList.remove('dragging');
+
+      // Hide the drag hint after first drag
+      livePreviewBg.classList.add('has-dragged');
 
       // Save the position to imageCropPositions for poster generation
       const index = currentCropIndex || 0;
