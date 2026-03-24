@@ -914,6 +914,306 @@
       font-family: Arial, sans-serif;
       direction: rtl;
     }
+
+    /* ===== Live Preview Section (hidden - replaced by floating) ===== */
+    .live-preview-section {
+      display: none;
+    }
+
+    /* ===== Floating Preview Button ===== */
+    .floating-preview-btn {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      z-index: 999;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      font-family: inherit;
+    }
+    .floating-preview-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+    .floating-preview-btn:focus-visible {
+      outline: 2px solid white;
+      outline-offset: 2px;
+    }
+    [data-theme="dark"] .floating-preview-btn {
+      background: linear-gradient(135deg, #5c6bc0 0%, #7c4dff 100%);
+    }
+
+    /* ===== Floating Preview Panel ===== */
+    .floating-preview-panel {
+      position: fixed;
+      top: 50%;
+      right: -350px;
+      transform: translateY(-50%);
+      width: 320px;
+      max-height: 80vh;
+      background: var(--container-bg);
+      border-radius: 16px 0 0 16px;
+      box-shadow: -5px 0 30px rgba(0,0,0,0.2);
+      z-index: 1001;
+      transition: right 0.3s ease;
+      overflow: hidden;
+    }
+    .floating-preview-panel.show {
+      right: 0;
+    }
+    .floating-preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    [data-theme="dark"] .floating-preview-header {
+      background: linear-gradient(135deg, #5c6bc0 0%, #7c4dff 100%);
+    }
+    .close-preview-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+    }
+    .close-preview-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    .close-preview-btn:focus-visible {
+      outline: 2px solid white;
+      outline-offset: 2px;
+    }
+    .floating-preview-content {
+      padding: 16px;
+      overflow-y: auto;
+      max-height: calc(80vh - 50px);
+    }
+
+    /* ===== Preview Overlay ===== */
+    .preview-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .preview-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    [data-theme="dark"] .preview-overlay {
+      background: rgba(0,0,0,0.5);
+    }
+
+    /* Live preview inside floating panel */
+    .floating-preview-content .live-preview {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      max-width: 280px;
+      margin: 0 auto;
+      border-radius: 12px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+    .floating-preview-content .preview-hint {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-tertiary);
+      opacity: 0.8;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .live-preview {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      max-width: 280px;
+      margin: 0 auto;
+      border-radius: 12px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+    .live-preview-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0.85;
+    }
+    .live-preview-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+      direction: rtl;
+      text-align: center;
+    }
+    .live-preview-top {
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+    .live-preview-title {
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-family: 'Heebo', Arial, sans-serif;
+    }
+    .live-preview-subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 12px;
+    }
+    .live-preview-bottom {
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+    }
+    .live-preview-table {
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: inline-block;
+      margin-bottom: 8px;
+      min-width: 180px;
+    }
+    .live-preview-table-headers {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 9px;
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .live-preview-table-headers span {
+      flex: 1;
+      text-align: center;
+    }
+    .live-preview-cities-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .live-preview-city-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: white;
+      font-size: 10px;
+    }
+    .live-preview-city-row span {
+      flex: 1;
+      text-align: center;
+    }
+    .live-preview-blessing {
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 11px;
+      margin-top: 6px;
+    }
+    .live-preview-dedication {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 10px;
+      margin-top: 4px;
+    }
+    .live-preview-empty-hint {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 9px;
+      font-style: italic;
+    }
+
+    /* Main Title Field (visible, not in advanced) */
+    .main-title-section {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: var(--input-bg);
+      border-radius: 12px;
+      border: 1px solid var(--input-border);
+    }
+    .main-title-section .form-group {
+      margin-bottom: 0;
+    }
+    .main-title-section label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      display: block;
+    }
+    .main-title-section input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 1px solid var(--input-border);
+      border-radius: 8px;
+      background: var(--input-bg-focus);
+      color: var(--text-primary);
+      text-align: center;
+      font-family: 'Heebo', Arial, sans-serif;
+    }
+    .main-title-section input:focus {
+      outline: none;
+      border-color: var(--input-border-focus);
+      box-shadow: 0 0 0 3px rgba(92, 107, 192, 0.15);
+    }
+    .main-title-section input::placeholder {
+      color: var(--text-tertiary);
+      opacity: 0.7;
+    }
+    .main-title-section .hint {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    /* Enhanced hints for blessing/memorial sections */
+    .field-location-hint {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      opacity: 0.8;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .field-location-hint::before {
+      content: "📍";
+      font-size: 10px;
+    }
     .crop-poster-top {
       text-align: center;
       text-shadow: 0 1px 3px rgba(0,0,0,0.8);
@@ -2029,6 +2329,63 @@
       <div class="subtitle" style="font-size: 11px; opacity: 0.7;">זְמוּנָה = זְמַן + תְּמוּנָה 🕐🖼️</div>
     </div>
 
+    <!-- Live Preview Section (hidden - replaced by floating) -->
+    <div class="live-preview-section">
+      <!-- Kept for backwards compatibility but hidden via CSS -->
+    </div>
+
+    <!-- Floating Preview Button -->
+    <button type="button" class="floating-preview-btn" id="floatingPreviewBtn" title="תצוגה מקדימה">
+      <span class="preview-btn-icon">👁️</span>
+      <span class="preview-btn-text">Preview</span>
+    </button>
+
+    <!-- Floating Preview Panel -->
+    <div class="floating-preview-panel" id="floatingPreviewPanel">
+      <div class="floating-preview-header">
+        <span>👁️ תצוגה מקדימה</span>
+        <button type="button" class="close-preview-btn" id="closePreviewBtn">✕</button>
+      </div>
+      <div class="floating-preview-content">
+        <div class="live-preview" id="livePreview">
+          <div class="live-preview-bg" id="livePreviewBg"></div>
+          <div class="live-preview-overlay">
+            <div class="live-preview-top">
+              <div class="live-preview-title" id="livePreviewTitle">שבת שלום</div>
+              <div class="live-preview-subtitle" id="livePreviewSubtitle">פרשת ... | תאריך</div>
+            </div>
+            <div class="live-preview-bottom">
+              <div class="live-preview-table">
+                <div class="live-preview-table-headers">
+                  <span>עיר</span>
+                  <span>כניסה</span>
+                  <span>צאת</span>
+                </div>
+                <div class="live-preview-cities-list" id="livePreviewCities">
+                  <div class="live-preview-empty-hint">בחרו ערים בשלב 2</div>
+                </div>
+              </div>
+              <div class="live-preview-blessing" id="livePreviewBlessing"></div>
+              <div class="live-preview-dedication" id="livePreviewDedication"></div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-hint">מתעדכנת בזמן אמת</div>
+      </div>
+    </div>
+
+    <!-- Preview Overlay -->
+    <div class="preview-overlay" id="previewOverlay"></div>
+
+    <!-- Main Title Section (visible, not in advanced settings) -->
+    <div class="main-title-section">
+      <div class="form-group">
+        <label for="mainTitleInput">📝 כותרת ראשית</label>
+        <input type="text" id="mainTitleInput" placeholder="שבת שלום" />
+        <div class="hint">💡 ברירת מחדל לפי סוג האירוע (שבת שלום / חג שמח)</div>
+      </div>
+    </div>
+
     <!-- Step 1: Image -->
     <div class="step-container">
       <div class="step-header">
@@ -2193,6 +2550,7 @@ CITY_CHECKBOXES_PLACEHOLDER
           <label for="message">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
           <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
           <div class="hint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
+          <div class="field-location-hint">מופיע מתחת לטבלת הזמנים</div>
         </div>
       </div>
 
@@ -2201,6 +2559,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         <div class="form-group">
           <label for="neshama">🕯️ לעילוי נשמת <span class="optional-hint">(לא חובה)</span></label>
           <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
+          <div class="field-location-hint">מופיע בתחתית הזמונה</div>
         </div>
       </div>
 
@@ -2433,6 +2792,22 @@ CITY_CHECKBOXES_PLACEHOLDER
     const addCustomCityBtn = document.getElementById("addCustomCityBtn");
     const customCitiesList = document.getElementById("customCitiesList");
 
+    // Live preview elements
+    const livePreviewEl = document.getElementById("livePreview");
+    const livePreviewBg = document.getElementById("livePreviewBg");
+    const livePreviewTitle = document.getElementById("livePreviewTitle");
+    const livePreviewSubtitle = document.getElementById("livePreviewSubtitle");
+    const livePreviewCities = document.getElementById("livePreviewCities");
+    const livePreviewBlessing = document.getElementById("livePreviewBlessing");
+    const livePreviewDedication = document.getElementById("livePreviewDedication");
+    const mainTitleInput = document.getElementById("mainTitleInput");
+
+    // Floating preview elements
+    const floatingPreviewBtn = document.getElementById("floatingPreviewBtn");
+    const floatingPreviewPanel = document.getElementById("floatingPreviewPanel");
+    const closePreviewBtn = document.getElementById("closePreviewBtn");
+    const previewOverlay = document.getElementById("previewOverlay");
+
     // Crop preview elements
     const cropToggleBtn = document.getElementById("cropToggleBtn");
     const cropCloseBtn = document.getElementById("cropCloseBtn");
@@ -2592,6 +2967,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       dateNoResults.style.display = "none";
 
       updateSelectedDates();
+      updateLivePreview();
     }
 
     // Load upcoming events for date selection
@@ -2628,6 +3004,9 @@ CITY_CHECKBOXES_PLACEHOLDER
           item.addEventListener('click', () => selectDate(index));
         });
 
+        // Update live preview with loaded event data
+        setTimeout(updateLivePreview, 50);
+
       } catch (err) {
         console.error("Failed to load events:", err);
         selectedEventName.textContent = "שבת/חג הקרוב";
@@ -2636,6 +3015,134 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     }
     loadUpcomingEvents();
+
+    // ===== Live Preview Functionality =====
+
+    // Get default title based on current event type
+    function getDefaultTitleForEvent() {
+      if (allEvents.length === 0 || selectedStartIndex >= allEvents.length) {
+        return "שבת שלום";
+      }
+      const event = allEvents[selectedStartIndex];
+      // Check if it's a holiday (חג) based on display name
+      const displayName = event.displayName || "";
+      if (displayName.includes("חג") || displayName.includes("ראש השנה") ||
+          displayName.includes("יום כיפור") || displayName.includes("סוכות") ||
+          displayName.includes("שמחת תורה") || displayName.includes("פסח") ||
+          displayName.includes("שבועות") || displayName.includes("חנוכה") ||
+          displayName.includes("פורים")) {
+        return "חג שמח";
+      }
+      return "שבת שלום";
+    }
+
+    // Update live preview with current form values
+    function updateLivePreview() {
+      // Update title
+      const titleValue = mainTitleInput?.value?.trim();
+      const displayTitle = titleValue || getDefaultTitleForEvent();
+      if (livePreviewTitle) {
+        livePreviewTitle.textContent = displayTitle;
+      }
+
+      // Update subtitle (from selected event)
+      if (livePreviewSubtitle && allEvents.length > 0 && selectedStartIndex < allEvents.length) {
+        const event = allEvents[selectedStartIndex];
+        livePreviewSubtitle.textContent = `${event.displayName} | ${event.dateStr}`;
+      }
+
+      // Update cities
+      if (livePreviewCities) {
+        if (orderedSelectedCities.length === 0) {
+          livePreviewCities.innerHTML = '<div class="live-preview-empty-hint">בחרו ערים בשלב 2</div>';
+        } else {
+          // Show up to 3 cities in preview
+          const citiesToShow = orderedSelectedCities.slice(0, 3);
+          livePreviewCities.innerHTML = citiesToShow.map(name => {
+            const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+            const displayName = opt ? opt.querySelector('.city-name').textContent : name;
+            return `<div class="live-preview-city-row">
+              <span>${displayName}</span>
+              <span>--:--</span>
+              <span>--:--</span>
+            </div>`;
+          }).join('');
+
+          // Add "..." if more cities
+          if (orderedSelectedCities.length > 3) {
+            livePreviewCities.innerHTML += `<div class="live-preview-empty-hint">+${orderedSelectedCities.length - 3} ערים נוספות</div>`;
+          }
+        }
+      }
+
+      // Update blessing
+      if (livePreviewBlessing) {
+        const blessing = messageInput?.value?.trim() || "";
+        livePreviewBlessing.textContent = blessing;
+        livePreviewBlessing.style.display = blessing ? "block" : "none";
+      }
+
+      // Update dedication
+      if (livePreviewDedication) {
+        const neshama = neshamaInput?.value?.trim() || "";
+        livePreviewDedication.textContent = neshama ? `לע"נ ${neshama}` : "";
+        livePreviewDedication.style.display = neshama ? "block" : "none";
+      }
+    }
+
+    // Update preview background when image is uploaded
+    function updateLivePreviewBackground() {
+      if (!livePreviewBg) return;
+
+      if (uploadedFiles.length > 0 && cropPreviewImage.src) {
+        livePreviewBg.style.backgroundImage = `url(${cropPreviewImage.src})`;
+      } else {
+        livePreviewBg.style.backgroundImage = "";
+      }
+    }
+
+    // Add event listeners for live preview updates
+    if (mainTitleInput) {
+      mainTitleInput.addEventListener("input", updateLivePreview);
+    }
+    if (messageInput) {
+      messageInput.addEventListener("input", updateLivePreview);
+    }
+    if (neshamaInput) {
+      neshamaInput.addEventListener("input", updateLivePreview);
+    }
+
+    // Initial preview update
+    setTimeout(updateLivePreview, 100);
+
+    // ===== Floating Preview Toggle =====
+    function openPreview() {
+      floatingPreviewPanel.classList.add('show');
+      previewOverlay.classList.add('show');
+      updateLivePreview(); // Refresh preview when opened
+    }
+
+    function closePreview() {
+      floatingPreviewPanel.classList.remove('show');
+      previewOverlay.classList.remove('show');
+    }
+
+    if (floatingPreviewBtn) {
+      floatingPreviewBtn.addEventListener('click', openPreview);
+    }
+    if (closePreviewBtn) {
+      closePreviewBtn.addEventListener('click', closePreview);
+    }
+    if (previewOverlay) {
+      previewOverlay.addEventListener('click', closePreview);
+    }
+
+    // Close preview on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && floatingPreviewPanel.classList.contains('show')) {
+        closePreview();
+      }
+    });
 
     // Weeks selector - update dates from selected start
     weeksAhead.addEventListener("change", () => {
@@ -2722,6 +3229,9 @@ CITY_CHECKBOXES_PLACEHOLDER
           }
         });
       });
+
+      // Update live preview when cities change
+      updateLivePreview();
     }
 
     // Drag & drop functionality
@@ -3214,6 +3724,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       cropImageNav.style.display = 'none';
       imageCropPositions = [];
       uploadedFiles = [];
+      updateLivePreviewBackground();
     });
 
     // Crop toggle/close buttons
@@ -3256,6 +3767,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         uploadedFiles = [];
         weeksAhead.value = 1;
         updateSelectedDates();
+        updateLivePreviewBackground();
       } else {
         // Remove current image from array
         uploadedFiles.splice(currentCropIndex, 1);
@@ -3432,6 +3944,9 @@ CITY_CHECKBOXES_PLACEHOLDER
           // Position based on saved crop position
           const cropPos = imageCropPositions[index] || { x: 0.5, y: 0.5 };
           updateCropImagePosition(cropPos.x, cropPos.y);
+
+          // Update live preview background
+          updateLivePreviewBackground();
 
           // Show appropriate message
           if (isSquare) {
@@ -3639,7 +4154,8 @@ CITY_CHECKBOXES_PLACEHOLDER
           payload.dateFormat = selectedDateFormat;
 
           // Add manual overrides if provided
-          const mainTitleOverride = overrideMainTitle.value.trim();
+          // Check both the new visible mainTitleInput and the hidden overrideMainTitle
+          const mainTitleOverride = mainTitleInput?.value?.trim() || overrideMainTitle.value.trim();
           const subtitleOverride = overrideSubtitle.value.trim();
           if (mainTitleOverride) payload.overrideMainTitle = mainTitleOverride;
           if (subtitleOverride) payload.overrideSubtitle = subtitleOverride;
