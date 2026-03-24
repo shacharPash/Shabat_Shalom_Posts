@@ -2720,7 +2720,7 @@
                         <span>00:00</span>
                       </div>
                     </div>
-                    <div id="cropPosterDedication" class="crop-poster-dedication">זמני השבת לע"נ ...</div>
+                    <div id="cropPosterDedication" class="crop-poster-dedication">זמני השבת לעילוי נשמת ...</div>
                   </div>
                 </div>
                 <div id="noCropMsg" class="crop-no-need-msg" style="display: none;">✓ מרובעת</div>
@@ -3363,7 +3363,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Update dedication
       if (livePreviewDedication) {
         const neshama = neshamaInput?.value?.trim() || "";
-        livePreviewDedication.textContent = neshama ? `לע"נ ${neshama}` : "";
+        livePreviewDedication.textContent = neshama ? `לעילוי נשמת ${neshama}` : "";
         livePreviewDedication.style.display = neshama ? "block" : "none";
       }
     }
@@ -3415,7 +3415,9 @@ CITY_CHECKBOXES_PLACEHOLDER
         };
         reader.readAsDataURL(file);
       } else {
-        livePreviewBg.style.backgroundImage = "";
+        // Show default gradient background when no image is uploaded
+        livePreviewBg.style.backgroundImage = "linear-gradient(135deg, #1a237e 0%, #3949ab 100%)";
+        livePreviewBg.style.backgroundSize = 'cover';
         livePreviewBg.classList.remove('has-image');
         floatingPanel?.classList.remove('has-image');
         floatingPanel?.classList.remove('user-has-dragged'); // Reset hint visibility for new images
