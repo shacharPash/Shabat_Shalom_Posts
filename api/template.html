@@ -1193,16 +1193,26 @@
       color: rgba(255, 255, 255, 0.95);
       font-size: 11px;
       margin-top: 6px;
+      text-align: center;
     }
     .live-preview-dedication {
       color: rgba(255, 255, 255, 0.85);
       font-size: 10px;
       margin-top: 4px;
+      text-align: center;
     }
     .live-preview-empty-hint {
       color: rgba(255, 255, 255, 0.5);
       font-size: 9px;
       font-style: italic;
+      text-align: center;
+    }
+    .live-preview .editable {
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .live-preview .editable:hover {
+      opacity: 0.8;
     }
 
     /* Main Title Field (visible, not in advanced) */
@@ -3113,8 +3123,9 @@ CITY_CHECKBOXES_PLACEHOLDER
         if (orderedSelectedCities.length === 0) {
           livePreviewCities.innerHTML = '<div class="live-preview-empty-hint">בחרו ערים בשלב 2</div>';
         } else {
-          // Show up to 3 cities in preview
-          const citiesToShow = orderedSelectedCities.slice(0, 3);
+          // Show up to 4 cities in preview (showing 3+1 is wasteful)
+          const maxCities = 4;
+          const citiesToShow = orderedSelectedCities.slice(0, maxCities);
           livePreviewCities.innerHTML = citiesToShow.map(name => {
             const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
             const displayName = opt ? opt.querySelector('.city-name').textContent : name;
@@ -3126,8 +3137,8 @@ CITY_CHECKBOXES_PLACEHOLDER
           }).join('');
 
           // Add "..." if more cities
-          if (orderedSelectedCities.length > 3) {
-            livePreviewCities.innerHTML += `<div class="live-preview-empty-hint">+${orderedSelectedCities.length - 3} ערים נוספות</div>`;
+          if (orderedSelectedCities.length > maxCities) {
+            livePreviewCities.innerHTML += `<div class="live-preview-empty-hint">+${orderedSelectedCities.length - maxCities} ערים נוספות</div>`;
           }
         }
       }
