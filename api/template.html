@@ -1272,9 +1272,9 @@
       cursor: grabbing;
       transition: none;
     }
-    /* External drag hint above preview (visible when has image, hidden after drag) */
+    /* External drag hint above preview (always visible, hidden after drag) */
     .preview-drag-hint-external {
-      display: none; /* Hidden by default */
+      display: block; /* Always visible */
       text-align: center;
       padding: 6px 10px;
       margin-bottom: 8px;
@@ -1282,10 +1282,6 @@
       border-radius: 4px;
       font-size: 12px;
       color: #666;
-    }
-    /* Show when there's an image */
-    .floating-preview-panel.has-image .preview-drag-hint-external {
-      display: block;
     }
     /* Hide after user has dragged */
     .floating-preview-panel.user-has-dragged .preview-drag-hint-external {
