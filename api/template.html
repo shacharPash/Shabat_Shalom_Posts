@@ -3445,12 +3445,15 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Initial preview update
     setTimeout(updateLivePreview, 100);
+    // Initial background (gradient) - ensures gradient shows on load
+    setTimeout(updateLivePreviewBackground, 100);
 
     // ===== Floating Preview Toggle =====
     function openPreview() {
       floatingPreviewPanel.classList.add('show');
       previewOverlay.classList.add('show');
       updateLivePreview(); // Refresh preview when opened
+      updateLivePreviewBackground(); // Refresh background (gradient or image)
     }
 
     function closePreview() {
