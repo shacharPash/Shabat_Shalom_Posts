@@ -1051,6 +1051,56 @@
       text-align: center;
       margin-top: 8px;
     }
+
+    /* Editable preview elements */
+    .live-preview .editable {
+      cursor: pointer;
+      transition: background 0.2s ease;
+      border-radius: 4px;
+      padding: 2px 4px;
+      margin: -2px -4px;
+    }
+    .live-preview .editable:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    .live-preview .editable::after {
+      content: ' ✏️';
+      font-size: 10px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .live-preview .editable:hover::after {
+      opacity: 0.7;
+    }
+
+    /* Preview actions */
+    .preview-actions {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--divider-color, #eee);
+    }
+    .preview-action-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--button-bg, #f5f5f5);
+      border: 1px solid var(--button-border, #ddd);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s ease;
+    }
+    .preview-action-btn:hover {
+      background: var(--button-bg-hover, #eee);
+    }
+
+    /* Preview edit hint */
+    .preview-edit-hint {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-secondary, #888);
+      margin-top: 8px;
+      opacity: 0.8;
+    }
     .live-preview {
       position: relative;
       aspect-ratio: 1 / 1;
@@ -2352,7 +2402,7 @@
           <div class="live-preview-bg" id="livePreviewBg"></div>
           <div class="live-preview-overlay">
             <div class="live-preview-top">
-              <div class="live-preview-title" id="livePreviewTitle">שבת שלום</div>
+              <div class="live-preview-title editable" id="livePreviewTitle" data-target="mainTitleInput" title="לחץ לעריכה">שבת שלום</div>
               <div class="live-preview-subtitle" id="livePreviewSubtitle">פרשת ... | תאריך</div>
             </div>
             <div class="live-preview-bottom">
@@ -2366,12 +2416,18 @@
                   <div class="live-preview-empty-hint">בחרו ערים בשלב 2</div>
                 </div>
               </div>
-              <div class="live-preview-blessing" id="livePreviewBlessing"></div>
-              <div class="live-preview-dedication" id="livePreviewDedication"></div>
+              <div class="live-preview-blessing editable" id="livePreviewBlessing" data-target="message" title="לחץ לעריכה"></div>
+              <div class="live-preview-dedication editable" id="livePreviewDedication" data-target="neshama" title="לחץ לעריכה"></div>
             </div>
           </div>
         </div>
         <div class="preview-hint">מתעדכנת בזמן אמת</div>
+        <div class="preview-edit-hint">💡 לחץ על טקסט לעריכה</div>
+        <div class="preview-actions">
+          <button type="button" class="preview-action-btn" id="previewCropBtn">
+            ✂️ התאם חיתוך תמונה
+          </button>
+        </div>
       </div>
     </div>
 
@@ -3143,6 +3199,39 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (e.key === 'Escape' && floatingPreviewPanel.classList.contains('show')) {
         closePreview();
       }
+    });
+
+    // Preview crop button - opens crop section from preview
+    const previewCropBtn = document.getElementById('previewCropBtn');
+    if (previewCropBtn) {
+      previewCropBtn.addEventListener('click', () => {
+        closePreview(); // Close the floating preview
+        // Scroll to and open the crop section
+        const cropToggleBtn = document.getElementById('cropToggleBtn');
+        if (cropToggleBtn) {
+          cropToggleBtn.scrollIntoView({ behavior: 'smooth' });
+          // Open the crop preview if not already open
+          const cropContainer = document.getElementById('cropPreviewContainer');
+          if (cropContainer && !cropContainer.classList.contains('show')) {
+            cropToggleBtn.click();
+          }
+        }
+      });
+    }
+
+    // Editable preview elements - click to edit
+    document.querySelectorAll('.live-preview .editable').forEach(el => {
+      el.addEventListener('click', () => {
+        const targetId = el.dataset.target;
+        if (targetId) {
+          const targetInput = document.getElementById(targetId);
+          if (targetInput) {
+            closePreview(); // Close preview panel
+            targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => targetInput.focus(), 300); // Focus after scroll
+          }
+        }
+      });
     });
 
     // Weeks selector - update dates from selected start
