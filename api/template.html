@@ -3416,13 +3416,13 @@ CITY_CHECKBOXES_PLACEHOLDER
         };
         reader.readAsDataURL(file);
       } else {
-        // Show default gradient background when no image is uploaded
-        livePreviewBg.style.backgroundImage = "linear-gradient(135deg, #1a237e 0%, #3949ab 100%)";
+        // Show default background image when no image is uploaded
+        livePreviewBg.style.backgroundImage = "url('/static/backgrounds/default.png')";
         livePreviewBg.style.backgroundSize = 'cover';
+        livePreviewBg.style.backgroundPosition = 'center';
         livePreviewBg.classList.remove('has-image');
         floatingPanel?.classList.remove('has-image');
         floatingPanel?.classList.remove('user-has-dragged'); // Reset hint visibility for new images
-        livePreviewBg.style.backgroundPosition = 'center';
         previewDragState.bgPosX = 50;
         previewDragState.bgPosY = 50;
 
