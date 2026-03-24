@@ -9,8 +9,8 @@ from fastapi.responses import HTMLResponse, Response
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from cities import get_cities_list
-from api.poster import build_poster_from_payload
+from cities import get_cities_list, map_city_payload
+from api.poster import build_poster_from_payload, CITY_BY_NAME
 
 # FastAPI app for local development with `vercel dev`
 app = FastAPI()
@@ -65,6 +65,8 @@ async def create_poster(request: Request):
     """Create poster (for local dev)."""
     try:
         payload = await request.json()
+        # Map city names to full city objects with coordinates (same as Vercel handler)
+        map_city_payload(payload, CITY_BY_NAME)
         png_bytes = build_poster_from_payload(payload)
         return Response(content=png_bytes, media_type="image/png")
     except Exception as e:
