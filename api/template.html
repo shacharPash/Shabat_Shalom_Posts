@@ -957,9 +957,9 @@
     .floating-preview-panel {
       position: fixed;
       top: 50%;
-      right: -380px;
+      right: -420px;
       transform: translateY(-50%);
-      width: 340px;
+      width: 380px;
       max-height: 80vh;
       background: var(--container-bg);
       border-radius: 16px 0 0 16px;
@@ -1183,11 +1183,18 @@
       justify-content: space-between;
       gap: 12px;
       color: white;
-      font-size: 10px;
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
     }
     .live-preview-city-row span {
       flex: 1;
       text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .live-preview-city-row span:first-child {
+      max-width: 100px;
     }
     .live-preview-blessing {
       color: rgba(255, 255, 255, 0.95);
@@ -3162,8 +3169,17 @@ CITY_CHECKBOXES_PLACEHOLDER
     function updateLivePreviewBackground() {
       if (!livePreviewBg) return;
 
-      if (uploadedFiles.length > 0 && cropPreviewImage.src) {
+      // If cropPreviewImage already has a src (user opened crop preview), use that
+      if (uploadedFiles.length > 0 && cropPreviewImage.src && !cropPreviewImage.src.endsWith('/')) {
         livePreviewBg.style.backgroundImage = `url(${cropPreviewImage.src})`;
+      } else if (uploadedFiles.length > 0) {
+        // Read directly from uploaded file for immediate preview
+        const file = uploadedFiles[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          livePreviewBg.style.backgroundImage = `url(${e.target.result})`;
+        };
+        reader.readAsDataURL(file);
       } else {
         livePreviewBg.style.backgroundImage = "";
       }
@@ -3837,6 +3853,9 @@ CITY_CHECKBOXES_PLACEHOLDER
 
         // Pre-load the first image for crop preview
         preloadCropPreview(fileInput.files[0], 0);
+
+        // Update live preview background immediately
+        updateLivePreviewBackground();
       }
     });
 
