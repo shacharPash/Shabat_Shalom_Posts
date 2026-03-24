@@ -1307,6 +1307,13 @@
       padding: 8px 12px;
       direction: rtl;
       text-align: center;
+      pointer-events: none;  /* Let clicks pass through to background */
+    }
+
+    /* Re-enable pointer events for editable elements in overlay */
+    .live-preview-overlay .editable {
+      pointer-events: auto;
+      cursor: pointer;
     }
     .live-preview-top {
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
