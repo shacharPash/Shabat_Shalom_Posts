@@ -1272,57 +1272,28 @@
       cursor: grabbing;
       transition: none;
     }
-    /* Drag hint that shows on hover when there's an image */
-    .live-preview-bg.has-image::after {
-      content: '✋ גרור להתאמה';
-      position: absolute;
-      bottom: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 10px;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      pointer-events: none;
-      white-space: nowrap;
-      z-index: 5;
-    }
-    .live-preview-bg.has-image:hover::after {
-      opacity: 1;
-    }
-    .live-preview-bg.dragging::after {
-      opacity: 0;
-    }
-    /* Visible drag hint inside preview */
-    .preview-drag-hint {
-      display: none; /* Hidden by default, shown when has-image */
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.75);
-      color: white;
-      padding: 10px 16px;
-      border-radius: 8px;
+    /* External drag hint above preview (visible when has image, hidden after drag) */
+    .preview-drag-hint-external {
+      display: none; /* Hidden by default */
+      text-align: center;
+      padding: 6px 10px;
+      margin-bottom: 8px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 4px;
       font-size: 12px;
-      z-index: 10;
-      pointer-events: none;
-      opacity: 1;
-      transition: opacity 0.3s ease;
-      white-space: nowrap;
-      text-shadow: none;
+      color: #666;
     }
-    .live-preview-bg.has-image .preview-drag-hint {
+    /* Show when there's an image */
+    .floating-preview-panel.has-image .preview-drag-hint-external {
       display: block;
     }
-    /* Hide hint when dragging or after user has dragged */
-    .live-preview-bg.dragging .preview-drag-hint,
-    .live-preview-bg.has-dragged .preview-drag-hint {
-      opacity: 0;
-      pointer-events: none;
+    /* Hide after user has dragged */
+    .floating-preview-panel.user-has-dragged .preview-drag-hint-external {
+      display: none;
+    }
+    [data-theme="dark"] .preview-drag-hint-external {
+      background: rgba(255,255,255,0.1);
+      color: #aaa;
     }
     .live-preview-overlay {
       position: absolute;
@@ -2634,9 +2605,12 @@
         <button type="button" class="close-preview-btn" id="closePreviewBtn">✕</button>
       </div>
       <div class="floating-preview-content">
+        <!-- Hint OUTSIDE the image -->
+        <div class="preview-drag-hint-external" id="previewDragHint">✋ גרור את התמונה למיקום הרצוי</div>
+
         <div class="live-preview" id="livePreview">
           <div class="live-preview-bg" id="livePreviewBg">
-            <div class="preview-drag-hint" id="previewDragHint">✋ גרור את התמונה למיקום הרצוי</div>
+            <!-- No hint inside here -->
           </div>
           <div class="live-preview-overlay">
             <div class="live-preview-top">
@@ -3392,11 +3366,13 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (!livePreviewBg) return;
 
       const previewResetBtn = document.getElementById('previewResetCropBtn');
+      const floatingPanel = document.getElementById('floatingPreviewPanel');
 
       // If cropPreviewImage already has a src (user opened crop preview), use that
       if (uploadedFiles.length > 0 && cropPreviewImage.src && !cropPreviewImage.src.endsWith('/')) {
         livePreviewBg.style.backgroundImage = `url(${cropPreviewImage.src})`;
         livePreviewBg.classList.add('has-image');
+        floatingPanel?.classList.add('has-image');
 
         // Apply saved crop position if exists
         const index = currentCropIndex || 0;
@@ -3416,6 +3392,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         reader.onload = (e) => {
           livePreviewBg.style.backgroundImage = `url(${e.target.result})`;
           livePreviewBg.classList.add('has-image');
+          floatingPanel?.classList.add('has-image');
 
           // Apply saved crop position if exists
           const index = currentCropIndex || 0;
@@ -3433,7 +3410,8 @@ CITY_CHECKBOXES_PLACEHOLDER
       } else {
         livePreviewBg.style.backgroundImage = "";
         livePreviewBg.classList.remove('has-image');
-        livePreviewBg.classList.remove('has-dragged'); // Reset hint visibility
+        floatingPanel?.classList.remove('has-image');
+        floatingPanel?.classList.remove('user-has-dragged'); // Reset hint visibility for new images
         livePreviewBg.style.backgroundPosition = 'center';
         previewDragState.bgPosX = 50;
         previewDragState.bgPosY = 50;
@@ -3511,6 +3489,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       livePreviewBg.addEventListener('touchstart', startPreviewDrag, { passive: false });
       document.addEventListener('touchmove', movePreviewDrag, { passive: false });
       document.addEventListener('touchend', endPreviewDrag);
+
+      console.log('Preview drag initialized');
+    } else {
+      console.error('livePreviewBg not found - drag will not work');
     }
 
     function startPreviewDrag(e) {
@@ -3571,8 +3553,8 @@ CITY_CHECKBOXES_PLACEHOLDER
       previewDragState.isDragging = false;
       livePreviewBg.classList.remove('dragging');
 
-      // Hide the drag hint after first drag
-      livePreviewBg.classList.add('has-dragged');
+      // Hide the external drag hint after first drag
+      document.getElementById('floatingPreviewPanel')?.classList.add('user-has-dragged');
 
       // Save the position to imageCropPositions for poster generation
       const index = currentCropIndex || 0;
