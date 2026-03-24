@@ -957,9 +957,9 @@
     .floating-preview-panel {
       position: fixed;
       top: 50%;
-      right: -350px;
+      right: -380px;
       transform: translateY(-50%);
-      width: 320px;
+      width: 340px;
       max-height: 80vh;
       background: var(--container-bg);
       border-radius: 16px 0 0 16px;
@@ -1036,7 +1036,7 @@
     .floating-preview-content .live-preview {
       position: relative;
       aspect-ratio: 1 / 1;
-      max-width: 280px;
+      max-width: 300px;
       margin: 0 auto;
       border-radius: 12px;
       overflow: hidden;
@@ -3238,8 +3238,34 @@ CITY_CHECKBOXES_PLACEHOLDER
           const targetInput = document.getElementById(targetId);
           if (targetInput) {
             closePreview(); // Close preview panel
-            targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => targetInput.focus(), 300); // Focus after scroll
+
+            // Open the customization panel if needed
+            if (customizationPanel && !customizationPanel.classList.contains('expanded')) {
+              customizationToggle?.click();
+            }
+
+            // Open the correct section based on target
+            if (targetId === 'message') {
+              // Open blessing section
+              const blessingSection = document.getElementById('blessingSection');
+              const toggleBlessingBtn = document.getElementById('toggleBlessingBtn');
+              if (blessingSection && !blessingSection.classList.contains('visible') && toggleBlessingBtn) {
+                toggleBlessingBtn.click();
+              }
+            } else if (targetId === 'neshama') {
+              // Open memorial section
+              const memorialSection = document.getElementById('memorialSection');
+              const toggleMemorialBtn = document.getElementById('toggleMemorialBtn');
+              if (memorialSection && !memorialSection.classList.contains('visible') && toggleMemorialBtn) {
+                toggleMemorialBtn.click();
+              }
+            }
+
+            // Scroll and focus
+            setTimeout(() => {
+              targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              setTimeout(() => targetInput.focus(), 300);
+            }, 100);
           }
         }
       });
