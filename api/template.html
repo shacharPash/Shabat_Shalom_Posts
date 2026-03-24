@@ -1277,8 +1277,8 @@
       bottom: 0;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      padding: 16px;
+      justify-content: flex-start;
+      padding: 8px 12px;
       direction: rtl;
       text-align: center;
     }
@@ -1287,34 +1287,39 @@
     }
     .live-preview-title {
       color: white;
-      font-size: 28px;
+      font-size: 20px;
       font-weight: bold;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       font-family: 'Heebo', Arial, sans-serif;
     }
     .live-preview-subtitle {
       color: rgba(255, 255, 255, 0.9);
-      font-size: 12px;
+      font-size: 9px;
+    }
+    /* Middle spacer - represents the visible image area */
+    .live-preview-middle {
+      flex: 1;
+      min-height: 40%;
     }
     .live-preview-bottom {
       text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
     }
     .live-preview-table {
       background: rgba(0, 0, 0, 0.5);
-      border-radius: 8px;
-      padding: 8px 12px;
+      border-radius: 6px;
+      padding: 6px 10px;
       display: inline-block;
-      margin-bottom: 8px;
-      min-width: 180px;
+      margin-bottom: 4px;
+      min-width: 160px;
     }
     .live-preview-table-headers {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
       color: rgba(255, 255, 255, 0.7);
-      font-size: 9px;
-      margin-bottom: 4px;
-      padding-bottom: 4px;
+      font-size: 7px;
+      margin-bottom: 3px;
+      padding-bottom: 3px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     }
     .live-preview-table-headers span {
@@ -1324,14 +1329,14 @@
     .live-preview-cities-list {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1px;
     }
     .live-preview-city-row {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
       color: white;
-      font-size: 11px;
+      font-size: 8px;
       white-space: nowrap;
       overflow: hidden;
     }
@@ -1342,23 +1347,23 @@
       text-overflow: ellipsis;
     }
     .live-preview-city-row span:first-child {
-      max-width: 100px;
+      max-width: 80px;
     }
     .live-preview-blessing {
       color: rgba(255, 255, 255, 0.95);
-      font-size: 11px;
-      margin-top: 6px;
+      font-size: 8px;
+      margin-top: 4px;
       text-align: center;
     }
     .live-preview-dedication {
       color: rgba(255, 255, 255, 0.85);
-      font-size: 10px;
-      margin-top: 4px;
+      font-size: 7px;
+      margin-top: 2px;
       text-align: center;
     }
     .live-preview-empty-hint {
       color: rgba(255, 255, 255, 0.5);
-      font-size: 9px;
+      font-size: 7px;
       font-style: italic;
       text-align: center;
     }
@@ -2581,6 +2586,7 @@
               <div class="live-preview-title editable" id="livePreviewTitle" data-target="mainTitleInput" title="לחץ לעריכה">שבת שלום</div>
               <div class="live-preview-subtitle" id="livePreviewSubtitle">פרשת ... | תאריך</div>
             </div>
+            <div class="live-preview-middle"></div>
             <div class="live-preview-bottom">
               <div class="live-preview-table">
                 <div class="live-preview-table-headers">
