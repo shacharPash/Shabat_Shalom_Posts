@@ -1032,6 +1032,43 @@
       background: rgba(0,0,0,0.5);
     }
 
+    /* Dark mode for floating preview panel */
+    [data-theme="dark"] .floating-preview-panel {
+      background: var(--container-bg);
+      box-shadow: -5px 0 30px rgba(0, 0, 0, 0.5);
+    }
+    [data-theme="dark"] .floating-preview-content {
+      background: var(--container-bg);
+    }
+    [data-theme="dark"] .floating-preview-content .live-preview {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    [data-theme="dark"] .live-preview-bg {
+      background-color: #2d2d2d;
+    }
+    [data-theme="dark"] .preview-hint,
+    [data-theme="dark"] .preview-edit-hint {
+      color: var(--text-tertiary);
+    }
+    [data-theme="dark"] .preview-crop-section {
+      background: var(--input-bg);
+      border-color: var(--input-border);
+    }
+    [data-theme="dark"] .preview-crop-header {
+      color: var(--text-secondary);
+    }
+    [data-theme="dark"] .preview-crop-hint {
+      color: var(--text-secondary);
+    }
+    [data-theme="dark"] .preview-action-btn {
+      background: var(--button-bg);
+      border-color: var(--button-border);
+      color: var(--text-primary);
+    }
+    [data-theme="dark"] .preview-action-btn:hover {
+      background: var(--button-hover-bg);
+    }
+
     /* Live preview inside floating panel */
     .floating-preview-content .live-preview {
       position: relative;
@@ -1091,6 +1128,84 @@
     }
     .preview-action-btn:hover {
       background: var(--button-bg-hover, #eee);
+    }
+
+    /* Preview crop section (inside floating panel) */
+    .preview-crop-section {
+      margin-bottom: 12px;
+      padding: 12px;
+      background: var(--input-bg, #f5f5f5);
+      border-radius: 12px;
+      border: 2px solid var(--input-border, #e8eaf6);
+    }
+    .preview-crop-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: var(--text-secondary, #3949ab);
+      font-weight: 500;
+    }
+    .close-crop-btn {
+      background: none;
+      border: none;
+      color: var(--text-tertiary, #999);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 16px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+    .close-crop-btn:hover {
+      color: var(--text-primary, #333);
+      background: var(--button-bg, #eee);
+    }
+    .preview-crop-area {
+      display: flex;
+      justify-content: center;
+    }
+    .preview-crop-area .crop-area {
+      width: 180px;
+      height: 180px;
+    }
+    .preview-crop-hint {
+      font-size: 11px;
+      color: var(--text-secondary, #3949ab);
+      text-align: center;
+      margin-top: 8px;
+    }
+    .preview-crop-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .preview-crop-actions button {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--button-border, #ddd);
+      background: var(--button-bg, #f5f5f5);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+    .preview-crop-actions button:hover {
+      background: var(--button-hover-bg, #eee);
+    }
+    .preview-crop-actions .crop-done-btn {
+      background: #4caf50;
+      border-color: #4caf50;
+      color: white;
+    }
+    .preview-crop-actions .crop-done-btn:hover {
+      background: #43a047;
+    }
+    .preview-crop-no-image {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-tertiary, #999);
+      font-size: 13px;
     }
 
     /* Preview edit hint */
@@ -2452,6 +2567,19 @@
         <div class="preview-hint">מתעדכנת בזמן אמת</div>
         <div class="preview-edit-hint">💡 לחץ על טקסט לעריכה</div>
         <div class="preview-actions">
+          <div class="preview-crop-section" id="previewCropSection" style="display: none;">
+            <div class="preview-crop-header">
+              <span>✂️ התאם חיתוך</span>
+              <button type="button" class="close-crop-btn" id="closePreviewCropBtn">✕</button>
+            </div>
+            <div class="preview-crop-area" id="previewCropArea">
+              <!-- The crop area will be cloned here -->
+            </div>
+            <div class="preview-crop-hint" id="previewCropHint">גרור את התמונה לבחירת האזור</div>
+            <div class="preview-crop-actions">
+              <button type="button" class="crop-done-btn" id="previewCropDoneBtn">✓ אישור</button>
+            </div>
+          </div>
           <button type="button" class="preview-action-btn" id="previewCropBtn">
             ✂️ התאם חיתוך תמונה
           </button>
@@ -3239,20 +3367,197 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     });
 
-    // Preview crop button - opens crop section from preview
+    // Preview crop button - inline crop within preview panel
     const previewCropBtn = document.getElementById('previewCropBtn');
-    if (previewCropBtn) {
-      previewCropBtn.addEventListener('click', () => {
-        closePreview(); // Close the floating preview
-        // Scroll to and open the crop section
-        const cropToggleBtn = document.getElementById('cropToggleBtn');
-        if (cropToggleBtn) {
-          cropToggleBtn.scrollIntoView({ behavior: 'smooth' });
-          // Open the crop preview if not already open
-          const cropContainer = document.getElementById('cropPreviewContainer');
-          if (cropContainer && !cropContainer.classList.contains('show')) {
-            cropToggleBtn.click();
+    const previewCropSection = document.getElementById('previewCropSection');
+    const closePreviewCropBtn = document.getElementById('closePreviewCropBtn');
+    const previewCropDoneBtn = document.getElementById('previewCropDoneBtn');
+    const previewCropArea = document.getElementById('previewCropArea');
+    const previewCropHint = document.getElementById('previewCropHint');
+
+    // Store preview crop state
+    let previewCropActive = false;
+    let previewCropImgWrapper = null;
+    let previewCropImage = null;
+
+    function showPreviewCrop() {
+      if (!uploadedFiles.length) {
+        // No image uploaded
+        previewCropArea.innerHTML = '<div class="preview-crop-no-image">📷 העלה תמונה תחילה</div>';
+        previewCropHint.style.display = 'none';
+      } else {
+        // Create crop area clone for preview
+        previewCropArea.innerHTML = `
+          <div class="crop-area" id="previewCropAreaInner">
+            <div class="crop-image-wrapper" id="previewCropImageWrapper">
+              <img id="previewCropImage" alt="תצוגה מקדימה" />
+            </div>
+            <div class="crop-overlay"></div>
+          </div>
+        `;
+        previewCropHint.style.display = 'block';
+
+        // Initialize the preview crop with current image
+        const file = uploadedFiles[currentCropIndex || 0];
+        initPreviewCrop(file, currentCropIndex || 0);
+      }
+
+      previewCropSection.style.display = 'block';
+      previewCropBtn.style.display = 'none';
+      previewCropActive = true;
+    }
+
+    function hidePreviewCrop() {
+      previewCropSection.style.display = 'none';
+      previewCropBtn.style.display = 'block';
+      previewCropActive = false;
+    }
+
+    function initPreviewCrop(file, index) {
+      const img = document.getElementById('previewCropImage');
+      const wrapper = document.getElementById('previewCropImageWrapper');
+      const cropAreaInner = document.getElementById('previewCropAreaInner');
+      if (!img || !wrapper || !cropAreaInner) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          const cropW = 180, cropH = 180;
+          const aspectRatio = tempImg.width / tempImg.height;
+          const isSquare = Math.abs(aspectRatio - 1) < 0.02;
+
+          // Scale image to cover the crop area
+          const scale = Math.max(cropW / tempImg.width, cropH / tempImg.height);
+          const imgW = tempImg.width * scale;
+          const imgH = tempImg.height * scale;
+
+          img.src = e.target.result;
+          img.style.width = imgW + 'px';
+          img.style.height = imgH + 'px';
+
+          // Position based on saved crop position
+          const cropPos = imageCropPositions[index] || { x: 0.5, y: 0.5 };
+          const maxOffsetX = imgW - cropW;
+          const maxOffsetY = imgH - cropH;
+          const left = -cropPos.x * maxOffsetX;
+          const top = -cropPos.y * maxOffsetY;
+          wrapper.style.left = left + 'px';
+          wrapper.style.top = top + 'px';
+
+          // Update hint
+          if (isSquare) {
+            previewCropHint.textContent = '✓ התמונה מרובעת - אין צורך בחיתוך';
+            cropAreaInner.classList.add('no-crop-needed');
+          } else {
+            previewCropHint.textContent = 'גרור את התמונה לבחירת האזור';
+            cropAreaInner.classList.remove('no-crop-needed');
           }
+
+          // Store refs for drag handling
+          previewCropImgWrapper = wrapper;
+          previewCropImage = img;
+
+          // Add drag handlers
+          setupPreviewCropDrag(cropAreaInner, wrapper, imgW, imgH, cropW, cropH, index);
+        };
+        tempImg.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function setupPreviewCropDrag(area, wrapper, imgW, imgH, cropW, cropH, index) {
+      let isDragging = false;
+      let startX, startY, startLeft, startTop;
+
+      const onMouseDown = (e) => {
+        if (area.classList.contains('no-crop-needed')) return;
+        isDragging = true;
+        area.style.cursor = 'grabbing';
+        startX = e.clientX || (e.touches && e.touches[0].clientX);
+        startY = e.clientY || (e.touches && e.touches[0].clientY);
+        startLeft = parseFloat(wrapper.style.left) || 0;
+        startTop = parseFloat(wrapper.style.top) || 0;
+        e.preventDefault();
+      };
+
+      const onMouseMove = (e) => {
+        if (!isDragging) return;
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        const maxOffsetX = imgW - cropW;
+        const maxOffsetY = imgH - cropH;
+
+        let newLeft = Math.min(0, Math.max(-maxOffsetX, startLeft + dx));
+        let newTop = Math.min(0, Math.max(-maxOffsetY, startTop + dy));
+
+        wrapper.style.left = newLeft + 'px';
+        wrapper.style.top = newTop + 'px';
+
+        // Save position as percentage
+        const posX = maxOffsetX > 0 ? -newLeft / maxOffsetX : 0.5;
+        const posY = maxOffsetY > 0 ? -newTop / maxOffsetY : 0.5;
+        imageCropPositions[index] = { x: posX, y: posY };
+
+        // Update main crop preview position if visible
+        updateMainCropPosition(posX, posY);
+
+        // Update live preview background position
+        updateLivePreviewBackgroundPosition(posX, posY);
+      };
+
+      const onMouseUp = () => {
+        if (isDragging) {
+          isDragging = false;
+          area.style.cursor = 'grab';
+        }
+      };
+
+      area.addEventListener('mousedown', onMouseDown);
+      area.addEventListener('touchstart', onMouseDown, { passive: false });
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('touchmove', onMouseMove, { passive: false });
+      document.addEventListener('mouseup', onMouseUp);
+      document.addEventListener('touchend', onMouseUp);
+    }
+
+    function updateMainCropPosition(posX, posY) {
+      // Update the main crop preview if it exists
+      if (cropImageWrapper && cropImgWidth && cropImgHeight) {
+        const maxX = cropImgWidth - 200;
+        const maxY = cropImgHeight - 200;
+        cropImageWrapper.style.left = (-posX * maxX) + 'px';
+        cropImageWrapper.style.top = (-posY * maxY) + 'px';
+      }
+    }
+
+    function updateLivePreviewBackgroundPosition(posX, posY) {
+      if (livePreviewBg) {
+        const x = posX * 100;
+        const y = posY * 100;
+        livePreviewBg.style.backgroundPosition = `${x}% ${y}%`;
+      }
+    }
+
+    if (previewCropBtn) {
+      previewCropBtn.addEventListener('click', showPreviewCrop);
+    }
+
+    if (closePreviewCropBtn) {
+      closePreviewCropBtn.addEventListener('click', hidePreviewCrop);
+    }
+
+    if (previewCropDoneBtn) {
+      previewCropDoneBtn.addEventListener('click', () => {
+        hidePreviewCrop();
+        // Update the main crop toggle button to show crop was set
+        if (cropToggleBtn && uploadedFiles.length) {
+          cropToggleBtn.textContent = '✓ חיתוך הוגדר';
+          cropToggleBtn.style.borderColor = '#4caf50';
+          cropToggleBtn.style.color = '#4caf50';
         }
       });
     }
