@@ -1235,6 +1235,39 @@
       background-size: cover;
       background-position: center;
       opacity: 0.85;
+      cursor: grab;
+      transition: background-position 0.05s ease-out;
+    }
+    .live-preview-bg:active {
+      cursor: grabbing;
+    }
+    .live-preview-bg.dragging {
+      cursor: grabbing;
+      transition: none;
+    }
+    /* Drag hint that shows on hover when there's an image */
+    .live-preview-bg.has-image::after {
+      content: '✋ גרור להתאמה';
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 10px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 5;
+    }
+    .live-preview-bg.has-image:hover::after {
+      opacity: 1;
+    }
+    .live-preview-bg.dragging::after {
+      opacity: 0;
     }
     .live-preview-overlay {
       position: absolute;
@@ -2567,21 +2600,8 @@
         <div class="preview-hint">מתעדכנת בזמן אמת</div>
         <div class="preview-edit-hint">💡 לחץ על טקסט לעריכה</div>
         <div class="preview-actions">
-          <div class="preview-crop-section" id="previewCropSection" style="display: none;">
-            <div class="preview-crop-header">
-              <span>✂️ התאם חיתוך</span>
-              <button type="button" class="close-crop-btn" id="closePreviewCropBtn">✕</button>
-            </div>
-            <div class="preview-crop-area" id="previewCropArea">
-              <!-- The crop area will be cloned here -->
-            </div>
-            <div class="preview-crop-hint" id="previewCropHint">גרור את התמונה לבחירת האזור</div>
-            <div class="preview-crop-actions">
-              <button type="button" class="crop-done-btn" id="previewCropDoneBtn">✓ אישור</button>
-            </div>
-          </div>
-          <button type="button" class="preview-action-btn" id="previewCropBtn">
-            ✂️ התאם חיתוך תמונה
+          <button type="button" class="preview-action-btn" id="previewResetCropBtn" style="display: none;">
+            🔄 אפס מיקום תמונה
           </button>
         </div>
       </div>
@@ -3308,19 +3328,56 @@ CITY_CHECKBOXES_PLACEHOLDER
     function updateLivePreviewBackground() {
       if (!livePreviewBg) return;
 
+      const previewResetBtn = document.getElementById('previewResetCropBtn');
+
       // If cropPreviewImage already has a src (user opened crop preview), use that
       if (uploadedFiles.length > 0 && cropPreviewImage.src && !cropPreviewImage.src.endsWith('/')) {
         livePreviewBg.style.backgroundImage = `url(${cropPreviewImage.src})`;
+        livePreviewBg.classList.add('has-image');
+
+        // Apply saved crop position if exists
+        const index = currentCropIndex || 0;
+        const cropPos = imageCropPositions[index] || { x: 0.5, y: 0.5 };
+        livePreviewBg.style.backgroundPosition = `${cropPos.x * 100}% ${cropPos.y * 100}%`;
+        previewDragState.bgPosX = cropPos.x * 100;
+        previewDragState.bgPosY = cropPos.y * 100;
+
+        // Show reset button if not centered
+        if (previewResetBtn && (Math.abs(cropPos.x - 0.5) > 0.01 || Math.abs(cropPos.y - 0.5) > 0.01)) {
+          previewResetBtn.style.display = 'block';
+        }
       } else if (uploadedFiles.length > 0) {
         // Read directly from uploaded file for immediate preview
         const file = uploadedFiles[0];
         const reader = new FileReader();
         reader.onload = (e) => {
           livePreviewBg.style.backgroundImage = `url(${e.target.result})`;
+          livePreviewBg.classList.add('has-image');
+
+          // Apply saved crop position if exists
+          const index = currentCropIndex || 0;
+          const cropPos = imageCropPositions[index] || { x: 0.5, y: 0.5 };
+          livePreviewBg.style.backgroundPosition = `${cropPos.x * 100}% ${cropPos.y * 100}%`;
+          previewDragState.bgPosX = cropPos.x * 100;
+          previewDragState.bgPosY = cropPos.y * 100;
+
+          // Show reset button if not centered
+          if (previewResetBtn && (Math.abs(cropPos.x - 0.5) > 0.01 || Math.abs(cropPos.y - 0.5) > 0.01)) {
+            previewResetBtn.style.display = 'block';
+          }
         };
         reader.readAsDataURL(file);
       } else {
         livePreviewBg.style.backgroundImage = "";
+        livePreviewBg.classList.remove('has-image');
+        livePreviewBg.style.backgroundPosition = 'center';
+        previewDragState.bgPosX = 50;
+        previewDragState.bgPosY = 50;
+
+        // Hide reset button when no image
+        if (previewResetBtn) {
+          previewResetBtn.style.display = 'none';
+        }
       }
     }
 
@@ -3367,161 +3424,125 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     });
 
-    // Preview crop button - inline crop within preview panel
-    const previewCropBtn = document.getElementById('previewCropBtn');
-    const previewCropSection = document.getElementById('previewCropSection');
-    const closePreviewCropBtn = document.getElementById('closePreviewCropBtn');
-    const previewCropDoneBtn = document.getElementById('previewCropDoneBtn');
-    const previewCropArea = document.getElementById('previewCropArea');
-    const previewCropHint = document.getElementById('previewCropHint');
+    // ===== Inline Preview Image Drag (crop directly in preview) =====
+    const previewResetCropBtn = document.getElementById('previewResetCropBtn');
 
-    // Store preview crop state
-    let previewCropActive = false;
-    let previewCropImgWrapper = null;
-    let previewCropImage = null;
+    // Preview drag state
+    let previewDragState = {
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      bgPosX: 50, // percentage
+      bgPosY: 50  // percentage
+    };
 
-    function showPreviewCrop() {
-      if (!uploadedFiles.length) {
-        // No image uploaded
-        previewCropArea.innerHTML = '<div class="preview-crop-no-image">📷 העלה תמונה תחילה</div>';
-        previewCropHint.style.display = 'none';
-      } else {
-        // Create crop area clone for preview
-        previewCropArea.innerHTML = `
-          <div class="crop-area" id="previewCropAreaInner">
-            <div class="crop-image-wrapper" id="previewCropImageWrapper">
-              <img id="previewCropImage" alt="תצוגה מקדימה" />
-            </div>
-            <div class="crop-overlay"></div>
-          </div>
-        `;
-        previewCropHint.style.display = 'block';
+    // Setup preview background drag
+    if (livePreviewBg) {
+      // Mouse events
+      livePreviewBg.addEventListener('mousedown', startPreviewDrag);
+      document.addEventListener('mousemove', movePreviewDrag);
+      document.addEventListener('mouseup', endPreviewDrag);
 
-        // Initialize the preview crop with current image
-        const file = uploadedFiles[currentCropIndex || 0];
-        initPreviewCrop(file, currentCropIndex || 0);
+      // Touch events
+      livePreviewBg.addEventListener('touchstart', startPreviewDrag, { passive: false });
+      document.addEventListener('touchmove', movePreviewDrag, { passive: false });
+      document.addEventListener('touchend', endPreviewDrag);
+    }
+
+    function startPreviewDrag(e) {
+      // Only drag if there's an image
+      if (!uploadedFiles.length || !livePreviewBg.style.backgroundImage) return;
+
+      e.preventDefault();
+      previewDragState.isDragging = true;
+      livePreviewBg.classList.add('dragging');
+
+      const point = e.touches ? e.touches[0] : e;
+      previewDragState.startX = point.clientX;
+      previewDragState.startY = point.clientY;
+
+      // Get current position from background-position
+      const bgPos = livePreviewBg.style.backgroundPosition;
+      if (bgPos) {
+        const parts = bgPos.split(' ');
+        if (parts.length >= 2) {
+          previewDragState.bgPosX = parseFloat(parts[0]) || 50;
+          previewDragState.bgPosY = parseFloat(parts[1]) || 50;
+        }
       }
-
-      previewCropSection.style.display = 'block';
-      previewCropBtn.style.display = 'none';
-      previewCropActive = true;
     }
 
-    function hidePreviewCrop() {
-      previewCropSection.style.display = 'none';
-      previewCropBtn.style.display = 'block';
-      previewCropActive = false;
+    function movePreviewDrag(e) {
+      if (!previewDragState.isDragging) return;
+      e.preventDefault();
+
+      const point = e.touches ? e.touches[0] : e;
+      const deltaX = point.clientX - previewDragState.startX;
+      const deltaY = point.clientY - previewDragState.startY;
+
+      // Convert pixel delta to percentage (adjust sensitivity)
+      // Preview is about 280-300px, so use that as reference
+      const previewSize = livePreviewBg.offsetWidth || 280;
+      const sensitivity = 100 / previewSize; // ~0.35 for 280px
+
+      let newX = previewDragState.bgPosX - (deltaX * sensitivity);
+      let newY = previewDragState.bgPosY - (deltaY * sensitivity);
+
+      // Clamp to 0-100 range
+      newX = Math.max(0, Math.min(100, newX));
+      newY = Math.max(0, Math.min(100, newY));
+
+      livePreviewBg.style.backgroundPosition = `${newX}% ${newY}%`;
+
+      // Update start position for next move (continuous drag)
+      previewDragState.startX = point.clientX;
+      previewDragState.startY = point.clientY;
+      previewDragState.bgPosX = newX;
+      previewDragState.bgPosY = newY;
     }
 
-    function initPreviewCrop(file, index) {
-      const img = document.getElementById('previewCropImage');
-      const wrapper = document.getElementById('previewCropImageWrapper');
-      const cropAreaInner = document.getElementById('previewCropAreaInner');
-      if (!img || !wrapper || !cropAreaInner) return;
+    function endPreviewDrag() {
+      if (!previewDragState.isDragging) return;
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const tempImg = new Image();
-        tempImg.onload = () => {
-          const cropW = 180, cropH = 180;
-          const aspectRatio = tempImg.width / tempImg.height;
-          const isSquare = Math.abs(aspectRatio - 1) < 0.02;
+      previewDragState.isDragging = false;
+      livePreviewBg.classList.remove('dragging');
 
-          // Scale image to cover the crop area
-          const scale = Math.max(cropW / tempImg.width, cropH / tempImg.height);
-          const imgW = tempImg.width * scale;
-          const imgH = tempImg.height * scale;
-
-          img.src = e.target.result;
-          img.style.width = imgW + 'px';
-          img.style.height = imgH + 'px';
-
-          // Position based on saved crop position
-          const cropPos = imageCropPositions[index] || { x: 0.5, y: 0.5 };
-          const maxOffsetX = imgW - cropW;
-          const maxOffsetY = imgH - cropH;
-          const left = -cropPos.x * maxOffsetX;
-          const top = -cropPos.y * maxOffsetY;
-          wrapper.style.left = left + 'px';
-          wrapper.style.top = top + 'px';
-
-          // Update hint
-          if (isSquare) {
-            previewCropHint.textContent = '✓ התמונה מרובעת - אין צורך בחיתוך';
-            cropAreaInner.classList.add('no-crop-needed');
-          } else {
-            previewCropHint.textContent = 'גרור את התמונה לבחירת האזור';
-            cropAreaInner.classList.remove('no-crop-needed');
-          }
-
-          // Store refs for drag handling
-          previewCropImgWrapper = wrapper;
-          previewCropImage = img;
-
-          // Add drag handlers
-          setupPreviewCropDrag(cropAreaInner, wrapper, imgW, imgH, cropW, cropH, index);
-        };
-        tempImg.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function setupPreviewCropDrag(area, wrapper, imgW, imgH, cropW, cropH, index) {
-      let isDragging = false;
-      let startX, startY, startLeft, startTop;
-
-      const onMouseDown = (e) => {
-        if (area.classList.contains('no-crop-needed')) return;
-        isDragging = true;
-        area.style.cursor = 'grabbing';
-        startX = e.clientX || (e.touches && e.touches[0].clientX);
-        startY = e.clientY || (e.touches && e.touches[0].clientY);
-        startLeft = parseFloat(wrapper.style.left) || 0;
-        startTop = parseFloat(wrapper.style.top) || 0;
-        e.preventDefault();
-      };
-
-      const onMouseMove = (e) => {
-        if (!isDragging) return;
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        const dx = clientX - startX;
-        const dy = clientY - startY;
-
-        const maxOffsetX = imgW - cropW;
-        const maxOffsetY = imgH - cropH;
-
-        let newLeft = Math.min(0, Math.max(-maxOffsetX, startLeft + dx));
-        let newTop = Math.min(0, Math.max(-maxOffsetY, startTop + dy));
-
-        wrapper.style.left = newLeft + 'px';
-        wrapper.style.top = newTop + 'px';
-
-        // Save position as percentage
-        const posX = maxOffsetX > 0 ? -newLeft / maxOffsetX : 0.5;
-        const posY = maxOffsetY > 0 ? -newTop / maxOffsetY : 0.5;
+      // Save the position to imageCropPositions for poster generation
+      const index = currentCropIndex || 0;
+      if (uploadedFiles.length > 0) {
+        // Convert percentage (0-100) to position (0-1)
+        const posX = previewDragState.bgPosX / 100;
+        const posY = previewDragState.bgPosY / 100;
         imageCropPositions[index] = { x: posX, y: posY };
 
-        // Update main crop preview position if visible
+        // Update main crop preview if visible
         updateMainCropPosition(posX, posY);
 
-        // Update live preview background position
-        updateLivePreviewBackgroundPosition(posX, posY);
-      };
-
-      const onMouseUp = () => {
-        if (isDragging) {
-          isDragging = false;
-          area.style.cursor = 'grab';
+        // Show reset button since position was changed
+        if (previewResetCropBtn) {
+          previewResetCropBtn.style.display = 'block';
         }
-      };
+      }
+    }
 
-      area.addEventListener('mousedown', onMouseDown);
-      area.addEventListener('touchstart', onMouseDown, { passive: false });
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('touchmove', onMouseMove, { passive: false });
-      document.addEventListener('mouseup', onMouseUp);
-      document.addEventListener('touchend', onMouseUp);
+    // Reset crop position button
+    if (previewResetCropBtn) {
+      previewResetCropBtn.addEventListener('click', () => {
+        // Reset to center
+        previewDragState.bgPosX = 50;
+        previewDragState.bgPosY = 50;
+        livePreviewBg.style.backgroundPosition = '50% 50%';
+
+        // Update stored position
+        const index = currentCropIndex || 0;
+        if (uploadedFiles.length > 0) {
+          imageCropPositions[index] = { x: 0.5, y: 0.5 };
+          updateMainCropPosition(0.5, 0.5);
+        }
+
+        // Hide button after reset
+        previewResetCropBtn.style.display = 'none';
+      });
     }
 
     function updateMainCropPosition(posX, posY) {
@@ -3539,27 +3560,11 @@ CITY_CHECKBOXES_PLACEHOLDER
         const x = posX * 100;
         const y = posY * 100;
         livePreviewBg.style.backgroundPosition = `${x}% ${y}%`;
+
+        // Also update drag state to keep in sync
+        previewDragState.bgPosX = x;
+        previewDragState.bgPosY = y;
       }
-    }
-
-    if (previewCropBtn) {
-      previewCropBtn.addEventListener('click', showPreviewCrop);
-    }
-
-    if (closePreviewCropBtn) {
-      closePreviewCropBtn.addEventListener('click', hidePreviewCrop);
-    }
-
-    if (previewCropDoneBtn) {
-      previewCropDoneBtn.addEventListener('click', () => {
-        hidePreviewCrop();
-        // Update the main crop toggle button to show crop was set
-        if (cropToggleBtn && uploadedFiles.length) {
-          cropToggleBtn.textContent = '✓ חיתוך הוגדר';
-          cropToggleBtn.style.borderColor = '#4caf50';
-          cropToggleBtn.style.color = '#4caf50';
-        }
-      });
     }
 
     // Editable preview elements - click to edit
