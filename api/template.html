@@ -3483,6 +3483,21 @@ CITY_CHECKBOXES_PLACEHOLDER
       neshamaInput.addEventListener("input", updateLivePreview);
     }
 
+    // Sync overrideSubtitle input with live preview
+    if (overrideSubtitle) {
+      overrideSubtitle.addEventListener("input", () => {
+        const value = overrideSubtitle.value.trim();
+        if (livePreviewSubtitle) {
+          if (value) {
+            livePreviewSubtitle.textContent = value;
+          } else {
+            // Restore automatic subtitle
+            updateLivePreview();
+          }
+        }
+      });
+    }
+
     // Initial preview update
     setTimeout(updateLivePreview, 100);
     // Initial background (gradient) - ensures gradient shows on load
