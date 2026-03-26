@@ -3351,10 +3351,17 @@ CITY_CHECKBOXES_PLACEHOLDER
         livePreviewTitle.textContent = displayTitle;
       }
 
-      // Update subtitle (from selected event)
-      if (livePreviewSubtitle && Array.isArray(allEvents) && allEvents.length > 0 && selectedStartIndex < allEvents.length) {
-        const event = allEvents[selectedStartIndex];
-        livePreviewSubtitle.textContent = `${event.displayName} | ${event.dateStr}`;
+      // Update subtitle (from override or selected event)
+      if (livePreviewSubtitle) {
+        const overrideValue = overrideSubtitle?.value?.trim();
+        if (overrideValue) {
+          // Use manual override
+          livePreviewSubtitle.textContent = overrideValue;
+        } else if (Array.isArray(allEvents) && allEvents.length > 0 && selectedStartIndex < allEvents.length) {
+          // Use automatic subtitle from selected event
+          const event = allEvents[selectedStartIndex];
+          livePreviewSubtitle.textContent = `${event.displayName} | ${event.dateStr}`;
+        }
       }
 
       // Update cities
