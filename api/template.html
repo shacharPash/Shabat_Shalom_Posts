@@ -4904,9 +4904,28 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     }
 
-    // Helper function to read file as base64 with compression
+    // Helper function to read file as base64 with compression (skips GIF)
     async function readFileAsBase64(file) {
-      // Compress the image first
+      // Skip compression for GIF files - preserve animation
+      if (file.type === 'image/gif') {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            // Remove the "data:image/gif;base64," prefix
+            const base64 = e.target.result.split(',')[1];
+
+            // Safety check: if too large, throw error
+            if (base64.length > MAX_BASE64_SIZE) {
+              reject(new Error('קובץ ה-GIF גדול מדי. נסה קובץ קטן יותר.'));
+            }
+            resolve(base64);
+          };
+          reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Compress non-GIF images
       const base64 = await compressImage(file);
 
       // Safety check: if still too large, throw error with friendly message
