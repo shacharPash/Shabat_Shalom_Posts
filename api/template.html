@@ -5163,8 +5163,13 @@ CITY_CHECKBOXES_PLACEHOLDER
           if (selectedCities.length > 0) payload.cities = selectedCities;
           payload.dateFormat = selectedDateFormat;
 
-          // Add aspect ratio selection
-          payload.aspectRatio = selectedAspectRatio;
+          // Add aspect ratio selection - map frontend values to API values
+          const aspectRatioMap = {
+            'square': '1:1',
+            'portrait': '4:5',
+            'original': 'auto'
+          };
+          payload.aspectRatio = aspectRatioMap[selectedAspectRatio] || '1:1';
 
           // Add manual overrides if provided
           // Check both the new visible mainTitleInput and the hidden overrideMainTitle
