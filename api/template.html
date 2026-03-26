@@ -1382,6 +1382,8 @@
       display: flex;
       flex-direction: column;
       gap: 1px;
+      pointer-events: auto;
+      cursor: pointer;
     }
     .live-preview-city-row {
       display: flex;
@@ -2908,8 +2910,8 @@ CITY_CHECKBOXES_PLACEHOLDER
             <div id="selectedRangeInfo" class="selected-range-info"></div>
           </div>
 
-          <!-- Manual Override Section - Hidden (inline editing available in preview) -->
-          <div class="override-section" style="display: none;">
+          <!-- Manual Override Section - Subtitle override available here -->
+          <div class="override-section">
             <div class="override-title">✏️ דריסה ידנית (אופציונלי)</div>
             <div class="override-grid">
               <div class="override-field full-width">
