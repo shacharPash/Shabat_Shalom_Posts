@@ -120,26 +120,49 @@ def fix_image_orientation(img: Image.Image) -> Image.Image:
 def fit_background(
     image_path: str,
     size: Tuple[int, int] = (1080, 1080),
-    crop_position: Optional[Tuple[float, float]] = None
+    crop_position: Optional[Tuple[float, float]] = None,
+    flexible_aspect: bool = False,
 ) -> Image.Image:
     """
     Load and resize an image to fill the target size with customizable crop position.
 
     Args:
         image_path: Path to the image file
-        size: Target size as (width, height)
+        size: Target size as (width, height). When flexible_aspect=True, this
+              becomes the maximum size constraint.
         crop_position: Tuple of (x, y) as percentages (0.0 to 1.0) where
                        (0.5, 0.5) is center, (0.0, 0.0) is top-left,
                        (1.0, 1.0) is bottom-right. Default is center.
+        flexible_aspect: If True, preserve the original aspect ratio within
+                         constraints instead of forcing a fixed size.
 
     Returns:
         Resized and cropped PIL Image
     """
-    base_w, base_h = size
     img = Image.open(image_path).convert("RGB")
 
     # Fix orientation based on EXIF data
     img = fix_image_orientation(img)
+
+    if flexible_aspect:
+        # Use flexible aspect ratio mode
+        return _fit_background_flexible(img, size, crop_position)
+    else:
+        # Original fixed-size mode
+        return _fit_background_fixed(img, size, crop_position)
+
+
+def _fit_background_fixed(
+    img: Image.Image,
+    size: Tuple[int, int],
+    crop_position: Optional[Tuple[float, float]] = None,
+) -> Image.Image:
+    """
+    Original fixed-size background fitting logic.
+
+    Scales and crops the image to exactly match the target size.
+    """
+    base_w, base_h = size
 
     # Scale to cover the target size
     scale = max(base_w / img.width, base_h / img.height)
@@ -163,6 +186,87 @@ def fit_background(
     top = int(max_top * crop_y)
 
     img = img.crop((left, top, left + base_w, top + base_h))
+    return img
+
+
+# Flexible aspect ratio constraints
+_MIN_WIDTH = 800
+_MIN_HEIGHT = 1000
+_MIN_ASPECT_RATIO = 0.67  # 2:3 (portrait limit)
+_MAX_ASPECT_RATIO = 1.5   # 3:2 (landscape limit)
+_MAX_DIMENSION = 1080
+
+
+def _fit_background_flexible(
+    img: Image.Image,
+    max_size: Tuple[int, int],
+    crop_position: Optional[Tuple[float, float]] = None,
+) -> Image.Image:
+    """
+    Flexible aspect ratio background fitting.
+
+    Preserves the original aspect ratio when it falls within acceptable bounds.
+    Crops images that are too wide or too tall to acceptable ratios.
+
+    Constraints:
+    - Min width: 800px (final output)
+    - Min height: 1000px (final output)
+    - Aspect ratio: between 1:1.5 (portrait) and 1.5:1 (landscape)
+    - Max dimension: 1080px on longest side
+    """
+    width, height = img.size
+    aspect_ratio = width / height
+
+    # Use provided crop position or default to center (0.5, 0.5)
+    crop_x, crop_y = crop_position if crop_position else (0.5, 0.5)
+    crop_x = max(0.0, min(1.0, crop_x))
+    crop_y = max(0.0, min(1.0, crop_y))
+
+    # Determine target dimensions based on aspect ratio constraints
+    target_width = width
+    target_height = height
+    needs_crop = False
+
+    if aspect_ratio > _MAX_ASPECT_RATIO:
+        # Too wide (landscape) - crop to max landscape ratio
+        target_width = int(height * _MAX_ASPECT_RATIO)
+        target_height = height
+        needs_crop = True
+    elif aspect_ratio < _MIN_ASPECT_RATIO:
+        # Too tall (portrait) - crop to max portrait ratio
+        target_width = width
+        target_height = int(width / _MIN_ASPECT_RATIO)
+        needs_crop = True
+
+    # Apply crop if needed to adjust aspect ratio
+    if needs_crop:
+        # Calculate crop position based on percentage
+        max_left = width - target_width
+        max_top = height - target_height
+
+        left = int(max_left * crop_x)
+        top = int(max_top * crop_y)
+
+        img = img.crop((left, top, left + target_width, top + target_height))
+        width, height = img.size
+
+    # Resize to fit within max dimension while maintaining aspect ratio
+    max_dim = max(max_size)
+    if max(width, height) > max_dim:
+        ratio = max_dim / max(width, height)
+        new_width = int(width * ratio)
+        new_height = int(height * ratio)
+        img = img.resize((new_width, new_height), Image.LANCZOS)
+
+    # Ensure minimum dimensions (scale up if needed, which is rare)
+    width, height = img.size
+    if width < _MIN_WIDTH or height < _MIN_HEIGHT:
+        # Scale up to meet minimum requirements
+        scale = max(_MIN_WIDTH / width, _MIN_HEIGHT / height)
+        new_width = int(width * scale)
+        new_height = int(height * scale)
+        img = img.resize((new_width, new_height), Image.LANCZOS)
+
     return img
 
 

@@ -48,7 +48,10 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
       # Custom cities with manual times:
       "customCities": [
         { "name": "עיר מותאמת", "candle": "16:30", "havdalah": "17:45" }
-      ]
+      ],
+
+      # Flexible aspect ratio (preserve original image proportions):
+      "flexibleAspect": false  // default: false (1080x1080 square)
     }
 
     Priority for background image:
@@ -84,6 +87,9 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     crop_position = None
     if crop_x is not None and crop_y is not None:
         crop_position = (float(crop_x), float(crop_y))
+
+    # Flexible aspect ratio (preserve original image proportions within constraints)
+    flexible_aspect: bool = payload.get("flexibleAspect", False)
 
     start_date_str: Optional[str] = payload.get("startDate")
     if start_date_str:
@@ -174,6 +180,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         overrides=overrides if overrides else None,
         crop_position=crop_position,
         show_watermark=show_watermark,
+        flexible_aspect=flexible_aspect,
     )
 
     return poster_bytes
