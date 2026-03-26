@@ -1363,6 +1363,7 @@
       display: inline-block;
       margin-bottom: 4px;
       min-width: 160px;
+      pointer-events: auto;  /* Enable clicks for cities list */
     }
     .live-preview-table-headers {
       display: flex;
@@ -3713,9 +3714,14 @@ CITY_CHECKBOXES_PLACEHOLDER
           const saveTitle = () => {
             const newTitle = input.value.trim() || getDefaultTitleForEvent();
             el.textContent = newTitle;
-            // Update hidden input
+            // Update both the main title input and the override input (in advanced settings)
+            const trimmedValue = input.value.trim();
             if (mainTitleInput) {
-              mainTitleInput.value = input.value.trim();
+              mainTitleInput.value = trimmedValue;
+            }
+            // Sync to override field in "דריסה ידנית" section
+            if (overrideMainTitle) {
+              overrideMainTitle.value = trimmedValue;
             }
           };
 
