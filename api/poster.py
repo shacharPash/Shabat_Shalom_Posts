@@ -22,6 +22,16 @@ GEOJSON_CITIES = get_cities_list()
 CITY_BY_NAME = build_city_lookup(GEOJSON_CITIES)
 
 
+def _detect_image_suffix(image_data: bytes) -> str:
+    """Detect image format from magic bytes and return appropriate file suffix."""
+    if image_data[:6] in (b'GIF87a', b'GIF89a'):
+        return '.gif'
+    elif image_data[:8] == b'\x89PNG\r\n\x1a\n':
+        return '.png'
+    else:
+        return '.jpg'
+
+
 def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     """
     Pure logic function that:
@@ -105,8 +115,10 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     if image_base64:
         try:
             image_bytes = base64.b64decode(image_base64)
+            # Detect format from magic bytes
+            suffix = _detect_image_suffix(image_bytes)
             # Save to a temporary file (cloud-safe: uses /tmp)
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
             tmp.write(image_bytes)
             tmp.close()
             image_path = tmp.name
@@ -120,8 +132,10 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
             r = requests.get(image_url, timeout=15, headers=headers)
             if r.status_code != 200:
                 raise RuntimeError("Failed to download image from imageUrl")
+            # Detect format from magic bytes
+            suffix = _detect_image_suffix(r.content)
             # Save to a temporary file (cloud-safe: uses /tmp)
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
             tmp.write(r.content)
             tmp.close()
             image_path = tmp.name
