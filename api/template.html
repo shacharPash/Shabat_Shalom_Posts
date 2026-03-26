@@ -1413,6 +1413,12 @@
       margin-top: 2px;
       text-align: center;
     }
+    .live-preview-blessing.empty-placeholder,
+    .live-preview-dedication.empty-placeholder {
+      opacity: 0.5;
+      font-style: italic;
+      cursor: pointer;
+    }
     .live-preview-empty-hint {
       color: rgba(255, 255, 255, 0.5);
       font-size: 7px;
@@ -2902,8 +2908,8 @@ CITY_CHECKBOXES_PLACEHOLDER
             <div id="selectedRangeInfo" class="selected-range-info"></div>
           </div>
 
-          <!-- Manual Override Section -->
-          <div class="override-section">
+          <!-- Manual Override Section - Hidden (inline editing available in preview) -->
+          <div class="override-section" style="display: none;">
             <div class="override-title">✏️ דריסה ידנית (אופציונלי)</div>
             <div class="override-grid">
               <div class="override-field full-width">
@@ -3373,18 +3379,30 @@ CITY_CHECKBOXES_PLACEHOLDER
         }
       }
 
-      // Update blessing
+      // Update blessing (with placeholder when empty)
       if (livePreviewBlessing) {
         const blessing = messageInput?.value?.trim() || "";
-        livePreviewBlessing.textContent = blessing;
-        livePreviewBlessing.style.display = blessing ? "block" : "none";
+        if (blessing) {
+          livePreviewBlessing.textContent = blessing;
+          livePreviewBlessing.classList.remove('empty-placeholder');
+        } else {
+          livePreviewBlessing.textContent = "+ הוסף ברכה";
+          livePreviewBlessing.classList.add('empty-placeholder');
+        }
+        livePreviewBlessing.style.display = "block";
       }
 
-      // Update dedication
+      // Update dedication (with placeholder when empty)
       if (livePreviewDedication) {
         const neshama = neshamaInput?.value?.trim() || "";
-        livePreviewDedication.textContent = neshama ? `לעילוי נשמת ${neshama}` : "";
-        livePreviewDedication.style.display = neshama ? "block" : "none";
+        if (neshama) {
+          livePreviewDedication.textContent = `לעילוי נשמת ${neshama}`;
+          livePreviewDedication.classList.remove('empty-placeholder');
+        } else {
+          livePreviewDedication.textContent = "+ הוסף הקדשה";
+          livePreviewDedication.classList.add('empty-placeholder');
+        }
+        livePreviewDedication.style.display = "block";
       }
     }
 
@@ -3698,6 +3716,124 @@ CITY_CHECKBOXES_PLACEHOLDER
           return;
         }
 
+        // Inline editing for blessing
+        if (targetId === 'message') {
+          e.stopPropagation();
+          if (el.querySelector('.inline-title-edit')) return;
+
+          // Get current text, excluding placeholder
+          let currentText = el.classList.contains('empty-placeholder') ? '' : el.textContent;
+
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = currentText;
+          input.className = 'inline-title-edit';
+          input.dir = 'rtl';
+          input.placeholder = 'הוסף ברכה...';
+
+          el.textContent = '';
+          el.classList.remove('empty-placeholder');
+          el.appendChild(input);
+          input.focus();
+          input.select();
+
+          const saveBlessing = () => {
+            const newValue = input.value.trim();
+            if (newValue) {
+              el.textContent = newValue;
+              el.classList.remove('empty-placeholder');
+            } else {
+              el.textContent = "+ הוסף ברכה";
+              el.classList.add('empty-placeholder');
+            }
+            // Update hidden input
+            if (messageInput) {
+              messageInput.value = newValue;
+            }
+          };
+
+          input.addEventListener('blur', saveBlessing);
+          input.addEventListener('keydown', (evt) => {
+            if (evt.key === 'Enter') {
+              evt.preventDefault();
+              saveBlessing();
+              input.blur();
+            }
+            if (evt.key === 'Escape') {
+              if (currentText) {
+                el.textContent = currentText;
+                el.classList.remove('empty-placeholder');
+              } else {
+                el.textContent = "+ הוסף ברכה";
+                el.classList.add('empty-placeholder');
+              }
+            }
+          });
+          return;
+        }
+
+        // Inline editing for dedication
+        if (targetId === 'neshama') {
+          e.stopPropagation();
+          if (el.querySelector('.inline-title-edit')) return;
+
+          // Extract name without "לעילוי נשמת" prefix
+          let currentText = '';
+          if (!el.classList.contains('empty-placeholder')) {
+            currentText = el.textContent;
+            if (currentText.startsWith('לעילוי נשמת ')) {
+              currentText = currentText.replace('לעילוי נשמת ', '');
+            }
+          }
+
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = currentText;
+          input.className = 'inline-title-edit';
+          input.dir = 'rtl';
+          input.placeholder = 'הוסף שם להקדשה...';
+
+          el.textContent = '';
+          el.classList.remove('empty-placeholder');
+          el.appendChild(input);
+          input.focus();
+          input.select();
+
+          const saveDedication = () => {
+            const newValue = input.value.trim();
+            if (newValue) {
+              el.textContent = `לעילוי נשמת ${newValue}`;
+              el.classList.remove('empty-placeholder');
+            } else {
+              el.textContent = "+ הוסף הקדשה";
+              el.classList.add('empty-placeholder');
+            }
+            // Update hidden input
+            if (neshamaInput) {
+              neshamaInput.value = newValue;
+            }
+          };
+
+          input.addEventListener('blur', saveDedication);
+          input.addEventListener('keydown', (evt) => {
+            if (evt.key === 'Enter') {
+              evt.preventDefault();
+              saveDedication();
+              input.blur();
+            }
+            if (evt.key === 'Escape') {
+              if (currentText) {
+                el.textContent = `לעילוי נשמת ${currentText}`;
+                el.classList.remove('empty-placeholder');
+              } else {
+                el.textContent = "+ הוסף הקדשה";
+                el.classList.add('empty-placeholder');
+              }
+            }
+          });
+          return;
+        }
+
         // Default handling for other editable elements
         const targetInput = document.getElementById(targetId);
         if (targetInput) {
@@ -3706,23 +3842,6 @@ CITY_CHECKBOXES_PLACEHOLDER
           // Open the customization panel if needed
           if (customizationPanel && !customizationPanel.classList.contains('expanded')) {
             customizationToggle?.click();
-          }
-
-          // Open the correct section based on target
-          if (targetId === 'message') {
-            // Open blessing section
-            const blessingSection = document.getElementById('blessingSection');
-            const toggleBlessingBtn = document.getElementById('toggleBlessingBtn');
-            if (blessingSection && !blessingSection.classList.contains('visible') && toggleBlessingBtn) {
-              toggleBlessingBtn.click();
-            }
-          } else if (targetId === 'neshama') {
-            // Open memorial section
-            const memorialSection = document.getElementById('memorialSection');
-            const toggleMemorialBtn = document.getElementById('toggleMemorialBtn');
-            if (memorialSection && !memorialSection.classList.contains('visible') && toggleMemorialBtn) {
-              toggleMemorialBtn.click();
-            }
           }
 
           // Scroll and focus
