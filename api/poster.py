@@ -23,11 +23,19 @@ CITY_BY_NAME = build_city_lookup(GEOJSON_CITIES)
 
 
 def _detect_image_suffix(image_data: bytes) -> str:
-    """Detect image format from magic bytes and return appropriate file suffix."""
+    """Detect image/video format from magic bytes and return appropriate file suffix."""
+    # GIF
     if image_data[:6] in (b'GIF87a', b'GIF89a'):
         return '.gif'
+    # PNG
     elif image_data[:8] == b'\x89PNG\r\n\x1a\n':
         return '.png'
+    # MP4 (ftyp box - appears at offset 4)
+    elif len(image_data) >= 12 and b'ftyp' in image_data[:12]:
+        return '.mp4'
+    # WebM (EBML header)
+    elif image_data[:4] == b'\x1a\x45\xdf\xa3':
+        return '.webm'
     else:
         return '.jpg'
 

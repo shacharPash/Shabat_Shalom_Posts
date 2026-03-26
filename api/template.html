@@ -2774,7 +2774,7 @@
       <div class="step-content">
         <div class="form-group">
           <div class="file-upload-wrapper">
-            <input type="file" id="imageFile" class="file-input-hidden" accept="image/*" multiple />
+            <input type="file" id="imageFile" class="file-input-hidden" accept="image/*,video/mp4,video/webm" multiple />
             <button type="button" id="fileUploadBtn" class="file-upload-btn">
               <span>📷</span> העלה תמונה
             </button>
@@ -4904,7 +4904,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     }
 
-    // Helper function to read file as base64 with compression (skips GIF)
+    // Helper function to read file as base64 with compression (skips GIF and video)
     async function readFileAsBase64(file) {
       // Skip compression for GIF files - preserve animation
       if (file.type === 'image/gif') {
@@ -4917,6 +4917,22 @@ CITY_CHECKBOXES_PLACEHOLDER
             // Safety check: if too large, throw error
             if (base64.length > MAX_BASE64_SIZE) {
               reject(new Error('קובץ ה-GIF גדול מדי. נסה קובץ קטן יותר.'));
+            }
+            resolve(base64);
+          };
+          reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Handle video files - send as-is (backend will convert to GIF)
+      if (file.type.startsWith('video/')) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const base64 = e.target.result.split(',')[1];
+            if (base64.length > MAX_BASE64_SIZE) {
+              reject(new Error('קובץ הוידאו גדול מדי (מקסימום 3MB). נסה קובץ קטן יותר.'));
             }
             resolve(base64);
           };

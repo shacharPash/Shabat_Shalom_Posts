@@ -418,6 +418,75 @@ def overlay_watermark(
         return img
 
 
+# ========= VIDEO HELPERS =========
+def is_video_file(file_path: str) -> bool:
+    """
+    Check if file is a video (MP4/WebM).
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        True if the file has a video extension, False otherwise
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    return ext in ('.mp4', '.webm')
+
+
+def extract_video_frames(video_path: str, max_frames: int = 30) -> Tuple[List[Image.Image], List[int]]:
+    """
+    Extract frames from a video file.
+    Uses imageio for cross-platform compatibility.
+
+    Args:
+        video_path: Path to the video file (MP4 or WebM)
+        max_frames: Maximum number of frames to extract (default: 30)
+
+    Returns:
+        Tuple of (frames, durations) where:
+        - frames: List of PIL Image objects (one per frame)
+        - durations: List of frame durations in milliseconds
+    """
+    try:
+        import imageio.v3 as iio
+    except ImportError:
+        raise RuntimeError(
+            "imageio is required for video support. "
+            "Install with: pip install imageio[ffmpeg]"
+        )
+
+    frames = []
+    durations = []
+
+    # Read video metadata to get FPS
+    try:
+        props = iio.improps(video_path)
+        fps = getattr(props, 'fps', 10)
+        if fps is None or fps <= 0:
+            fps = 10
+    except Exception:
+        fps = 10  # Default FPS if we can't read metadata
+
+    frame_duration = int(1000 / fps)  # ms per frame
+
+    # Read frames from video
+    try:
+        for i, frame in enumerate(iio.imiter(video_path)):
+            if i >= max_frames:
+                break
+            # Convert numpy array to PIL Image
+            img = Image.fromarray(frame)
+            frames.append(img)
+            durations.append(frame_duration)
+    except Exception as e:
+        raise RuntimeError(f"Failed to extract frames from video: {e}")
+
+    if not frames:
+        raise RuntimeError("No frames could be extracted from video")
+
+    return frames, durations
+
+
 # ========= GIF HELPERS =========
 def is_animated_gif(image_path: str) -> bool:
     """
