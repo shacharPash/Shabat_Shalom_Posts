@@ -49,12 +49,14 @@ from image_utils import (
     assemble_gif,
     draw_text_with_stroke,
     extract_gif_frames,
+    extract_video_frames,
     fit_background,
     fix_hebrew,
     fix_image_orientation,
     get_fitted_font,
     get_text_width,
     is_animated_gif,
+    is_video_file,
     load_font,
     overlay_watermark,
 )
@@ -68,7 +70,24 @@ WeekInfo = Dict[str, Any]
 TZID = "Asia/Jerusalem"
 
 # Watermark configuration
-WATERMARK_PATH = os.path.join(os.path.dirname(__file__), "public", "static", "watermark.png")
+def _find_watermark_path():
+    """Find watermark file in possible locations."""
+    possible_paths = [
+        # Local development
+        os.path.join(os.path.dirname(__file__), "public", "static", "watermark.png"),
+        # Vercel deployment
+        os.path.join(os.path.dirname(__file__), "..", "public", "static", "watermark.png"),
+        "/var/task/public/static/watermark.png",
+        # Relative to cwd
+        "public/static/watermark.png",
+    ]
+    for path in possible_paths:
+        if os.path.isfile(path):
+            return path
+    return possible_paths[0]  # Return first as fallback
+
+
+WATERMARK_PATH = _find_watermark_path()
 WATERMARK_SIZE = 60  # Width in pixels (height auto-calculated to preserve aspect ratio)
 WATERMARK_MARGIN = 10  # Margin from edges in pixels
 WATERMARK_OPACITY = 0.5  # 50% opacity (0.0 = invisible, 1.0 = fully opaque)
@@ -601,6 +620,37 @@ def generate_poster(
             week_info["main_title_override"] = overrides["main_title"]
         if overrides.get("subtitle"):
             week_info["subtitle_override"] = overrides["subtitle"]
+
+    # Check if input is a video file (MP4/WebM) - convert to animated GIF
+    if is_video_file(image_path):
+        # Extract frames from video
+        frames, durations = extract_video_frames(image_path, max_frames=30)
+        processed_frames = []
+
+        for frame in frames:
+            # Convert frame to RGB if needed
+            if frame.mode != 'RGB':
+                frame = frame.convert('RGB')
+
+            # Fit the frame to target size
+            frame = fix_image_orientation(frame)
+            if use_flexible:
+                bg = _fit_background_flexible(frame, target_size, crop_position)
+            else:
+                bg = _fit_background_fixed(frame, target_size, crop_position)
+
+            # Compose the poster on this frame
+            processed_frame = compose_poster(
+                bg, week_info, rows,
+                blessing_text=blessing_text,
+                dedication_text=dedication_text,
+                date_format=date_format,
+                show_watermark=show_watermark,
+            )
+            processed_frames.append(processed_frame)
+
+        # Assemble processed frames into animated GIF
+        return assemble_gif(processed_frames, durations)
 
     # Check if input is an animated GIF
     if is_animated_gif(image_path):
