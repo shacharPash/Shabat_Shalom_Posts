@@ -73,12 +73,12 @@ TZID = "Asia/Jerusalem"
 def _find_watermark_path():
     """Find watermark file in possible locations."""
     possible_paths = [
-        # Local development
+        # Vercel serverless - watermark in api folder (highest priority)
+        os.path.join(os.path.dirname(__file__), "api", "watermark.png"),
+        # Local development - public folder
         os.path.join(os.path.dirname(__file__), "public", "static", "watermark.png"),
-        # Vercel deployment
-        os.path.join(os.path.dirname(__file__), "..", "public", "static", "watermark.png"),
-        "/var/task/public/static/watermark.png",
-        # Relative to cwd
+        # Relative paths
+        "api/watermark.png",
         "public/static/watermark.png",
     ]
     for path in possible_paths:
