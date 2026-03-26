@@ -5276,6 +5276,11 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     });
 
+    // Get file extension based on blob type (PNG or GIF)
+    function getFileExtension(blob) {
+      return blob.type === 'image/gif' ? 'gif' : 'png';
+    }
+
     downloadBtn.addEventListener("click", async () => {
       if (generatedPosters.length === 0) return;
 
@@ -5283,7 +5288,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         // Single poster download
         const link = document.createElement("a");
         link.href = URL.createObjectURL(generatedPosters[0].blob);
-        link.download = "shabbat-poster.png";
+        const ext = getFileExtension(generatedPosters[0].blob);
+        link.download = `shabbat-poster.${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -5292,7 +5298,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         for (let i = 0; i < generatedPosters.length; i++) {
           const link = document.createElement("a");
           link.href = URL.createObjectURL(generatedPosters[i].blob);
-          link.download = `shabbat-poster-${i + 1}.png`;
+          const ext = getFileExtension(generatedPosters[i].blob);
+          link.download = `shabbat-poster-${i + 1}.${ext}`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -5313,10 +5320,14 @@ CITY_CHECKBOXES_PLACEHOLDER
       const message = `שבת שלום! 🕯️\n${eventName}\n\nנוצר באמצעות: https://shabat-posts.vercel.app/`;
 
       // Try Web Share API first (best for mobile - can share image directly)
-      if (navigator.canShare && navigator.canShare({ files: [new File([posterBlob], 'shabbat-poster.png', { type: 'image/png' })] })) {
+      const ext = getFileExtension(posterBlob);
+      const mimeType = posterBlob.type === 'image/gif' ? 'image/gif' : 'image/png';
+      const filename = `shabbat-poster.${ext}`;
+
+      if (navigator.canShare && navigator.canShare({ files: [new File([posterBlob], filename, { type: mimeType })] })) {
         try {
           await navigator.share({
-            files: [new File([posterBlob], 'shabbat-poster.png', { type: 'image/png' })],
+            files: [new File([posterBlob], filename, { type: mimeType })],
             title: 'שבת שלום',
             text: message
           });
