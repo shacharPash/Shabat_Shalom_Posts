@@ -2766,7 +2766,7 @@
     </div>
 
     <!-- Step 2: Cities -->
-    <div class="step-container">
+    <div class="step-container" id="citiesStep">
       <div class="step-header">
         <div class="step-number">2</div>
         <div class="step-info">
@@ -3852,6 +3852,18 @@ CITY_CHECKBOXES_PLACEHOLDER
         }
       });
     });
+
+    // Cities in preview - click to scroll to city selection
+    if (livePreviewCities) {
+      livePreviewCities.style.cursor = 'pointer';
+      livePreviewCities.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const citiesStep = document.getElementById('citiesStep');
+        if (citiesStep) {
+          citiesStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    }
 
     // Weeks selector - update dates from selected start
     weeksAhead.addEventListener("change", () => {
