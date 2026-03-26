@@ -1262,6 +1262,61 @@
       margin-top: 8px;
       opacity: 0.8;
     }
+
+    /* Aspect ratio selector */
+    .aspect-ratio-selector {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .aspect-ratio-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 12px;
+      background: var(--button-bg);
+      border: 2px solid var(--button-border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      min-width: 70px;
+    }
+    .aspect-ratio-btn:hover {
+      background: var(--button-hover-bg);
+      border-color: var(--input-border-focus);
+    }
+    .aspect-ratio-btn:focus-visible {
+      outline: 2px solid var(--input-border-focus);
+      outline-offset: 2px;
+    }
+    .aspect-ratio-btn.selected {
+      background: var(--button-hover-bg);
+      border-color: var(--text-secondary);
+      box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.2);
+    }
+    .aspect-ratio-btn .aspect-icon {
+      font-size: 18px;
+    }
+    .aspect-ratio-btn .aspect-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    [data-theme="dark"] .aspect-ratio-btn {
+      background: var(--button-bg);
+      border-color: var(--button-border);
+    }
+    [data-theme="dark"] .aspect-ratio-btn:hover {
+      background: var(--button-hover-bg);
+    }
+    [data-theme="dark"] .aspect-ratio-btn.selected {
+      background: var(--button-hover-bg);
+      border-color: var(--text-secondary);
+    }
+
     .live-preview {
       position: relative;
       aspect-ratio: 1 / 1;
@@ -2640,6 +2695,22 @@
         <button type="button" class="close-preview-btn" id="closePreviewBtn">✕</button>
       </div>
       <div class="floating-preview-content">
+        <!-- Aspect Ratio Selector -->
+        <div class="aspect-ratio-selector" id="aspectRatioSelector">
+          <button type="button" class="aspect-ratio-btn selected" data-ratio="square" title="יחס 1:1">
+            <span class="aspect-icon">⬜</span>
+            <span class="aspect-label">ריבוע</span>
+          </button>
+          <button type="button" class="aspect-ratio-btn" data-ratio="portrait" title="יחס 4:5">
+            <span class="aspect-icon">📱</span>
+            <span class="aspect-label">אנכי</span>
+          </button>
+          <button type="button" class="aspect-ratio-btn" data-ratio="original" title="יחס מקורי">
+            <span class="aspect-icon">🖼️</span>
+            <span class="aspect-label">מקורי</span>
+          </button>
+        </div>
+
         <!-- Hint OUTSIDE the image -->
         <div class="preview-drag-hint-external" id="previewDragHint">✋ גרור את התמונה למיקום הרצוי</div>
 
@@ -3113,6 +3184,11 @@ CITY_CHECKBOXES_PLACEHOLDER
     const closePreviewBtn = document.getElementById("closePreviewBtn");
     const previewOverlay = document.getElementById("previewOverlay");
 
+    // Aspect ratio selector elements
+    const aspectRatioSelector = document.getElementById("aspectRatioSelector");
+    let selectedAspectRatio = "square"; // "square", "portrait", or "original"
+    let originalImageAspectRatio = 1; // Store the original image aspect ratio
+
     // Crop preview elements
     const cropToggleBtn = document.getElementById("cropToggleBtn");
     const cropCloseBtn = document.getElementById("cropCloseBtn");
@@ -3429,6 +3505,11 @@ CITY_CHECKBOXES_PLACEHOLDER
         livePreviewBg.classList.add('has-image');
         floatingPanel?.classList.add('has-image');
 
+        // Update original aspect ratio from crop preview image
+        if (cropPreviewImage.naturalWidth && cropPreviewImage.naturalHeight) {
+          originalImageAspectRatio = cropPreviewImage.naturalWidth / cropPreviewImage.naturalHeight;
+        }
+
         // Apply saved crop position if exists
         const index = currentCropIndex || 0;
         const cropPos = imageCropPositions[index] || { x: 0.5, y: 0.5 };
@@ -3445,6 +3526,19 @@ CITY_CHECKBOXES_PLACEHOLDER
         const file = uploadedFiles[0];
         const reader = new FileReader();
         reader.onload = (e) => {
+          // Load the image to get its natural dimensions for aspect ratio
+          const img = new Image();
+          img.onload = () => {
+            // Store original aspect ratio
+            originalImageAspectRatio = img.width / img.height;
+
+            // If "original" aspect ratio is selected, update the preview
+            if (selectedAspectRatio === 'original') {
+              updatePreviewAspectRatio('original');
+            }
+          };
+          img.src = e.target.result;
+
           livePreviewBg.style.backgroundImage = `url(${e.target.result})`;
           livePreviewBg.classList.add('has-image');
           floatingPanel?.classList.add('has-image');
@@ -3559,6 +3653,51 @@ CITY_CHECKBOXES_PLACEHOLDER
         closePreview();
       }
     });
+
+    // ===== Aspect Ratio Selector =====
+    function updatePreviewAspectRatio(ratio) {
+      selectedAspectRatio = ratio;
+
+      // Update button states
+      aspectRatioSelector.querySelectorAll('.aspect-ratio-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.ratio === ratio);
+      });
+
+      // Calculate the aspect ratio value
+      let aspectValue;
+      switch (ratio) {
+        case 'square':
+          aspectValue = '1 / 1';
+          break;
+        case 'portrait':
+          aspectValue = '4 / 5';
+          break;
+        case 'original':
+          // Use the original image aspect ratio, default to 1:1 if no image
+          if (originalImageAspectRatio && uploadedFiles.length > 0) {
+            aspectValue = `${originalImageAspectRatio}`;
+          } else {
+            aspectValue = '1 / 1';
+          }
+          break;
+        default:
+          aspectValue = '1 / 1';
+      }
+
+      // Update the live preview element
+      if (livePreviewEl) {
+        livePreviewEl.style.aspectRatio = aspectValue;
+      }
+    }
+
+    // Add click handlers for aspect ratio buttons
+    if (aspectRatioSelector) {
+      aspectRatioSelector.querySelectorAll('.aspect-ratio-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          updatePreviewAspectRatio(btn.dataset.ratio);
+        });
+      });
+    }
 
     // ===== Inline Preview Image Drag (crop directly in preview) =====
     const previewResetCropBtn = document.getElementById('previewResetCropBtn');
@@ -4590,6 +4729,9 @@ CITY_CHECKBOXES_PLACEHOLDER
       imageCropPositions = [];
       uploadedFiles = [];
       updateLivePreviewBackground();
+      // Reset aspect ratio to square when image is cleared
+      originalImageAspectRatio = 1;
+      updatePreviewAspectRatio('square');
     });
 
     // Crop toggle/close buttons
@@ -4633,6 +4775,9 @@ CITY_CHECKBOXES_PLACEHOLDER
         weeksAhead.value = 1;
         updateSelectedDates();
         updateLivePreviewBackground();
+        // Reset aspect ratio to square when image is removed
+        originalImageAspectRatio = 1;
+        updatePreviewAspectRatio('square');
       } else {
         // Remove current image from array
         uploadedFiles.splice(currentCropIndex, 1);
@@ -5017,6 +5162,9 @@ CITY_CHECKBOXES_PLACEHOLDER
           if (date) payload.startDate = date;
           if (selectedCities.length > 0) payload.cities = selectedCities;
           payload.dateFormat = selectedDateFormat;
+
+          // Add aspect ratio selection
+          payload.aspectRatio = selectedAspectRatio;
 
           // Add manual overrides if provided
           // Check both the new visible mainTitleInput and the hidden overrideMainTitle
