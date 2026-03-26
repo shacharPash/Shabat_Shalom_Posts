@@ -3510,12 +3510,16 @@ CITY_CHECKBOXES_PLACEHOLDER
     if (overrideSubtitle) {
       overrideSubtitle.addEventListener("input", () => {
         const value = overrideSubtitle.value.trim();
-        if (livePreviewSubtitle) {
-          if (value) {
+        if (value) {
+          // Custom subtitle
+          if (livePreviewSubtitle) {
             livePreviewSubtitle.textContent = value;
-          } else {
-            // Restore automatic subtitle
-            updateLivePreview();
+          }
+        } else {
+          // Empty - restore automatic subtitle from selected event
+          if (livePreviewSubtitle && Array.isArray(allEvents) && allEvents.length > 0 && selectedStartIndex < allEvents.length) {
+            const event = allEvents[selectedStartIndex];
+            livePreviewSubtitle.textContent = `${event.displayName} | ${event.dateStr}`;
           }
         }
       });
@@ -3903,6 +3907,18 @@ CITY_CHECKBOXES_PLACEHOLDER
       livePreviewCities.style.cursor = 'pointer';
       livePreviewCities.addEventListener('click', (e) => {
         e.stopPropagation();
+
+        // Close the preview panel
+        const floatingPreviewPanel = document.getElementById('floatingPreviewPanel');
+        const previewOverlay = document.getElementById('previewOverlay');
+        if (floatingPreviewPanel) {
+          floatingPreviewPanel.classList.remove('show');
+        }
+        if (previewOverlay) {
+          previewOverlay.classList.remove('show');
+        }
+
+        // Scroll to cities step
         const citiesStep = document.getElementById('citiesStep');
         if (citiesStep) {
           citiesStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
