@@ -77,7 +77,14 @@ DEFAULT_CITIES = [
 # Keep CITIES as alias for backward compatibility
 CITIES = DEFAULT_CITIES
 
-IMG_SIZE = (1080, 1080)  # Default size (used when flexible_aspect=False)
+IMG_SIZE = (1080, 1080)  # Default size (used when aspect_ratio="1:1")
+
+# Aspect ratio presets
+ASPECT_RATIO_SIZES = {
+    "1:1": (1080, 1080),   # Square (Instagram post)
+    "4:5": (1080, 1350),   # Portrait (Instagram feed optimal)
+    "auto": None,          # Use flexible aspect ratio based on original image
+}
 
 
 def _convert_year_to_hebrew_letters(year: int) -> str:
@@ -470,7 +477,8 @@ def generate_poster(
     overrides: Optional[Dict[str, str]] = None,  # Manual overrides for poster fields
     crop_position: Optional[Tuple[float, float]] = None,  # Image crop position (x, y) as 0.0-1.0
     show_watermark: bool = True,  # Enable/disable watermark
-    flexible_aspect: bool = False,  # Use original image aspect ratio with constraints
+    aspect_ratio: str = "1:1",  # Aspect ratio: "1:1", "4:5", or "auto"
+    flexible_aspect: bool = False,  # DEPRECATED: Use aspect_ratio="auto" instead
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
@@ -494,9 +502,11 @@ def generate_poster(
         crop_position: Tuple of (x, y) as percentages (0.0 to 1.0) for crop position.
                        (0.5, 0.5) is center (default), (0.0, 0.0) is top-left.
         show_watermark: Whether to show the watermark on the poster (default: True)
-        flexible_aspect: If True, preserve the original image aspect ratio within
-                         constraints (min 800x1000, ratio 1:1.5 to 1.5:1). If False,
-                         force to 1080x1080 square. Default: False.
+        aspect_ratio: Output aspect ratio - "1:1" (1080x1080 square), "4:5" (1080x1350
+                      portrait), or "auto" (preserve original image ratio within
+                      constraints). Default: "1:1".
+        flexible_aspect: DEPRECATED - Use aspect_ratio="auto" instead. If True and
+                         aspect_ratio is "1:1", will be treated as aspect_ratio="auto".
 
     Returns:
         PNG image bytes ready to be saved or transmitted
@@ -556,11 +566,26 @@ def generate_poster(
             "action": ref_info.get("action"),
         }
 
+    # Handle backward compatibility: flexible_aspect=True maps to aspect_ratio="auto"
+    effective_aspect_ratio = aspect_ratio
+    if flexible_aspect and aspect_ratio == "1:1":
+        effective_aspect_ratio = "auto"
+
+    # Determine target size based on aspect ratio
+    if effective_aspect_ratio == "auto":
+        # Use flexible aspect mode with original image proportions
+        target_size = IMG_SIZE  # Max constraint for flexible mode
+        use_flexible = True
+    else:
+        # Use specific aspect ratio preset
+        target_size = ASPECT_RATIO_SIZES.get(effective_aspect_ratio, IMG_SIZE)
+        use_flexible = False
+
     # Create background image with custom crop position
     bg = fit_background(
-        image_path, IMG_SIZE,
+        image_path, target_size,
         crop_position=crop_position,
-        flexible_aspect=flexible_aspect,
+        flexible_aspect=use_flexible,
     )
 
     # Build week info
