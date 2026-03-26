@@ -1137,6 +1137,25 @@
       opacity: 0.7;
     }
 
+    /* Inline title edit input */
+    .inline-title-edit {
+      width: 100%;
+      text-align: center;
+      font-size: inherit;
+      font-weight: inherit;
+      font-family: inherit;
+      color: white;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 4px;
+      padding: 2px 6px;
+      outline: none;
+    }
+    .inline-title-edit:focus {
+      border-color: rgba(255, 255, 255, 0.8);
+      background: rgba(0, 0, 0, 0.5);
+    }
+
     /* Preview actions */
     .preview-actions {
       margin-top: 12px;
@@ -3631,41 +3650,86 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Editable preview elements - click to edit
     document.querySelectorAll('.live-preview .editable').forEach(el => {
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (e) => {
         const targetId = el.dataset.target;
-        if (targetId) {
-          const targetInput = document.getElementById(targetId);
-          if (targetInput) {
-            closePreview(); // Close preview panel
+        if (!targetId) return;
 
-            // Open the customization panel if needed
-            if (customizationPanel && !customizationPanel.classList.contains('expanded')) {
-              customizationToggle?.click();
+        // Special handling for main title - inline editing
+        if (targetId === 'mainTitleInput') {
+          e.stopPropagation();
+
+          // Don't create another input if already editing
+          if (el.querySelector('.inline-title-edit')) return;
+
+          const currentText = el.textContent;
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = currentText;
+          input.className = 'inline-title-edit';
+          input.dir = 'rtl';
+
+          // Replace title text with input
+          el.textContent = '';
+          el.appendChild(input);
+          input.focus();
+          input.select();
+
+          // Save function
+          const saveTitle = () => {
+            const newTitle = input.value.trim() || getDefaultTitleForEvent();
+            el.textContent = newTitle;
+            // Update hidden input
+            if (mainTitleInput) {
+              mainTitleInput.value = input.value.trim();
             }
+          };
 
-            // Open the correct section based on target
-            if (targetId === 'message') {
-              // Open blessing section
-              const blessingSection = document.getElementById('blessingSection');
-              const toggleBlessingBtn = document.getElementById('toggleBlessingBtn');
-              if (blessingSection && !blessingSection.classList.contains('visible') && toggleBlessingBtn) {
-                toggleBlessingBtn.click();
-              }
-            } else if (targetId === 'neshama') {
-              // Open memorial section
-              const memorialSection = document.getElementById('memorialSection');
-              const toggleMemorialBtn = document.getElementById('toggleMemorialBtn');
-              if (memorialSection && !memorialSection.classList.contains('visible') && toggleMemorialBtn) {
-                toggleMemorialBtn.click();
-              }
+          // Handle blur and keyboard
+          input.addEventListener('blur', saveTitle);
+          input.addEventListener('keydown', (evt) => {
+            if (evt.key === 'Enter') {
+              evt.preventDefault();
+              saveTitle();
             }
+            if (evt.key === 'Escape') {
+              el.textContent = currentText;
+            }
+          });
+          return;
+        }
 
-            // Scroll and focus
-            setTimeout(() => {
-              targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              setTimeout(() => targetInput.focus(), 300);
-            }, 100);
+        // Default handling for other editable elements
+        const targetInput = document.getElementById(targetId);
+        if (targetInput) {
+          closePreview(); // Close preview panel
+
+          // Open the customization panel if needed
+          if (customizationPanel && !customizationPanel.classList.contains('expanded')) {
+            customizationToggle?.click();
           }
+
+          // Open the correct section based on target
+          if (targetId === 'message') {
+            // Open blessing section
+            const blessingSection = document.getElementById('blessingSection');
+            const toggleBlessingBtn = document.getElementById('toggleBlessingBtn');
+            if (blessingSection && !blessingSection.classList.contains('visible') && toggleBlessingBtn) {
+              toggleBlessingBtn.click();
+            }
+          } else if (targetId === 'neshama') {
+            // Open memorial section
+            const memorialSection = document.getElementById('memorialSection');
+            const toggleMemorialBtn = document.getElementById('toggleMemorialBtn');
+            if (memorialSection && !memorialSection.classList.contains('visible') && toggleMemorialBtn) {
+              toggleMemorialBtn.click();
+            }
+          }
+
+          // Scroll and focus
+          setTimeout(() => {
+            targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => targetInput.focus(), 300);
+          }, 100);
         }
       });
     });
