@@ -5218,7 +5218,6 @@ CITY_CHECKBOXES_PLACEHOLDER
           }
 
           const blob = await resp.blob();
-          console.log('Received blob type:', blob.type, 'size:', blob.size);
           generatedPosters.push({ blob, date });
         }
 
@@ -5286,15 +5285,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (generatedPosters.length === 0) return;
 
       if (generatedPosters.length === 1) {
-        // Debug: log blob info
-        console.log('Blob type:', generatedPosters[0].blob.type);
-        console.log('Blob size:', generatedPosters[0].blob.size);
-
         // Single poster download
         const link = document.createElement("a");
         link.href = URL.createObjectURL(generatedPosters[0].blob);
         const ext = getFileExtension(generatedPosters[0].blob);
-        console.log('File extension:', ext);  // Debug
         link.download = `shabbat-poster.${ext}`;
         document.body.appendChild(link);
         link.click();
