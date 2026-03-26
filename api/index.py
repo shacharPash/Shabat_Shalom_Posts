@@ -67,7 +67,15 @@ async def create_poster(request: Request):
         payload = await request.json()
         # Map city names to full city objects with coordinates (same as Vercel handler)
         map_city_payload(payload, CITY_BY_NAME)
-        png_bytes = build_poster_from_payload(payload)
-        return Response(content=png_bytes, media_type="image/png")
+        poster_bytes = build_poster_from_payload(payload)
+
+        # Detect output format from magic bytes
+        # GIF starts with "GIF87a" or "GIF89a", PNG starts with \x89PNG
+        if poster_bytes[:6] in (b'GIF87a', b'GIF89a'):
+            media_type = "image/gif"
+        else:
+            media_type = "image/png"
+
+        return Response(content=poster_bytes, media_type=media_type)
     except Exception as e:
         return Response(content=str(e), status_code=500)

@@ -60,8 +60,8 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
     """
     FastAPI endpoint that:
     - Receives JSON payload
-    - Uses build_poster_from_payload to generate a PNG
-    - Returns image/png as response
+    - Uses build_poster_from_payload to generate a PNG or GIF
+    - Returns image with appropriate content type
 
     If payload contains 'cities' as a list of city objects (with name and candle_offset),
     maps them to full city objects with coordinates from GeoJSON.
@@ -73,7 +73,15 @@ async def create_poster(payload: Dict[str, Any] = Body(default={})):
     map_city_payload(payload, CITY_BY_NAME)
 
     poster_bytes = build_poster_from_payload(payload)
-    return Response(content=poster_bytes, media_type="image/png")
+
+    # Detect output format from magic bytes
+    # GIF starts with "GIF87a" or "GIF89a", PNG starts with \x89PNG
+    if poster_bytes[:6] in (b'GIF87a', b'GIF89a'):
+        media_type = "image/gif"
+    else:
+        media_type = "image/png"
+
+    return Response(content=poster_bytes, media_type=media_type)
 
 
 @app.get("/upcoming-events")

@@ -44,11 +44,17 @@ from calendar_utils import (
 
 # Import image utility functions
 from image_utils import (
+    _fit_background_fixed,
+    _fit_background_flexible,
+    assemble_gif,
     draw_text_with_stroke,
+    extract_gif_frames,
     fit_background,
     fix_hebrew,
+    fix_image_orientation,
     get_fitted_font,
     get_text_width,
+    is_animated_gif,
     load_font,
     overlay_watermark,
 )
@@ -581,13 +587,6 @@ def generate_poster(
         target_size = ASPECT_RATIO_SIZES.get(effective_aspect_ratio, IMG_SIZE)
         use_flexible = False
 
-    # Create background image with custom crop position
-    bg = fit_background(
-        image_path, target_size,
-        crop_position=crop_position,
-        flexible_aspect=use_flexible,
-    )
-
     # Build week info
     week_info = {
         "parsha": parsha_name,
@@ -602,6 +601,44 @@ def generate_poster(
             week_info["main_title_override"] = overrides["main_title"]
         if overrides.get("subtitle"):
             week_info["subtitle_override"] = overrides["subtitle"]
+
+    # Check if input is an animated GIF
+    if is_animated_gif(image_path):
+        # Process animated GIF - apply poster overlay to each frame
+        frames, durations = extract_gif_frames(image_path)
+        processed_frames = []
+
+        for frame in frames:
+            # Convert frame to RGB if needed
+            if frame.mode != 'RGB':
+                frame = frame.convert('RGB')
+
+            # Fit the frame to target size (process each frame like a static image)
+            frame = fix_image_orientation(frame)
+            if use_flexible:
+                bg = _fit_background_flexible(frame, target_size, crop_position)
+            else:
+                bg = _fit_background_fixed(frame, target_size, crop_position)
+
+            # Compose the poster on this frame
+            processed_frame = compose_poster(
+                bg, week_info, rows,
+                blessing_text=blessing_text,
+                dedication_text=dedication_text,
+                date_format=date_format,
+                show_watermark=show_watermark,
+            )
+            processed_frames.append(processed_frame)
+
+        # Assemble processed frames into animated GIF
+        return assemble_gif(processed_frames, durations)
+
+    # Standard static image processing (PNG/JPG)
+    bg = fit_background(
+        image_path, target_size,
+        crop_position=crop_position,
+        flexible_aspect=use_flexible,
+    )
 
     # Compose the poster image
     img = compose_poster(

@@ -211,9 +211,16 @@ class handler(BaseHTTPRequestHandler):
             # Generate poster
             poster_bytes = build_poster_from_payload(payload)
 
+            # Detect output format from magic bytes
+            # GIF starts with "GIF87a" or "GIF89a", PNG starts with \x89PNG
+            if poster_bytes[:6] in (b'GIF87a', b'GIF89a'):
+                content_type = "image/gif"
+            else:
+                content_type = "image/png"
+
             # Send successful response
             self.send_response(200)
-            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(poster_bytes)))
             self.end_headers()
             self.wfile.write(poster_bytes)

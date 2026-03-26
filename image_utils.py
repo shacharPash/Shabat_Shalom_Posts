@@ -8,10 +8,11 @@ This module provides image processing utilities including:
 - Text measurement and fitting
 - Text drawing with stroke effects
 - Watermark overlay
+- GIF frame extraction and assembly
 """
 
 import os
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import arabic_reshaper
 from bidi.algorithm import get_display
@@ -415,4 +416,101 @@ def overlay_watermark(
         # If anything goes wrong, return original image
         print(f"Warning: Could not overlay watermark: {e}")
         return img
+
+
+# ========= GIF HELPERS =========
+def is_animated_gif(image_path: str) -> bool:
+    """
+    Check if an image file is an animated GIF.
+
+    Args:
+        image_path: Path to the image file
+
+    Returns:
+        True if the file is an animated GIF with multiple frames, False otherwise
+    """
+    try:
+        with Image.open(image_path) as img:
+            return img.format == 'GIF' and getattr(img, 'is_animated', False)
+    except Exception:
+        return False
+
+
+def extract_gif_frames(image_path: str) -> Tuple[List[Image.Image], List[int]]:
+    """
+    Extract all frames and their durations from an animated GIF.
+
+    Args:
+        image_path: Path to the GIF file
+
+    Returns:
+        Tuple of (frames, durations) where:
+        - frames: List of PIL Image objects (one per frame)
+        - durations: List of frame durations in milliseconds
+    """
+    frames = []
+    durations = []
+
+    with Image.open(image_path) as img:
+        # Iterate through all frames
+        try:
+            while True:
+                # Copy the frame to preserve it
+                frame = img.copy()
+                frames.append(frame)
+                # Get duration for this frame (default 100ms if not specified)
+                durations.append(img.info.get('duration', 100))
+                img.seek(img.tell() + 1)
+        except EOFError:
+            pass
+
+    return frames, durations
+
+
+def assemble_gif(
+    frames: List[Image.Image],
+    durations: List[int],
+) -> bytes:
+    """
+    Assemble processed frames into an animated GIF.
+
+    Args:
+        frames: List of processed PIL Image objects
+        durations: List of frame durations in milliseconds
+
+    Returns:
+        GIF bytes ready to be saved or transmitted
+    """
+    from io import BytesIO
+
+    if not frames:
+        raise ValueError("No frames provided for GIF assembly")
+
+    # Convert all frames to RGB mode for GIF compatibility
+    # GIF requires palette mode (P), but save() handles conversion
+    rgb_frames = []
+    for frame in frames:
+        if frame.mode == 'RGBA':
+            # Convert RGBA to RGB with white background
+            background = Image.new('RGB', frame.size, (255, 255, 255))
+            background.paste(frame, mask=frame.split()[3])
+            rgb_frames.append(background)
+        elif frame.mode != 'RGB':
+            rgb_frames.append(frame.convert('RGB'))
+        else:
+            rgb_frames.append(frame)
+
+    # Save animated GIF
+    output = BytesIO()
+    rgb_frames[0].save(
+        output,
+        format='GIF',
+        save_all=True,
+        append_images=rgb_frames[1:] if len(rgb_frames) > 1 else [],
+        duration=durations,
+        loop=0,  # Infinite loop
+        optimize=False,  # Avoid optimization issues with text
+    )
+
+    return output.getvalue()
 
