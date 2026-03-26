@@ -491,10 +491,10 @@ def assemble_gif(
     rgb_frames = []
     for frame in frames:
         if frame.mode == 'RGBA':
-            # Convert RGBA to RGB with white background
-            background = Image.new('RGB', frame.size, (255, 255, 255))
-            background.paste(frame, mask=frame.split()[3])
-            rgb_frames.append(background)
+            # Convert RGBA to RGB directly - poster frames don't need transparency
+            # Using direct conversion preserves white text better than compositing
+            # with a white background (which would make white text invisible)
+            rgb_frames.append(frame.convert('RGB'))
         elif frame.mode != 'RGB':
             rgb_frames.append(frame.convert('RGB'))
         else:
