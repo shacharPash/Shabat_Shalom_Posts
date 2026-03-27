@@ -2660,48 +2660,48 @@
 
     /* ===== Omer Mode Section - Minimal ===== */
     .omer-mode-section {
-      margin-bottom: 16px;
+      margin-top: 20px;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      background: var(--input-bg);
-      border-radius: 10px;
-      border: 1px solid var(--divider-color);
+      justify-content: center;
+      padding: 6px 10px;
+      background: transparent;
+      border-radius: 6px;
+      border: none;
       transition: all 0.2s ease;
     }
     .omer-mode-section:hover {
       background: var(--button-hover-bg);
     }
     .omer-mode-section.active {
-      border-color: #ffc107;
-      background: rgba(255, 193, 7, 0.08);
+      background: rgba(255, 193, 7, 0.05);
     }
     [data-theme="dark"] .omer-mode-section.active {
-      background: rgba(255, 193, 7, 0.1);
+      background: rgba(255, 193, 7, 0.08);
     }
     .omer-toggle-wrapper {
       display: flex;
       align-items: center;
-      gap: 10px;
-      width: 100%;
+      gap: 6px;
+      width: auto;
     }
     .omer-toggle-label {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 5px;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-primary);
-      flex: 1;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-tertiary);
+      flex: none;
     }
     .omer-toggle-label .omer-icon {
-      font-size: 16px;
+      font-size: 12px;
     }
     .omer-toggle-checkbox {
-      width: 18px;
-      height: 18px;
+      width: 14px;
+      height: 14px;
       cursor: pointer;
       accent-color: #ffc107;
     }
@@ -2799,18 +2799,20 @@
     /* Omer preview in floating panel */
     .omer-preview-wrapper {
       position: relative;
+      max-width: 300px;
+      margin: 0 auto;
     }
     .omer-preview-loading {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 1 / 1;
+      background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+      border-radius: 12px;
       color: white;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 12px;
-      z-index: 10;
+      padding: 20px;
+      font-size: 14px;
+      text-align: center;
     }
     .omer-preview-image {
       width: 100%;

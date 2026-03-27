@@ -627,7 +627,7 @@ def compose_omer_poster(
         hebrew_date = get_hebrew_date_string(omer_date)
         date_parts.append(hebrew_date)
     if date_format in ("gregorian", "both"):
-        gregorian_date = omer_date.strftime("%B %d, %Y")
+        gregorian_date = f"{omer_date.day}/{omer_date.month}"
         date_parts.append(gregorian_date)
 
     # Combine date parts with sefirah
@@ -698,7 +698,7 @@ def compose_omer_poster(
     # Blessing text (may need to wrap)
     fitted_blessing_font = get_fitted_font(omer_blessing, blessing_font, content_width - 60, rtl=True)
     draw_text_with_stroke(draw, (W//2, y), omer_blessing, fitted_blessing_font, fill, stroke, 3, anchor="ma", rtl=True)
-    y += 100
+    y += 60  # Reduced from 100 - less space after blessing
 
     # Count text (LARGER with multi-line wrapping)
     count_text_height = draw_multiline_text_with_stroke(
@@ -708,7 +708,7 @@ def compose_omer_poster(
         line_spacing=15,
         anchor="ma", rtl=True
     )
-    y += count_text_height + 20
+    y += count_text_height + 50  # Increased from 20 - more space before Harachaman
 
     # Harachaman text
     fitted_harachaman_font = get_fitted_font(harachaman, harachaman_font, content_width - 60, rtl=True)
