@@ -4,7 +4,8 @@
     { "source": "/poster", "destination": "/api/poster" },
     { "source": "/api/poster", "destination": "/api/poster" },
     { "source": "/upcoming-events", "destination": "/api/upcoming_events" },
-    { "source": "/api/telegram", "destination": "/api/telegram_webhook" }
+    { "source": "/api/telegram", "destination": "/api/telegram_webhook" },
+    { "source": "/omer-info", "destination": "/api/omer_info" }
   ]
 }
 
