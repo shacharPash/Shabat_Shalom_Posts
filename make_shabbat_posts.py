@@ -12,6 +12,9 @@ from datetime import datetime, date, timedelta
 from io import BytesIO
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+# Import Omer utilities
+from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text
+
 import arabic_reshaper
 import pytz
 import requests
@@ -490,6 +493,150 @@ def compose_poster(
     # Do NOT save to disk here anymore
     return img
 
+
+def compose_omer_poster(
+    bg_img: Image.Image,
+    omer_day: int,
+    blessing_text: str | None = None,
+    dedication_text: str | None = None,
+    show_watermark: bool = True,
+) -> Image.Image:
+    """
+    Compose a Sefirat HaOmer poster with blessing, count, and Harachaman text.
+
+    Args:
+        bg_img: Background image
+        omer_day: The Omer day (1-49)
+        blessing_text: Custom bottom message (optional)
+        dedication_text: Custom dedication text (optional)
+        show_watermark: Whether to show watermark
+
+    Returns:
+        Composed poster image
+    """
+    img = bg_img.copy()
+    W, H = img.size
+    draw = ImageDraw.Draw(img)
+
+    title_font = load_font(100, bold=True)
+    sub_font = load_font(54)
+    bless_font = load_font(60, bold=True)
+    small_font = load_font(36)
+
+    stroke_w = 5
+    fill = "white"
+    stroke = "black"
+
+    # Title: ספירת העומר
+    title = "ספירת העומר"
+    fitted_title_font = get_fitted_font(title, title_font, W - 100, rtl=True)
+    draw_text_with_stroke(draw, (W//2, 40), title, fitted_title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+
+    # Subtitle: יום X לעומר | ספירה שבספירה
+    sefirah_text = get_sefirah_text(omer_day)
+    sub_line = f"יום {omer_day} לעומר | {sefirah_text}"
+    fitted_sub_font = get_fitted_font(sub_line, sub_font, W - 100, rtl=True)
+    draw_text_with_stroke(draw, (W//2, 145), sub_line, fitted_sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+
+    # Omer content texts
+    omer_blessing = "בָּרוּךְ אַתָּה יְיָ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם, אֲשֶׁר קִדְּשָׁנוּ בְּמִצְוֹתָיו וְצִוָּנוּ עַל סְפִירַת הָעֹמֶר"
+    omer_count = get_omer_count_text(omer_day)
+    harachaman = "הָרַחֲמָן הוּא יַחֲזִיר לָנוּ עֲבוֹדַת בֵּית הַמִּקְדָּשׁ לִמְקוֹמָהּ, בִּמְהֵרָה בְיָמֵינוּ אָמֵן סֶלָה"
+
+    # Handle bottom text area
+    if blessing_text is None:
+        blessing_text = ""
+    if dedication_text is None:
+        dedication_text = ""
+
+    show_blessing = bool(blessing_text)
+    show_dedication = bool(dedication_text)
+
+    if show_blessing and show_dedication:
+        blessing_y = H - 125
+        dedication_y = H - 50
+        content_bottom_ref = blessing_y
+    elif show_blessing and not show_dedication:
+        blessing_y = H - 85
+        content_bottom_ref = blessing_y
+    elif not show_blessing and show_dedication:
+        dedication_y = H - 50
+        content_bottom_ref = H - 85
+    else:
+        content_bottom_ref = H - 40
+
+    # Calculate content area dimensions
+    content_margin = 30
+    content_width = W - 200
+    content_height = 400  # Estimated height for all omer content
+    content_top = content_bottom_ref - content_margin - content_height
+
+    # Create semi-transparent overlay for content area
+    overlay = Image.new("RGBA", (content_width, content_height), (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+
+    corner_radius = 25
+    overlay_draw.rounded_rectangle(
+        [0, 0, content_width, content_height],
+        radius=corner_radius,
+        fill=(0, 0, 0, 70)
+    )
+
+    content_left = (W - content_width) // 2
+    img.paste(overlay, (content_left, content_top), overlay)
+
+    draw = ImageDraw.Draw(img)
+
+    # Draw the Omer content
+    blessing_font = load_font(32)
+    count_font = load_font(48, bold=True)  # Larger font for count
+    harachaman_font = load_font(28)
+
+    y = content_top + 40
+
+    # Blessing text (may need to wrap)
+    fitted_blessing_font = get_fitted_font(omer_blessing, blessing_font, content_width - 60, rtl=True)
+    draw_text_with_stroke(draw, (W//2, y), omer_blessing, fitted_blessing_font, fill, stroke, 3, anchor="ma", rtl=True)
+    y += 100
+
+    # Count text (LARGER)
+    fitted_count_font = get_fitted_font(omer_count, count_font, content_width - 60, rtl=True)
+    draw_text_with_stroke(draw, (W//2, y), omer_count, fitted_count_font, fill, stroke, 4, anchor="ma", rtl=True)
+    y += 120
+
+    # Harachaman text
+    fitted_harachaman_font = get_fitted_font(harachaman, harachaman_font, content_width - 60, rtl=True)
+    draw_text_with_stroke(draw, (W//2, y), harachaman, fitted_harachaman_font, fill, stroke, 3, anchor="ma", rtl=True)
+
+    # Draw bottom blessing and dedication text
+    if show_blessing:
+        draw_text_with_stroke(
+            draw, (W//2, blessing_y),
+            blessing_text, bless_font,
+            fill, stroke, stroke_w,
+            anchor="ma", rtl=True,
+        )
+    if show_dedication:
+        draw_text_with_stroke(
+            draw, (W//2, dedication_y),
+            dedication_text, small_font,
+            fill, stroke, 3,
+            anchor="ma", rtl=True,
+        )
+
+    # Add watermark if enabled
+    if show_watermark:
+        img = overlay_watermark(
+            img,
+            watermark_path=WATERMARK_PATH,
+            size=WATERMARK_SIZE,
+            margin=WATERMARK_MARGIN,
+            opacity=WATERMARK_OPACITY
+        )
+
+    return img
+
+
 # ========= MAIN =========
 def generate_poster(
     *,
@@ -504,6 +651,8 @@ def generate_poster(
     show_watermark: bool = True,  # Enable/disable watermark
     aspect_ratio: str = "1:1",  # Aspect ratio: "1:1", "4:5", or "auto"
     flexible_aspect: bool = False,  # DEPRECATED: Use aspect_ratio="auto" instead
+    omer_mode: bool = False,  # Generate Sefirat HaOmer poster instead of Shabbat
+    omer_date: Optional[date] = None,  # Date for Omer calculation (default: today)
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
@@ -511,6 +660,11 @@ def generate_poster(
     This is the main entry point for poster generation. It finds the next
     Shabbat or holiday sequence, calculates candle lighting and havdalah
     times for each city, and renders a beautiful poster image.
+
+    When omer_mode=True, generates a Sefirat HaOmer poster instead, with:
+    - Title: "ספירת העומר"
+    - Subtitle: "יום X לעומר | ספירה שבספירה"
+    - Content area with blessing, count text, and Harachaman
 
     Args:
         image_path: Path to the background image file
@@ -532,6 +686,9 @@ def generate_poster(
                       constraints). Default: "1:1".
         flexible_aspect: DEPRECATED - Use aspect_ratio="auto" instead. If True and
                          aspect_ratio is "1:1", will be treated as aspect_ratio="auto".
+        omer_mode: If True, generate a Sefirat HaOmer poster (default: False)
+        omer_date: Date for Omer calculation. If None, uses today. If current hour
+                   is between 00:00-06:00, counts for next day (after midnight logic).
 
     Returns:
         PNG image bytes ready to be saved or transmitted
@@ -542,6 +699,55 @@ def generate_poster(
     if cities is None:
         cities = DEFAULT_CITIES  # Use neutral default cities
 
+    # Handle backward compatibility: flexible_aspect=True maps to aspect_ratio="auto"
+    effective_aspect_ratio = aspect_ratio
+    if flexible_aspect and aspect_ratio == "1:1":
+        effective_aspect_ratio = "auto"
+
+    # Determine target size based on aspect ratio
+    if effective_aspect_ratio == "auto":
+        target_size = IMG_SIZE  # Max constraint for flexible mode
+        use_flexible = True
+    else:
+        target_size = ASPECT_RATIO_SIZES.get(effective_aspect_ratio, IMG_SIZE)
+        use_flexible = False
+
+    # === OMER MODE ===
+    if omer_mode:
+        # Determine the date for Omer calculation
+        effective_omer_date = omer_date if omer_date else date.today()
+
+        # Check if we're after midnight (00:00-06:00) - count for next day
+        current_hour = datetime.now(pytz.timezone(TZID)).hour
+        after_midnight = current_hour >= 0 and current_hour < 6
+
+        # Get the Omer day
+        omer_day = get_omer_day(effective_omer_date, after_midnight=after_midnight)
+
+        if omer_day is None:
+            raise ValueError(f"Date {effective_omer_date} is not within the Omer period (16 Nisan - Shavuot)")
+
+        # Load and fit background image
+        bg = fit_background(
+            image_path, target_size,
+            crop_position=crop_position,
+            flexible_aspect=use_flexible,
+        )
+
+        # Compose the Omer poster
+        img = compose_omer_poster(
+            bg, omer_day,
+            blessing_text=blessing_text,
+            dedication_text=dedication_text,
+            show_watermark=show_watermark,
+        )
+
+        # Save to BytesIO buffer as PNG and return bytes
+        buffer = BytesIO()
+        img.save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
+
+    # === SHABBAT/YOM TOV MODE ===
     # Find the next event sequence (ignore event_type and event_name here,
     # as they're obtained from jewcal_times_for_sequence for each city)
     seq_start, seq_end, _, _ = find_next_sequence(start_date)
@@ -590,21 +796,6 @@ def generate_poster(
             "event_type": ref_info.get("event_type"),
             "action": ref_info.get("action"),
         }
-
-    # Handle backward compatibility: flexible_aspect=True maps to aspect_ratio="auto"
-    effective_aspect_ratio = aspect_ratio
-    if flexible_aspect and aspect_ratio == "1:1":
-        effective_aspect_ratio = "auto"
-
-    # Determine target size based on aspect ratio
-    if effective_aspect_ratio == "auto":
-        # Use flexible aspect mode with original image proportions
-        target_size = IMG_SIZE  # Max constraint for flexible mode
-        use_flexible = True
-    else:
-        # Use specific aspect ratio preset
-        target_size = ASPECT_RATIO_SIZES.get(effective_aspect_ratio, IMG_SIZE)
-        use_flexible = False
 
     # Build week info
     week_info = {
