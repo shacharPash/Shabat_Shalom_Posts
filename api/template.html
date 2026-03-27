@@ -2780,6 +2780,7 @@
       padding-top: 10px;
       border-top: 1px solid var(--divider-color);
       animation: fadeIn 0.2s ease;
+      overflow: hidden;
     }
     .omer-date-picker.show {
       display: block;
@@ -2793,6 +2794,7 @@
     }
     .omer-date-input {
       width: 100%;
+      max-width: 100%;
       padding: 10px 12px;
       border-radius: 8px;
       border: 1px solid var(--input-border);
@@ -2979,7 +2981,7 @@
         <span class="arrow">▼</span>
       </button>
       <div class="omer-date-picker" id="omerDatePicker">
-        <label for="omerDateInput">תאריך לבדיקה</label>
+        <label for="omerDateInput">תאריך עתידי</label>
         <input type="date" id="omerDateInput" class="omer-date-input" />
         <div class="omer-hint">לבדיקת ספירה של תאריך אחר</div>
       </div>
