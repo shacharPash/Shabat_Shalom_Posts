@@ -3632,9 +3632,15 @@ CITY_CHECKBOXES_PLACEHOLDER
         citiesStep.style.display = omerModeEnabled ? 'none' : 'block';
       }
 
-      // Hide/show customization wrapper (עוד אפשרויות) based on omer mode
-      if (customizationWrapper) {
-        customizationWrapper.style.display = omerModeEnabled ? 'none' : '';
+      // Hide/show advanced options button and section (עוד אפשרויות) based on omer mode
+      // Keep the rest of customization visible
+      const toggleAdvancedBtn = document.getElementById('toggleAdvancedBtn');
+      const advancedSection = document.getElementById('advancedSection');
+      if (toggleAdvancedBtn) {
+        toggleAdvancedBtn.style.display = omerModeEnabled ? 'none' : '';
+      }
+      if (advancedSection) {
+        advancedSection.style.display = omerModeEnabled ? 'none' : '';
       }
 
       if (omerModeEnabled) {

@@ -671,7 +671,7 @@ def compose_omer_poster(
     # Count text height (multi-line)
     count_lines = wrap_hebrew_text(omer_count, count_font, text_area_width)
     count_bbox = count_font.getbbox("אבגדהוזחט")  # Sample for line height
-    count_line_height = count_bbox[3] - count_bbox[1] + 15  # 15 = line_spacing
+    count_line_height = count_bbox[3] - count_bbox[1] + 25  # 25 = line_spacing (increased for readability)
     count_height = len(count_lines) * count_line_height
 
     # Harachaman text height
@@ -745,7 +745,7 @@ def compose_omer_poster(
         draw, (W//2, y), omer_count, count_font,
         fill, stroke, 4,
         max_width=text_area_width,
-        line_spacing=15,
+        line_spacing=25,  # Increased from 15 for better readability on multi-line count
         anchor="ma", rtl=True
     )
     y += count_text_height + spacing_after_count
