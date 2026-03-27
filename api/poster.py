@@ -71,6 +71,10 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
       # Aspect ratio control:
       "aspectRatio": "1:1"     // "1:1" (square), "4:5" (portrait), or "auto"
       "flexibleAspect": false  // DEPRECATED: use aspectRatio="auto" instead
+
+      # Sefirat HaOmer mode:
+      "omerMode": true,                    # enable Sefirat HaOmer poster mode
+      "omerDate": "2025-04-20"             # optional: specific date for Omer count (for testing)
     }
 
     Priority for background image:
@@ -112,6 +116,13 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
 
     # Flexible aspect ratio (DEPRECATED - for backward compatibility)
     flexible_aspect: bool = payload.get("flexibleAspect", False)
+
+    # Sefirat HaOmer mode
+    omer_mode: bool = payload.get("omerMode", False)
+    omer_date_str: Optional[str] = payload.get("omerDate")
+    omer_date: Optional[date] = None
+    if omer_date_str:
+        omer_date = date.fromisoformat(omer_date_str)
 
     start_date_str: Optional[str] = payload.get("startDate")
     if start_date_str:
@@ -208,6 +219,8 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         show_watermark=show_watermark,
         aspect_ratio=aspect_ratio,
         flexible_aspect=flexible_aspect,
+        omer_mode=omer_mode,
+        omer_date=omer_date,
     )
 
     return poster_bytes
