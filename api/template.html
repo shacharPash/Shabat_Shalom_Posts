@@ -2658,91 +2658,65 @@
       box-shadow: 0 4px 15px rgba(124, 77, 255, 0.4);
     }
 
-    /* ===== Omer Mode Section - Clean Switch Design ===== */
-    .omer-mode-section {
+    /* ===== Omer Mode Section - Segmented Button Group ===== */
+    .mode-selector-section {
       margin-top: 20px;
       margin-bottom: 12px;
       display: flex;
-      align-items: center;
       justify-content: center;
-      padding: 10px 16px;
+    }
+    .mode-button-group {
+      display: flex;
       background: var(--input-bg);
       border-radius: 12px;
-      border: 1px solid var(--divider-color);
+      border: 2px solid var(--input-border);
+      padding: 4px;
+      gap: 4px;
       transition: all 0.3s ease;
     }
-    .omer-mode-section:hover {
-      border-color: #ffc107;
-    }
-    .omer-mode-section.active {
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.08) 0%, rgba(255, 152, 0, 0.08) 100%);
-      border-color: #ffc107;
-    }
-    [data-theme="dark"] .omer-mode-section.active {
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(255, 152, 0, 0.12) 100%);
-    }
-    .omer-toggle-wrapper {
+    .mode-button {
       display: flex;
       align-items: center;
-      gap: 10px;
-      width: auto;
-    }
-    .omer-toggle-label {
-      display: flex;
-      align-items: center;
+      justify-content: center;
       gap: 6px;
-      cursor: pointer;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-secondary);
       font-size: 14px;
       font-weight: 500;
-      color: var(--text-secondary);
-      flex: none;
-      user-select: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      white-space: nowrap;
     }
-    .omer-toggle-label .omer-icon {
+    .mode-button:hover:not(.active) {
+      background: var(--button-hover-bg);
+    }
+    .mode-button:focus-visible {
+      outline: 2px solid var(--input-border-focus);
+      outline-offset: 2px;
+    }
+    .mode-button.active {
+      background: linear-gradient(135deg, #3949ab 0%, #5c6bc0 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(57, 73, 171, 0.3);
+    }
+    .mode-button.active.omer-active {
+      background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+      box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+      color: #333;
+    }
+    .mode-button .mode-icon {
       font-size: 16px;
     }
-    /* Custom switch toggle */
-    .omer-switch {
-      position: relative;
-      width: 44px;
-      height: 24px;
-      cursor: pointer;
+    [data-theme="dark"] .mode-button.active {
+      background: linear-gradient(135deg, #5c6bc0 0%, #7c4dff 100%);
     }
-    .omer-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .omer-switch-slider {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--divider-color);
-      border-radius: 24px;
-      transition: all 0.3s ease;
-    }
-    .omer-switch-slider:before {
-      content: "";
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      left: 3px;
-      bottom: 3px;
-      background: white;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .omer-switch input:checked + .omer-switch-slider {
+    [data-theme="dark"] .mode-button.active.omer-active {
       background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-    }
-    .omer-switch input:checked + .omer-switch-slider:before {
-      transform: translateX(20px);
-    }
-    .omer-switch input:focus + .omer-switch-slider {
-      box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
+      color: #333;
     }
     .omer-info {
       display: none;
@@ -2981,18 +2955,19 @@
       </div>
     </div>
 
-    <!-- Omer Mode Section - Clean Switch Toggle -->
-    <div class="omer-mode-section" id="omerModeSection">
-      <div class="omer-toggle-wrapper">
-        <span class="omer-toggle-label">
-          <span class="omer-icon">🌾</span>
+    <!-- Mode Selector - Button Group -->
+    <div class="mode-selector-section" id="modeSelectorSection">
+      <div class="mode-button-group">
+        <button type="button" class="mode-button active" id="shabbatModeBtn" data-mode="shabbat">
+          <span class="mode-icon">🕯️</span>
+          <span>שבת/חג</span>
+        </button>
+        <button type="button" class="mode-button" id="omerModeBtn" data-mode="omer">
+          <span class="mode-icon">🌾</span>
           <span>ספירת העומר</span>
-        </span>
-        <label class="omer-switch">
-          <input type="checkbox" id="omerModeToggle" />
-          <span class="omer-switch-slider"></span>
-        </label>
+        </button>
       </div>
+      <input type="checkbox" id="omerModeToggle" style="display: none;" />
     </div>
     <!-- Omer Info - appears below when enabled -->
     <div class="omer-info" id="omerInfo">
@@ -3416,13 +3391,16 @@ CITY_CHECKBOXES_PLACEHOLDER
     const addCustomCityBtn = document.getElementById("addCustomCityBtn");
     const customCitiesList = document.getElementById("customCitiesList");
 
-    // Omer mode elements
-    const omerModeSection = document.getElementById("omerModeSection");
-    const omerModeToggle = document.getElementById("omerModeToggle");
+    // Mode selector elements (Button group)
+    const modeSelectorSection = document.getElementById("modeSelectorSection");
+    const shabbatModeBtn = document.getElementById("shabbatModeBtn");
+    const omerModeBtn = document.getElementById("omerModeBtn");
+    const omerModeToggle = document.getElementById("omerModeToggle"); // Hidden checkbox for compatibility
     const omerInfo = document.getElementById("omerInfo");
     const omerCountText = document.getElementById("omerCountText");
     const omerDateInput = document.getElementById("omerDateInput");
     const citiesStep = document.getElementById("citiesStep");
+    const customizationWrapper = document.querySelector(".customization-wrapper");
     let omerModeEnabled = false;
 
     // Live preview elements
@@ -3636,15 +3614,27 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     }
 
-    // Toggle Omer mode
-    omerModeToggle.addEventListener('change', () => {
-      omerModeEnabled = omerModeToggle.checked;
-      omerModeSection.classList.toggle('active', omerModeEnabled);
+    // Mode selector button group handlers
+    function setMode(mode) {
+      omerModeEnabled = (mode === 'omer');
+      omerModeToggle.checked = omerModeEnabled; // Keep hidden checkbox in sync
+
+      // Update button states
+      shabbatModeBtn.classList.toggle('active', !omerModeEnabled);
+      omerModeBtn.classList.toggle('active', omerModeEnabled);
+      omerModeBtn.classList.toggle('omer-active', omerModeEnabled);
+
+      // Show/hide omer info section
       omerInfo.classList.toggle('show', omerModeEnabled);
 
       // Hide/show cities step based on omer mode
       if (citiesStep) {
         citiesStep.style.display = omerModeEnabled ? 'none' : 'block';
+      }
+
+      // Hide/show customization wrapper (עוד אפשרויות) based on omer mode
+      if (customizationWrapper) {
+        customizationWrapper.style.display = omerModeEnabled ? 'none' : '';
       }
 
       if (omerModeEnabled) {
@@ -3665,6 +3655,15 @@ CITY_CHECKBOXES_PLACEHOLDER
       } else {
         restoreRegularPreview();
       }
+    }
+
+    // Button click handlers
+    shabbatModeBtn.addEventListener('click', () => setMode('shabbat'));
+    omerModeBtn.addEventListener('click', () => setMode('omer'));
+
+    // Keep legacy checkbox listener for compatibility (in case it's programmatically changed)
+    omerModeToggle.addEventListener('change', () => {
+      setMode(omerModeToggle.checked ? 'omer' : 'shabbat');
     });
 
     // Advanced toggle for date picker
