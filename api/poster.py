@@ -196,7 +196,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
 
     dedication_text = ""
     if leiluy_neshama and not hide_dedication:
-        dedication_text = f'זמני השבת לע"נ {leiluy_neshama}'
+        dedication_text = f'לעילוי נשמת {leiluy_neshama}'
 
     # Build overrides dict (only include non-None values)
     overrides = {}
