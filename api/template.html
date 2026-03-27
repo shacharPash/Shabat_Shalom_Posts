@@ -2658,83 +2658,60 @@
       box-shadow: 0 4px 15px rgba(124, 77, 255, 0.4);
     }
 
-    /* ===== Omer Mode Section ===== */
+    /* ===== Omer Mode Section - Minimal ===== */
     .omer-mode-section {
-      margin-bottom: 24px;
-      padding: 16px;
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%);
-      border-radius: 12px;
-      border: 2px solid rgba(255, 193, 7, 0.3);
-      transition: all 0.3s ease;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--input-bg);
+      border-radius: 10px;
+      border: 1px solid var(--divider-color);
+      transition: all 0.2s ease;
+    }
+    .omer-mode-section:hover {
+      background: var(--button-hover-bg);
     }
     .omer-mode-section.active {
       border-color: #ffc107;
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%);
-    }
-    [data-theme="dark"] .omer-mode-section {
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.08) 0%, rgba(255, 152, 0, 0.08) 100%);
-      border-color: rgba(255, 193, 7, 0.25);
+      background: rgba(255, 193, 7, 0.08);
     }
     [data-theme="dark"] .omer-mode-section.active {
-      border-color: #ffc107;
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(255, 152, 0, 0.12) 100%);
+      background: rgba(255, 193, 7, 0.1);
     }
     .omer-toggle-wrapper {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      width: 100%;
     }
     .omer-toggle-label {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       cursor: pointer;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 500;
       color: var(--text-primary);
       flex: 1;
     }
     .omer-toggle-label .omer-icon {
-      font-size: 22px;
+      font-size: 16px;
     }
     .omer-toggle-checkbox {
-      display: none;
-    }
-    .omer-toggle-switch {
-      position: relative;
-      width: 52px;
-      height: 28px;
-      background: var(--button-border);
-      border-radius: 14px;
+      width: 18px;
+      height: 18px;
       cursor: pointer;
-      transition: all 0.3s ease;
-      flex-shrink: 0;
-    }
-    .omer-toggle-switch::after {
-      content: '';
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 22px;
-      height: 22px;
-      background: white;
-      border-radius: 50%;
-      transition: transform 0.3s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .omer-toggle-checkbox:checked + .omer-toggle-switch {
-      background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-    }
-    .omer-toggle-checkbox:checked + .omer-toggle-switch::after {
-      transform: translateX(24px);
+      accent-color: #ffc107;
     }
     .omer-info {
       display: none;
-      margin-top: 16px;
-      padding: 12px;
-      background: var(--container-bg);
-      border-radius: 10px;
-      border: 1px solid var(--input-border);
+      margin-top: 8px;
+      padding: 10px 14px;
+      background: var(--input-bg);
+      border-radius: 8px;
+      border: 1px solid var(--divider-color);
       animation: fadeIn 0.3s ease;
     }
     .omer-info.show {
@@ -2742,49 +2719,103 @@
     }
     .omer-count-display {
       text-align: center;
-      padding: 8px;
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%);
-      border-radius: 8px;
-      margin-bottom: 12px;
+      padding: 6px;
+      background: rgba(255, 193, 7, 0.1);
+      border-radius: 6px;
+      margin-bottom: 8px;
     }
     .omer-count-text {
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 600;
       color: #f57c00;
     }
     [data-theme="dark"] .omer-count-text {
       color: #ffb74d;
     }
+    /* Advanced date picker - collapsed by default */
+    .omer-advanced-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+      padding: 6px;
+      margin-top: 6px;
+      background: none;
+      border: none;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: color 0.2s ease;
+      font-family: inherit;
+    }
+    .omer-advanced-toggle:hover {
+      color: var(--text-secondary);
+    }
+    .omer-advanced-toggle .arrow {
+      font-size: 10px;
+      transition: transform 0.2s ease;
+    }
+    .omer-advanced-toggle.open .arrow {
+      transform: rotate(180deg);
+    }
     .omer-date-picker {
-      margin-top: 12px;
+      display: none;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--divider-color);
+      animation: fadeIn 0.2s ease;
+    }
+    .omer-date-picker.show {
+      display: block;
     }
     .omer-date-picker label {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
       color: var(--text-secondary);
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       display: block;
     }
     .omer-date-input {
       width: 100%;
-      padding: 10px 14px;
-      border-radius: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
       border: 1px solid var(--input-border);
       background: var(--input-bg);
       color: var(--text-primary);
-      font-size: 14px;
+      font-size: 13px;
       font-family: inherit;
       transition: all 0.2s ease;
     }
     .omer-date-input:focus {
       outline: none;
       border-color: var(--input-border-focus);
-      box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.15);
     }
     .omer-hint {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-tertiary);
-      margin-top: 6px;
+      margin-top: 4px;
+    }
+    /* Omer preview in floating panel */
+    .omer-preview-wrapper {
+      position: relative;
+    }
+    .omer-preview-loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      z-index: 10;
+    }
+    .omer-preview-image {
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
   </style>
 
@@ -2891,25 +2922,29 @@
       </div>
     </div>
 
-    <!-- Omer Mode Section -->
+    <!-- Omer Mode Section - Minimal Toggle -->
     <div class="omer-mode-section" id="omerModeSection">
       <div class="omer-toggle-wrapper">
         <label class="omer-toggle-label" for="omerModeToggle">
           <span class="omer-icon">🌾</span>
-          <span>פוסטר ספירת העומר</span>
+          <span>ספירת העומר</span>
         </label>
         <input type="checkbox" id="omerModeToggle" class="omer-toggle-checkbox" />
-        <label class="omer-toggle-switch" for="omerModeToggle"></label>
       </div>
-      <div class="omer-info" id="omerInfo">
-        <div class="omer-count-display">
-          <span class="omer-count-text" id="omerCountText">טוען...</span>
-        </div>
-        <div class="omer-date-picker">
-          <label for="omerDateInput">📅 תאריך לבדיקה (אופציונלי)</label>
-          <input type="date" id="omerDateInput" class="omer-date-input" />
-          <div class="omer-hint">💡 ברירת מחדל: היום. שנה לבדיקת ספירה של תאריך אחר</div>
-        </div>
+    </div>
+    <!-- Omer Info - appears below when enabled -->
+    <div class="omer-info" id="omerInfo">
+      <div class="omer-count-display">
+        <span class="omer-count-text" id="omerCountText">טוען...</span>
+      </div>
+      <button type="button" class="omer-advanced-toggle" id="omerAdvancedToggle">
+        <span>🔧 הגדרות מתקדמות</span>
+        <span class="arrow">▼</span>
+      </button>
+      <div class="omer-date-picker" id="omerDatePicker">
+        <label for="omerDateInput">תאריך לבדיקה</label>
+        <input type="date" id="omerDateInput" class="omer-date-input" />
+        <div class="omer-hint">לבדיקת ספירה של תאריך אחר</div>
       </div>
     </div>
 
@@ -3422,12 +3457,10 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // ===== Omer Mode Functionality =====
 
-    // Calculate Omer day for a given date
-    function calculateOmerDay(dateStr) {
-      // This is a placeholder - the actual calculation is done server-side
-      // We'll fetch from the API when omer mode is enabled
-      return null;
-    }
+    const omerAdvancedToggle = document.getElementById("omerAdvancedToggle");
+    const omerDatePicker = document.getElementById("omerDatePicker");
+    let omerPreviewUrl = null; // Store the generated preview URL
+    let omerPreviewLoading = false;
 
     // Update Omer count display
     async function updateOmerCount() {
@@ -3439,10 +3472,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         if (resp.ok) {
           const data = await resp.json();
           if (data.isOmerPeriod) {
-            omerCountText.textContent = `היום יום ${data.dayNumber} לעומר`;
-            if (data.hebrewCount) {
-              omerCountText.textContent += ` (${data.hebrewCount})`;
-            }
+            omerCountText.textContent = `יום ${data.dayNumber} לעומר`;
           } else {
             omerCountText.textContent = data.message || 'לא בתקופת ספירת העומר';
           }
@@ -3451,7 +3481,96 @@ CITY_CHECKBOXES_PLACEHOLDER
         }
       } catch (err) {
         console.error('Failed to fetch omer info:', err);
-        omerCountText.textContent = 'יום X לעומר (ייקבע בפוסטר)';
+        omerCountText.textContent = 'יום X לעומר';
+      }
+    }
+
+    // Generate Omer preview poster
+    async function generateOmerPreview() {
+      if (omerPreviewLoading) return;
+      omerPreviewLoading = true;
+
+      const dateValue = omerDateInput.value;
+      const payload = {
+        omerMode: true,
+        aspectRatio: selectedAspectRatio
+      };
+      if (dateValue) {
+        payload.omerDate = dateValue;
+      }
+      // Add uploaded image if present
+      if (uploadedFiles.length > 0) {
+        try {
+          const base64 = await readFileAsBase64(uploadedFiles[0]);
+          payload.imagesBase64 = [base64];
+          // Add crop position
+          const cropPos = imageCropPositions[0] || { x: 0.5, y: 0.5 };
+          payload.cropPositions = [cropPos];
+        } catch (e) {
+          console.error('Failed to read image for preview:', e);
+        }
+      }
+
+      try {
+        const resp = await fetch("/poster", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (resp.ok) {
+          const blob = await resp.blob();
+          // Revoke old URL if exists
+          if (omerPreviewUrl) {
+            URL.revokeObjectURL(omerPreviewUrl);
+          }
+          omerPreviewUrl = URL.createObjectURL(blob);
+          updateOmerPreviewDisplay();
+        }
+      } catch (err) {
+        console.error('Failed to generate omer preview:', err);
+      } finally {
+        omerPreviewLoading = false;
+      }
+    }
+
+    // Update the preview display for Omer mode
+    function updateOmerPreviewDisplay() {
+      const previewContent = document.querySelector('.floating-preview-content');
+      if (!previewContent || !omerModeEnabled) return;
+
+      // Find or create the omer preview container
+      let omerPreviewContainer = previewContent.querySelector('.omer-preview-wrapper');
+      if (!omerPreviewContainer) {
+        omerPreviewContainer = document.createElement('div');
+        omerPreviewContainer.className = 'omer-preview-wrapper';
+        // Insert before the regular preview
+        const regularPreview = previewContent.querySelector('.live-preview');
+        if (regularPreview) {
+          regularPreview.style.display = 'none';
+          previewContent.insertBefore(omerPreviewContainer, regularPreview);
+        }
+      }
+
+      if (omerPreviewUrl) {
+        omerPreviewContainer.innerHTML = `<img src="${omerPreviewUrl}" alt="תצוגה מקדימה" class="omer-preview-image" />`;
+      } else {
+        omerPreviewContainer.innerHTML = `<div class="omer-preview-loading">🌾 יוצר תצוגה מקדימה...</div>`;
+      }
+    }
+
+    // Restore regular preview display
+    function restoreRegularPreview() {
+      const previewContent = document.querySelector('.floating-preview-content');
+      if (!previewContent) return;
+
+      const omerPreviewContainer = previewContent.querySelector('.omer-preview-wrapper');
+      if (omerPreviewContainer) {
+        omerPreviewContainer.remove();
+      }
+      const regularPreview = previewContent.querySelector('.live-preview');
+      if (regularPreview) {
+        regularPreview.style.display = '';
       }
     }
 
@@ -3476,13 +3595,34 @@ CITY_CHECKBOXES_PLACEHOLDER
           omerDateInput.value = `${yyyy}-${mm}-${dd}`;
         }
         updateOmerCount();
+        // Generate preview if panel is open
+        if (floatingPreviewPanel.classList.contains('show')) {
+          updateOmerPreviewDisplay();
+          generateOmerPreview();
+        }
+      } else {
+        restoreRegularPreview();
       }
     });
 
-    // Update omer count when date changes
+    // Advanced toggle for date picker
+    if (omerAdvancedToggle) {
+      omerAdvancedToggle.addEventListener('click', () => {
+        omerAdvancedToggle.classList.toggle('open');
+        omerDatePicker.classList.toggle('show');
+      });
+    }
+
+    // Update omer count and preview when date changes
     omerDateInput.addEventListener('change', () => {
       if (omerModeEnabled) {
         updateOmerCount();
+        // Regenerate preview with new date
+        if (floatingPreviewPanel.classList.contains('show')) {
+          omerPreviewUrl = null;
+          updateOmerPreviewDisplay();
+          generateOmerPreview();
+        }
       }
     });
 
@@ -3854,8 +3994,16 @@ CITY_CHECKBOXES_PLACEHOLDER
     function openPreview() {
       floatingPreviewPanel.classList.add('show');
       previewOverlay.classList.add('show');
-      updateLivePreview(); // Refresh preview when opened
-      updateLivePreviewBackground(); // Refresh background (gradient or image)
+
+      // Handle Omer mode preview
+      if (omerModeEnabled) {
+        updateOmerPreviewDisplay();
+        generateOmerPreview();
+      } else {
+        restoreRegularPreview();
+        updateLivePreview(); // Refresh preview when opened
+        updateLivePreviewBackground(); // Refresh background (gradient or image)
+      }
     }
 
     function closePreview() {
@@ -3921,6 +4069,12 @@ CITY_CHECKBOXES_PLACEHOLDER
       aspectRatioSelector.querySelectorAll('.aspect-ratio-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           updatePreviewAspectRatio(btn.dataset.ratio);
+          // Regenerate Omer preview with new aspect ratio
+          if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
+            omerPreviewUrl = null;
+            updateOmerPreviewDisplay();
+            generateOmerPreview();
+          }
         });
       });
     }
@@ -4940,6 +5094,13 @@ CITY_CHECKBOXES_PLACEHOLDER
 
         // Update live preview background immediately
         updateLivePreviewBackground();
+
+        // Regenerate Omer preview if in Omer mode and preview is open
+        if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
+          omerPreviewUrl = null;
+          updateOmerPreviewDisplay();
+          generateOmerPreview();
+        }
       }
     });
 
@@ -4958,6 +5119,13 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Reset aspect ratio to square when image is cleared
       originalImageAspectRatio = 1;
       updatePreviewAspectRatio('square');
+
+      // Regenerate Omer preview without image if in Omer mode
+      if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
+        omerPreviewUrl = null;
+        updateOmerPreviewDisplay();
+        generateOmerPreview();
+      }
     });
 
     // Crop toggle/close buttons
