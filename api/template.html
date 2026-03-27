@@ -3245,7 +3245,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       <span id="copyLinkIcon">💾</span>
       <span id="copyLinkText">שמרו את ההגדרות 💾</span>
     </button>
-    <div class="copy-link-hint">רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎</div>
+    <div class="copy-link-hint" id="copyLinkHint">רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎</div>
 
     <div id="urlParamsNotice" class="url-params-notice">
       ⚠️ הטופס מולא אוטומטית מהקישור
@@ -3370,6 +3370,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     const copyLinkBtn = document.getElementById("copyLinkBtn");
     const copyLinkIcon = document.getElementById("copyLinkIcon");
     const copyLinkText = document.getElementById("copyLinkText");
+    const copyLinkHint = document.getElementById("copyLinkHint");
     const urlParamsNotice = document.getElementById("urlParamsNotice");
     const clearParamsBtn = document.getElementById("clearParamsBtn");
 
@@ -3641,6 +3642,15 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
       if (advancedSection) {
         advancedSection.style.display = omerModeEnabled ? 'none' : '';
+      }
+
+      // Update the "save link" hint text based on mode
+      if (copyLinkHint) {
+        if (omerModeEnabled) {
+          copyLinkHint.innerHTML = 'רוצים לשמור את ההגדרות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎';
+        } else {
+          copyLinkHint.innerHTML = 'רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎';
+        }
       }
 
       if (omerModeEnabled) {
@@ -4781,11 +4791,16 @@ CITY_CHECKBOXES_PLACEHOLDER
     function generateShareableUrl() {
       const params = new URLSearchParams();
 
-      // Add selected cities
-      const selectedCityNames = Array.from(document.querySelectorAll('.city-option.checked'))
-        .map(opt => opt.dataset.name);
-      if (selectedCityNames.length > 0) {
-        params.set('cities', selectedCityNames.join(','));
+      // Add mode parameter (omer or shabbat)
+      params.set('mode', omerModeEnabled ? 'omer' : 'shabbat');
+
+      // Add selected cities (only for shabbat mode)
+      if (!omerModeEnabled) {
+        const selectedCityNames = Array.from(document.querySelectorAll('.city-option.checked'))
+          .map(opt => opt.dataset.name);
+        if (selectedCityNames.length > 0) {
+          params.set('cities', selectedCityNames.join(','));
+        }
       }
 
       // Add message if present
@@ -4798,8 +4813,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         params.set('neshama', neshamaInput.value.trim());
       }
 
-      // Add date format if not default (default is now "both")
-      if (selectedDateFormat !== 'both') {
+      // Add date format if not default (default is now "both") - only for shabbat mode
+      if (!omerModeEnabled && selectedDateFormat !== 'both') {
         params.set('dateFormat', selectedDateFormat);
       }
 
@@ -4848,7 +4863,14 @@ CITY_CHECKBOXES_PLACEHOLDER
       const urlParams = new URLSearchParams(window.location.search);
       let hasParams = false;
 
-      // Pre-select cities from URL, or use defaults if no cities param
+      // Load mode from URL (omer or shabbat)
+      const modeParam = urlParams.get('mode');
+      if (modeParam && ['omer', 'shabbat'].includes(modeParam)) {
+        setMode(modeParam);
+        hasParams = true;
+      }
+
+      // Pre-select cities from URL, or use defaults if no cities param (only for shabbat mode)
       const citiesParam = urlParams.get('cities');
       const cityNames = citiesParam
         ? citiesParam.split(',').map(c => decodeURIComponent(c.trim()))
@@ -4900,6 +4922,9 @@ CITY_CHECKBOXES_PLACEHOLDER
     clearParamsBtn.addEventListener("click", () => {
       // Clear URL without reloading
       window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Reset mode to shabbat
+      setMode('shabbat');
 
       // Reset cities to defaults
       document.querySelectorAll('.city-option.checked').forEach(opt => {
