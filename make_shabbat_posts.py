@@ -653,24 +653,69 @@ def compose_omer_poster(
     show_blessing = bool(blessing_text)
     show_dedication = bool(dedication_text)
 
+    # Define fonts for content measurement
+    blessing_font = load_font(32)
+    count_font = load_font(70, bold=True)
+    harachaman_font = load_font(28)
+
+    # Calculate content width (with margins)
+    content_width = W - 200
+    text_area_width = content_width - 60  # Account for padding inside rectangle
+
+    # Measure actual text heights
+    # Blessing text height
+    fitted_blessing_font = get_fitted_font(omer_blessing, blessing_font, text_area_width, rtl=True)
+    blessing_bbox = fitted_blessing_font.getbbox(omer_blessing)
+    blessing_height = blessing_bbox[3] - blessing_bbox[1]
+
+    # Count text height (multi-line)
+    count_lines = wrap_hebrew_text(omer_count, count_font, text_area_width)
+    count_bbox = count_font.getbbox("אבגדהוזחט")  # Sample for line height
+    count_line_height = count_bbox[3] - count_bbox[1] + 15  # 15 = line_spacing
+    count_height = len(count_lines) * count_line_height
+
+    # Harachaman text height
+    fitted_harachaman_font = get_fitted_font(harachaman, harachaman_font, text_area_width, rtl=True)
+    harachaman_bbox = fitted_harachaman_font.getbbox(harachaman)
+    harachaman_height = harachaman_bbox[3] - harachaman_bbox[1]
+
+    # Calculate total content height with padding
+    vertical_padding = 35  # Top and bottom padding inside rectangle
+    spacing_after_blessing = 50
+    spacing_after_count = 40
+    content_height = (
+        vertical_padding +
+        blessing_height +
+        spacing_after_blessing +
+        count_height +
+        spacing_after_count +
+        harachaman_height +
+        vertical_padding
+    )
+
+    # Position content area between 50-66% from top (centered around 58%)
+    content_center_y = int(H * 0.58)
+    content_top = content_center_y - content_height // 2
+
+    # Ensure it doesn't overlap with title/subtitle (below ~200px) or bottom text
+    min_top = 200
     if show_blessing and show_dedication:
         blessing_y = H - 125
         dedication_y = H - 50
-        content_bottom_ref = blessing_y
+        max_bottom = blessing_y - 30
     elif show_blessing and not show_dedication:
         blessing_y = H - 85
-        content_bottom_ref = blessing_y
+        max_bottom = blessing_y - 30
     elif not show_blessing and show_dedication:
         dedication_y = H - 50
-        content_bottom_ref = H - 85
+        max_bottom = dedication_y - 30
     else:
-        content_bottom_ref = H - 40
+        max_bottom = H - 40
 
-    # Calculate content area dimensions
-    content_margin = 30
-    content_width = W - 200
-    content_height = 480  # Increased height for larger multi-line count text
-    content_top = content_bottom_ref - content_margin - content_height
+    # Clamp content position
+    content_top = max(min_top, content_top)
+    if content_top + content_height > max_bottom:
+        content_top = max_bottom - content_height
 
     # Create semi-transparent overlay for content area
     overlay = Image.new("RGBA", (content_width, content_height), (0, 0, 0, 0))
@@ -689,29 +734,23 @@ def compose_omer_poster(
     draw = ImageDraw.Draw(img)
 
     # Draw the Omer content
-    blessing_font = load_font(32)
-    count_font = load_font(70, bold=True)  # LARGER font for count (was 48)
-    harachaman_font = load_font(28)
+    y = content_top + vertical_padding
 
-    y = content_top + 40
-
-    # Blessing text (may need to wrap)
-    fitted_blessing_font = get_fitted_font(omer_blessing, blessing_font, content_width - 60, rtl=True)
+    # Blessing text
     draw_text_with_stroke(draw, (W//2, y), omer_blessing, fitted_blessing_font, fill, stroke, 3, anchor="ma", rtl=True)
-    y += 60  # Reduced from 100 - less space after blessing
+    y += blessing_height + spacing_after_blessing
 
-    # Count text (LARGER with multi-line wrapping)
+    # Count text (multi-line)
     count_text_height = draw_multiline_text_with_stroke(
         draw, (W//2, y), omer_count, count_font,
         fill, stroke, 4,
-        max_width=content_width - 60,
+        max_width=text_area_width,
         line_spacing=15,
         anchor="ma", rtl=True
     )
-    y += count_text_height + 50  # Increased from 20 - more space before Harachaman
+    y += count_text_height + spacing_after_count
 
     # Harachaman text
-    fitted_harachaman_font = get_fitted_font(harachaman, harachaman_font, content_width - 60, rtl=True)
     draw_text_with_stroke(draw, (W//2, y), harachaman, fitted_harachaman_font, fill, stroke, 3, anchor="ma", rtl=True)
 
     # Draw bottom blessing and dedication text

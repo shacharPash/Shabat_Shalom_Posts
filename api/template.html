@@ -2658,59 +2658,98 @@
       box-shadow: 0 4px 15px rgba(124, 77, 255, 0.4);
     }
 
-    /* ===== Omer Mode Section - Minimal ===== */
+    /* ===== Omer Mode Section - Clean Switch Design ===== */
     .omer-mode-section {
       margin-top: 20px;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 6px 10px;
-      background: transparent;
-      border-radius: 6px;
-      border: none;
-      transition: all 0.2s ease;
+      padding: 10px 16px;
+      background: var(--input-bg);
+      border-radius: 12px;
+      border: 1px solid var(--divider-color);
+      transition: all 0.3s ease;
     }
     .omer-mode-section:hover {
-      background: var(--button-hover-bg);
+      border-color: #ffc107;
     }
     .omer-mode-section.active {
-      background: rgba(255, 193, 7, 0.05);
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.08) 0%, rgba(255, 152, 0, 0.08) 100%);
+      border-color: #ffc107;
     }
     [data-theme="dark"] .omer-mode-section.active {
-      background: rgba(255, 193, 7, 0.08);
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(255, 152, 0, 0.12) 100%);
     }
     .omer-toggle-wrapper {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 10px;
       width: auto;
     }
     .omer-toggle-label {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       cursor: pointer;
-      font-size: 12px;
-      font-weight: 400;
-      color: var(--text-tertiary);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
       flex: none;
+      user-select: none;
     }
     .omer-toggle-label .omer-icon {
-      font-size: 12px;
+      font-size: 16px;
     }
-    .omer-toggle-checkbox {
-      width: 14px;
-      height: 14px;
+    /* Custom switch toggle */
+    .omer-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
       cursor: pointer;
-      accent-color: #ffc107;
+    }
+    .omer-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .omer-switch-slider {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--divider-color);
+      border-radius: 24px;
+      transition: all 0.3s ease;
+    }
+    .omer-switch-slider:before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .omer-switch input:checked + .omer-switch-slider {
+      background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    }
+    .omer-switch input:checked + .omer-switch-slider:before {
+      transform: translateX(20px);
+    }
+    .omer-switch input:focus + .omer-switch-slider {
+      box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
     }
     .omer-info {
       display: none;
       margin-top: 8px;
-      padding: 10px 14px;
+      padding: 12px 16px;
       background: var(--input-bg);
-      border-radius: 8px;
+      border-radius: 12px;
       border: 1px solid var(--divider-color);
       animation: fadeIn 0.3s ease;
     }
@@ -2719,15 +2758,15 @@
     }
     .omer-count-display {
       text-align: center;
-      padding: 6px;
-      background: rgba(255, 193, 7, 0.1);
-      border-radius: 6px;
-      margin-bottom: 8px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(255, 152, 0, 0.12) 100%);
+      border-radius: 8px;
+      margin-bottom: 10px;
     }
     .omer-count-text {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
-      color: #f57c00;
+      color: #e65100;
     }
     [data-theme="dark"] .omer-count-text {
       color: #ffb74d;
@@ -2737,20 +2776,22 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 6px;
       width: 100%;
-      padding: 6px;
-      margin-top: 6px;
+      padding: 8px;
+      margin-top: 4px;
       background: none;
       border: none;
       color: var(--text-tertiary);
       font-size: 12px;
       cursor: pointer;
-      transition: color 0.2s ease;
+      transition: all 0.2s ease;
       font-family: inherit;
+      border-radius: 6px;
     }
     .omer-advanced-toggle:hover {
       color: var(--text-secondary);
+      background: var(--button-hover-bg);
     }
     .omer-advanced-toggle .arrow {
       font-size: 10px;
@@ -2761,8 +2802,8 @@
     }
     .omer-date-picker {
       display: none;
-      margin-top: 8px;
-      padding-top: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
       border-top: 1px solid var(--divider-color);
       animation: fadeIn 0.2s ease;
     }
@@ -2773,28 +2814,30 @@
       font-size: 12px;
       font-weight: 500;
       color: var(--text-secondary);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       display: block;
     }
     .omer-date-input {
       width: 100%;
-      padding: 8px 12px;
-      border-radius: 6px;
+      padding: 10px 12px;
+      border-radius: 8px;
       border: 1px solid var(--input-border);
       background: var(--input-bg);
       color: var(--text-primary);
-      font-size: 13px;
+      font-size: 14px;
       font-family: inherit;
       transition: all 0.2s ease;
+      box-sizing: border-box;
     }
     .omer-date-input:focus {
       outline: none;
-      border-color: var(--input-border-focus);
+      border-color: #ffc107;
+      box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.15);
     }
     .omer-hint {
-      font-size: 10px;
+      font-size: 11px;
       color: var(--text-tertiary);
-      margin-top: 4px;
+      margin-top: 6px;
     }
     /* Omer preview in floating panel */
     .omer-preview-wrapper {
@@ -2804,8 +2847,10 @@
     }
     .omer-preview-loading {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 16px;
       aspect-ratio: 1 / 1;
       background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
       border-radius: 12px;
@@ -2814,10 +2859,22 @@
       font-size: 14px;
       text-align: center;
     }
+    .omer-preview-loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #ffc107;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
     .omer-preview-image {
       width: 100%;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.3s ease;
     }
   </style>
 
@@ -2924,14 +2981,17 @@
       </div>
     </div>
 
-    <!-- Omer Mode Section - Minimal Toggle -->
+    <!-- Omer Mode Section - Clean Switch Toggle -->
     <div class="omer-mode-section" id="omerModeSection">
       <div class="omer-toggle-wrapper">
-        <label class="omer-toggle-label" for="omerModeToggle">
+        <span class="omer-toggle-label">
           <span class="omer-icon">🌾</span>
           <span>ספירת העומר</span>
+        </span>
+        <label class="omer-switch">
+          <input type="checkbox" id="omerModeToggle" />
+          <span class="omer-switch-slider"></span>
         </label>
-        <input type="checkbox" id="omerModeToggle" class="omer-toggle-checkbox" />
       </div>
     </div>
     <!-- Omer Info - appears below when enabled -->
@@ -3557,7 +3617,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (omerPreviewUrl) {
         omerPreviewContainer.innerHTML = `<img src="${omerPreviewUrl}" alt="תצוגה מקדימה" class="omer-preview-image" />`;
       } else {
-        omerPreviewContainer.innerHTML = `<div class="omer-preview-loading">🌾 יוצר תצוגה מקדימה...</div>`;
+        omerPreviewContainer.innerHTML = `<div class="omer-preview-loading"><div class="spinner"></div><span>🌾 יוצר תצוגה מקדימה...</span></div>`;
       }
     }
 
@@ -5737,20 +5797,32 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Get first poster blob
       const posterBlob = generatedPosters[0].blob;
 
-      // Build share message
-      const eventName = selectedEventName.textContent || 'שבת';
-      const message = `שבת שלום! 🕯️\n${eventName}\n\nנוצר באמצעות: https://shabat-posts.vercel.app/`;
+      // Build share message based on mode
+      let message, shareTitle, filename;
+      if (omerModeEnabled) {
+        // Omer mode - use omer-specific message
+        const omerDay = omerCountText.textContent || 'ספירת העומר';
+        message = `🌾 ${omerDay}\n\nנוצר באמצעות: https://shabat-posts.vercel.app/`;
+        shareTitle = 'ספירת העומר';
+        filename = 'omer-poster';
+      } else {
+        // Regular Shabbat/Holiday mode
+        const eventName = selectedEventName.textContent || 'שבת';
+        message = `שבת שלום! 🕯️\n${eventName}\n\nנוצר באמצעות: https://shabat-posts.vercel.app/`;
+        shareTitle = 'שבת שלום';
+        filename = 'shabbat-poster';
+      }
 
       // Try Web Share API first (best for mobile - can share image directly)
       const ext = getFileExtension(posterBlob);
       const mimeType = posterBlob.type === 'image/gif' ? 'image/gif' : 'image/png';
-      const filename = `shabbat-poster.${ext}`;
+      const fullFilename = `${filename}.${ext}`;
 
-      if (navigator.canShare && navigator.canShare({ files: [new File([posterBlob], filename, { type: mimeType })] })) {
+      if (navigator.canShare && navigator.canShare({ files: [new File([posterBlob], fullFilename, { type: mimeType })] })) {
         try {
           await navigator.share({
-            files: [new File([posterBlob], filename, { type: mimeType })],
-            title: 'שבת שלום',
+            files: [new File([posterBlob], fullFilename, { type: mimeType })],
+            title: shareTitle,
             text: message
           });
           return;
