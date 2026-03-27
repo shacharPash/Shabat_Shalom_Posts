@@ -247,6 +247,88 @@ def iso_to_hhmm(iso_str: Optional[str]) -> str:
         return "--:--"
 
 
+def wrap_hebrew_text(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
+    """
+    Wrap Hebrew text to fit within max_width.
+
+    Splits on spaces and builds lines that fit within the maximum width.
+
+    Args:
+        text: Hebrew text to wrap
+        font: Font to use for measuring
+        max_width: Maximum width in pixels for each line
+
+    Returns:
+        List of lines that fit within max_width
+    """
+    words = text.split()
+    lines = []
+    current_line = []
+
+    for word in words:
+        # Try adding the word to the current line
+        test_line = " ".join(current_line + [word])
+        if get_text_width(test_line, font, rtl=True) <= max_width:
+            current_line.append(word)
+        else:
+            # Current word doesn't fit, save current line and start new one
+            if current_line:
+                lines.append(" ".join(current_line))
+            current_line = [word]
+
+    # Add the last line
+    if current_line:
+        lines.append(" ".join(current_line))
+
+    return lines
+
+
+def draw_multiline_text_with_stroke(
+    draw: ImageDraw.Draw,
+    xy: tuple[int, int],
+    text: str,
+    font: ImageFont.FreeTypeFont,
+    fill: str,
+    stroke_fill: str,
+    stroke_width: int,
+    max_width: int,
+    line_spacing: int = 10,
+    anchor: str = "ma",
+    rtl: bool = True
+) -> int:
+    """
+    Draw multi-line text centered with stroke, wrapping to fit max_width.
+
+    Args:
+        draw: PIL ImageDraw object
+        xy: Position tuple (x, y) for first line
+        text: Text to draw
+        font: Font to use
+        fill: Text fill color
+        stroke_fill: Stroke color
+        stroke_width: Width of the stroke
+        max_width: Maximum width for text wrapping
+        line_spacing: Extra spacing between lines
+        anchor: Text anchor position
+        rtl: Whether to apply RTL text processing
+
+    Returns:
+        Total height used by all lines (for positioning subsequent content)
+    """
+    lines = wrap_hebrew_text(text, font, max_width)
+    x, y = xy
+
+    # Calculate line height
+    bbox = font.getbbox("אבגדהוזחט")  # Sample Hebrew text
+    line_height = bbox[3] - bbox[1] + line_spacing
+
+    for line in lines:
+        draw_text_with_stroke(draw, (x, y), line, font, fill, stroke_fill, stroke_width, anchor=anchor, rtl=rtl)
+        y += line_height
+
+    return len(lines) * line_height
+
+
 # ========= COMPOSER =========
 def compose_poster(
     bg_img: Image.Image,
@@ -497,8 +579,10 @@ def compose_poster(
 def compose_omer_poster(
     bg_img: Image.Image,
     omer_day: int,
+    omer_date: date,
     blessing_text: str | None = None,
     dedication_text: str | None = None,
+    date_format: str = "both",
     show_watermark: bool = True,
 ) -> Image.Image:
     """
@@ -507,8 +591,10 @@ def compose_omer_poster(
     Args:
         bg_img: Background image
         omer_day: The Omer day (1-49)
+        omer_date: The date for the Omer poster (for subtitle date display)
         blessing_text: Custom bottom message (optional)
         dedication_text: Custom dedication text (optional)
+        date_format: Date format for subtitle - "gregorian", "hebrew", or "both"
         show_watermark: Whether to show watermark
 
     Returns:
@@ -532,9 +618,24 @@ def compose_omer_poster(
     fitted_title_font = get_fitted_font(title, title_font, W - 100, rtl=True)
     draw_text_with_stroke(draw, (W//2, 40), title, fitted_title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    # Subtitle: יום X לעומר | ספירה שבספירה
+    # Subtitle: Hebrew date | Gregorian date | Sefirah
     sefirah_text = get_sefirah_text(omer_day)
-    sub_line = f"יום {omer_day} לעומר | {sefirah_text}"
+
+    # Build date string based on date_format parameter
+    date_parts = []
+    if date_format in ("hebrew", "both"):
+        hebrew_date = get_hebrew_date_string(omer_date)
+        date_parts.append(hebrew_date)
+    if date_format in ("gregorian", "both"):
+        gregorian_date = omer_date.strftime("%B %d, %Y")
+        date_parts.append(gregorian_date)
+
+    # Combine date parts with sefirah
+    if date_parts:
+        sub_line = " | ".join(date_parts) + f" | {sefirah_text}"
+    else:
+        sub_line = sefirah_text
+
     fitted_sub_font = get_fitted_font(sub_line, sub_font, W - 100, rtl=True)
     draw_text_with_stroke(draw, (W//2, 145), sub_line, fitted_sub_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
@@ -568,7 +669,7 @@ def compose_omer_poster(
     # Calculate content area dimensions
     content_margin = 30
     content_width = W - 200
-    content_height = 400  # Estimated height for all omer content
+    content_height = 480  # Increased height for larger multi-line count text
     content_top = content_bottom_ref - content_margin - content_height
 
     # Create semi-transparent overlay for content area
@@ -589,7 +690,7 @@ def compose_omer_poster(
 
     # Draw the Omer content
     blessing_font = load_font(32)
-    count_font = load_font(48, bold=True)  # Larger font for count
+    count_font = load_font(70, bold=True)  # LARGER font for count (was 48)
     harachaman_font = load_font(28)
 
     y = content_top + 40
@@ -599,10 +700,15 @@ def compose_omer_poster(
     draw_text_with_stroke(draw, (W//2, y), omer_blessing, fitted_blessing_font, fill, stroke, 3, anchor="ma", rtl=True)
     y += 100
 
-    # Count text (LARGER)
-    fitted_count_font = get_fitted_font(omer_count, count_font, content_width - 60, rtl=True)
-    draw_text_with_stroke(draw, (W//2, y), omer_count, fitted_count_font, fill, stroke, 4, anchor="ma", rtl=True)
-    y += 120
+    # Count text (LARGER with multi-line wrapping)
+    count_text_height = draw_multiline_text_with_stroke(
+        draw, (W//2, y), omer_count, count_font,
+        fill, stroke, 4,
+        max_width=content_width - 60,
+        line_spacing=15,
+        anchor="ma", rtl=True
+    )
+    y += count_text_height + 20
 
     # Harachaman text
     fitted_harachaman_font = get_fitted_font(harachaman, harachaman_font, content_width - 60, rtl=True)
@@ -663,8 +769,8 @@ def generate_poster(
 
     When omer_mode=True, generates a Sefirat HaOmer poster instead, with:
     - Title: "ספירת העומר"
-    - Subtitle: "יום X לעומר | ספירה שבספירה"
-    - Content area with blessing, count text, and Harachaman
+    - Subtitle: "Hebrew date | Gregorian date | Sefirah" (dates based on date_format)
+    - Content area with blessing, larger multi-line count text, and Harachaman
 
     Args:
         image_path: Path to the background image file
@@ -737,8 +843,10 @@ def generate_poster(
         # Compose the Omer poster
         img = compose_omer_poster(
             bg, omer_day,
+            omer_date=effective_omer_date,
             blessing_text=blessing_text,
             dedication_text=dedication_text,
+            date_format=date_format,
             show_watermark=show_watermark,
         )
 
