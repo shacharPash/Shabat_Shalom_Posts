@@ -2772,8 +2772,18 @@
     .omer-timeline-bar {
       position: relative;
       height: 6px;
-      /* Night (left) → Day (middle) → Night (right) - Jewish day cycle */
-      background: linear-gradient(90deg, #3f51b5 0%, #1a237e 15%, #ffc107 35%, #ffeb3b 50%, #ffc107 65%, #1a237e 85%, #3f51b5 100%);
+      /* Jewish day: sunset (left) → night → sunrise → day → sunset (right) */
+      /* 0% = צאת הכוכבים, ~25% = חצות, ~35% = זריחה, 50% = צהריים, ~90% = שקיעה, 100% = צאת הכוכבים הבא */
+      background: linear-gradient(90deg,
+        #1a237e 0%,      /* צאת הכוכבים - לילה */
+        #1a237e 25%,     /* חצות - עדיין לילה */
+        #3f51b5 30%,     /* לפני זריחה */
+        #ffc107 35%,     /* זריחה */
+        #ffeb3b 50%,     /* צהריים */
+        #ffc107 75%,     /* אחה"צ */
+        #3f51b5 90%,     /* שקיעה */
+        #1a237e 100%     /* צאת הכוכבים הבא */
+      );
       border-radius: 3px;
       margin: 10px 0 6px;
     }
@@ -3937,41 +3947,62 @@ CITY_CHECKBOXES_PLACEHOLDER
     }
 
     // Update timeline visualization
-    // RTL: Left side = lower day (current), Right side = higher day (next)
+    // Timeline: Jewish day starts at sunset (0%) and ends at next sunset (100%)
+    // RTL display: Left = current day start (sunset), Right = next day (next sunset)
     function updateTimeline(currentTime, sunsetTime, currentDay, nextDay) {
-      // Left label shows current day, right shows next day (correct for RTL)
+      // Labels: left = current day, right = next day
       omerTimelineDay.textContent = `יום ${currentDay}`;
       omerTimelineNextDay.textContent = `יום ${nextDay}`;
 
-      // Calculate marker position (0-100%)
-      // Parse times to calculate position between sunrise (6:00) and midnight (24:00)
+      // Parse times
       const [currentHour, currentMin] = currentTime.split(':').map(Number);
       const [sunsetHour, sunsetMin] = sunsetTime.split(':').map(Number);
 
       const currentMinutes = currentHour * 60 + currentMin;
       const sunsetMinutes = sunsetHour * 60 + sunsetMin;
-      const dayStartMinutes = 6 * 60; // 6:00 AM
-      const dayEndMinutes = 24 * 60; // Midnight
 
-      // Position relative to sunset (sunset at 50%)
-      let position;
-      if (currentMinutes < sunsetMinutes) {
-        // Before sunset: map 6:00-sunset to 0-50%
-        position = ((currentMinutes - dayStartMinutes) / (sunsetMinutes - dayStartMinutes)) * 50;
+      // Jewish day is ~24 hours from sunset to next sunset
+      // For simplicity, assume next sunset is also at sunsetMinutes (same time next day)
+      const dayLength = 24 * 60; // 1440 minutes
+
+      // Calculate minutes elapsed since sunset
+      // If current time is after sunset: elapsed = currentMinutes - sunsetMinutes
+      // If current time is before sunset: elapsed = (24*60 - sunsetMinutes) + currentMinutes
+      let elapsed;
+      if (currentMinutes >= sunsetMinutes) {
+        // Same evening, just after sunset
+        elapsed = currentMinutes - sunsetMinutes;
       } else {
-        // After sunset: map sunset-midnight to 50-100%
-        position = 50 + ((currentMinutes - sunsetMinutes) / (dayEndMinutes - sunsetMinutes)) * 50;
+        // Next calendar day (after midnight until next sunset)
+        elapsed = (24 * 60 - sunsetMinutes) + currentMinutes;
       }
 
-      // Clamp position between 5% and 95%
-      position = Math.max(5, Math.min(95, position));
+      // Position: 0% = sunset, 100% = next sunset
+      let position = (elapsed / dayLength) * 100;
+      position = Math.max(2, Math.min(98, position));
+
       omerTimelineMarker.style.left = `${position}%`;
 
-      // Update position text
-      if (currentMinutes < sunsetMinutes) {
-        omerTimelinePosition.textContent = `⏰ ${currentTime} - לפני צאת הכוכבים`;
+      // Calculate hours until next sunset
+      let minutesUntilNextSunset;
+      if (currentMinutes >= sunsetMinutes) {
+        // We're past today's sunset, need tomorrow's
+        minutesUntilNextSunset = dayLength - (currentMinutes - sunsetMinutes);
       } else {
-        omerTimelinePosition.textContent = `⏰ ${currentTime} - אחרי צאת הכוכבים`;
+        // We're before today's sunset
+        minutesUntilNextSunset = sunsetMinutes - currentMinutes;
+      }
+
+      const hoursUntilNextSunset = Math.floor(minutesUntilNextSunset / 60);
+      const minsUntilNextSunset = minutesUntilNextSunset % 60;
+
+      // Update position text with countdown
+      if (currentMinutes >= sunsetMinutes) {
+        // After sunset - counting currentDay now, nextDay in X hours
+        omerTimelinePosition.innerHTML = `📍 אתה נמצא כאן (${currentTime})<br>בעוד ${hoursUntilNextSunset} שעות נספור יום ${nextDay}`;
+      } else {
+        // Before sunset - counting currentDay in X hours
+        omerTimelinePosition.innerHTML = `📍 אתה נמצא כאן (${currentTime})<br>בעוד ${hoursUntilNextSunset} שעות ו-${minsUntilNextSunset} דקות נספור יום ${currentDay}`;
       }
     }
 
@@ -4018,6 +4049,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         currentOmerDay--;
         updateDaySelector();
         regenerateOmerPreview();
+        // Save selected day to localStorage
+        localStorage.setItem('omerSelectedDay', currentOmerDay);
       }
     });
 
@@ -4026,6 +4059,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         currentOmerDay++;
         updateDaySelector();
         regenerateOmerPreview();
+        // Save selected day to localStorage
+        localStorage.setItem('omerSelectedDay', currentOmerDay);
       }
     });
 
@@ -4130,9 +4165,14 @@ CITY_CHECKBOXES_PLACEHOLDER
     }
 
     // Mode selector button group handlers
-    function setMode(mode) {
+    function setMode(mode, skipSave = false) {
       omerModeEnabled = (mode === 'omer');
       omerModeToggle.checked = omerModeEnabled; // Keep hidden checkbox in sync
+
+      // Save mode to localStorage (unless loading from saved state)
+      if (!skipSave) {
+        localStorage.setItem('omerMode', mode);
+      }
 
       // Update button states
       shabbatModeBtn.classList.toggle('active', !omerModeEnabled);
@@ -5364,19 +5404,40 @@ CITY_CHECKBOXES_PLACEHOLDER
       const urlParams = new URLSearchParams(window.location.search);
       let hasParams = false;
 
-      // Load mode from URL (omer or shabbat)
+      // Load mode from URL (omer or shabbat) - URL takes precedence over localStorage
       const modeParam = urlParams.get('mode');
       if (modeParam && ['omer', 'shabbat'].includes(modeParam)) {
         // Only allow Omer mode if Omer period is available
         if (modeParam === 'omer' && !isOmerPeriodAvailable) {
           // User arrived with mode=omer but not in Omer period
           // Show Omer info panel with only the blocked message
-          setMode('omer');
+          setMode('omer', true); // skipSave=true since this is from URL
           // The blocked state is handled by setMode -> updateOmerDisplay -> updateOmerContentVisibility
         } else {
-          setMode(modeParam);
+          setMode(modeParam, true); // skipSave=true since this is from URL
         }
         hasParams = true;
+      } else {
+        // No mode in URL - try to load from localStorage
+        const savedMode = localStorage.getItem('omerMode');
+        if (savedMode && ['omer', 'shabbat'].includes(savedMode)) {
+          // Only restore Omer mode if Omer period is available
+          if (savedMode === 'omer' && isOmerPeriodAvailable) {
+            setMode('omer', true); // skipSave=true to avoid re-saving
+
+            // Also restore saved Omer day if available
+            const savedDay = localStorage.getItem('omerSelectedDay');
+            if (savedDay) {
+              const day = parseInt(savedDay, 10);
+              if (day >= 1 && day <= 49) {
+                currentOmerDay = day;
+                // updateDaySelector will be called by updateOmerDisplay
+              }
+            }
+          } else if (savedMode === 'shabbat') {
+            setMode('shabbat', true);
+          }
+        }
       }
 
       // Pre-select cities from URL, or use defaults if no cities param (only for shabbat mode)
