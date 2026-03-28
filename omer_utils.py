@@ -326,18 +326,33 @@ def get_omer_info_for_time(
     # If it's after midnight (00:00-06:00), we show next day's count (preparing ahead)
     after_midnight = current_hour >= 0 and current_hour < 6
 
-    # Get current Omer day (for this evening)
-    current_omer_day = get_omer_day(target_date, after_midnight=False)
-
-    # Get next day's Omer day
-    next_date = target_date + timedelta(days=1)
-    next_omer_day = get_omer_day(next_date, after_midnight=False)
-
     # Get sunset time for Jerusalem
     sunset_time = get_jerusalem_sunset(target_date)
 
+    # Parse sunset time to check if we're after sunset
+    sunset_hour, sunset_min = 19, 45  # default fallback
+    if sunset_time:
+        parts = sunset_time.split(':')
+        if len(parts) == 2:
+            sunset_hour, sunset_min = int(parts[0]), int(parts[1])
+
+    current_minutes = current_hour * 60 + current_minute
+    sunset_minutes = sunset_hour * 60 + sunset_min
+    is_after_sunset = current_minutes >= sunset_minutes
+
+    # Get the base Omer day for this calendar date (what would be counted tonight)
+    base_omer_day = get_omer_day(target_date, after_midnight=False)
+
+    # Get tomorrow's Omer day
+    next_date = target_date + timedelta(days=1)
+    next_base_omer_day = get_omer_day(next_date, after_midnight=False)
+
+    # Get the day after tomorrow (for when we're after sunset)
+    next_next_date = target_date + timedelta(days=2)
+    next_next_omer_day = get_omer_day(next_next_date, after_midnight=False)
+
     # Determine if we're in the Omer period
-    is_omer_period = current_omer_day is not None or next_omer_day is not None
+    is_omer_period = base_omer_day is not None or next_base_omer_day is not None
 
     if not is_omer_period:
         return {
@@ -346,10 +361,26 @@ def get_omer_info_for_time(
             "sunsetTime": sunset_time,
         }
 
+    # Adjust current/next day based on whether we're after sunset
+    # If after sunset: the "current day" becomes what was "next day"
+    # and "next day" becomes the day after that
+    if is_after_sunset:
+        current_omer_day = next_base_omer_day
+        next_omer_day = next_next_omer_day
+        # Next sunset is tomorrow's sunset
+        next_sunset_time = get_jerusalem_sunset(next_date)
+    else:
+        current_omer_day = base_omer_day
+        next_omer_day = next_base_omer_day
+        next_sunset_time = sunset_time  # Same day sunset
+
     # Calculate default day based on time:
-    # - Before midnight (after noon): default to current day
+    # - After sunset: we're counting current day NOW
+    # - Before midnight (after noon, before sunset): default to current day (will count soon)
     # - After midnight (00:00-06:00): default to next day (preparing ahead)
-    if after_midnight and next_omer_day:
+    if is_after_sunset and current_omer_day:
+        default_day = current_omer_day
+    elif after_midnight and next_omer_day:
         default_day = next_omer_day
     elif current_omer_day:
         default_day = current_omer_day
@@ -368,8 +399,10 @@ def get_omer_info_for_time(
         "nextDay": next_omer_day,
         "defaultDay": default_day,
         "sunsetTime": sunset_time,
+        "nextSunsetTime": next_sunset_time,
         "currentTime": current_time,
         "beforeMidnight": before_midnight,
+        "isAfterSunset": is_after_sunset,
         "hebrewCount": hebrew_count,
         "sefirah": sefirah,
     }

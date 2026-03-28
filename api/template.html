@@ -3909,11 +3909,21 @@ CITY_CHECKBOXES_PLACEHOLDER
             // Update status text
             const currentTime = omerData.currentTime || '--:--';
             const sunsetTime = omerData.sunsetTime || '--:--';
+            const nextSunsetTime = omerData.nextSunsetTime || sunsetTime;
             const currentDay = omerData.currentDay || omerData.defaultDay;
             const nextDay = omerData.nextDay || (currentDay + 1);
+            const isAfterSunset = omerData.isAfterSunset || false;
 
-            omerStatusNow.textContent = `עכשיו (${currentTime}) - יום ${currentDay} לעומר`;
-            omerStatusSunset.textContent = `בצאת הכוכבים (${sunsetTime}) נספור יום ${nextDay}`;
+            // Different text based on whether we're before or after sunset
+            if (isAfterSunset) {
+              // After sunset - we're actively counting currentDay now
+              omerStatusNow.textContent = `עכשיו (${currentTime}) - סופרים יום ${currentDay} לעומר`;
+              omerStatusSunset.textContent = `מחר בצאת הכוכבים (${nextSunsetTime}) נספור יום ${nextDay}`;
+            } else {
+              // Before sunset - currentDay will be counted at sunset
+              omerStatusNow.textContent = `עכשיו (${currentTime}) - יום ${currentDay} לעומר`;
+              omerStatusSunset.textContent = `בצאת הכוכבים (${sunsetTime}) נספור יום ${nextDay}`;
+            }
 
             // Update timeline - note: RTL means left is lower day, right is higher day
             updateTimeline(currentTime, sunsetTime, currentDay, nextDay);
