@@ -3024,10 +3024,10 @@
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
       animation: fadeIn 0.3s ease;
     }
-    /* Omer disabled state - when not in Omer period */
+    /* Omer disabled state - shown when user arrives with mode=omer but not in Omer period */
     .omer-disabled-message {
       display: none;
-      padding: 20px 16px;
+      padding: 24px 16px;
       text-align: center;
       background: linear-gradient(135deg, rgba(158, 158, 158, 0.1) 0%, rgba(189, 189, 189, 0.15) 100%);
       border-radius: 12px;
@@ -3036,18 +3036,9 @@
     .omer-disabled-message.show {
       display: block;
     }
-    .omer-disabled-message .disabled-icon {
-      font-size: 28px;
-      margin-bottom: 8px;
-    }
     .omer-disabled-message .disabled-text {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .omer-disabled-message .disabled-hint {
-      font-size: 12px;
-      color: var(--text-tertiary);
     }
     /* Omer content wrapper - hide when disabled */
     .omer-content-wrapper {
@@ -3206,11 +3197,9 @@
     </div>
     <!-- Omer Info - appears below when enabled -->
     <div class="omer-info" id="omerInfo">
-      <!-- Disabled state message - shown when not in Omer period -->
+      <!-- Disabled state message - shown when not in Omer period (e.g., old bookmark with mode=omer) -->
       <div class="omer-disabled-message" id="omerDisabledMessage">
-        <div class="disabled-icon">🌾</div>
         <div class="disabled-text">לא סופרים את העומר כרגע</div>
-        <div class="disabled-hint">לבדיקה, הוסיפו לכתובת ?testTime=2026-04-15T20:00</div>
       </div>
 
       <!-- Omer content wrapper - hidden when not in period -->
@@ -3228,14 +3217,15 @@
             <div class="omer-timeline-marker" id="omerTimelineMarker" style="left: 30%;"></div>
           </div>
           <div class="omer-timeline-labels">
-            <!-- RTL: Left = lower day (current), Right = higher day (next) -->
+            <!-- RTL with flex: first child on right, last on left. We want: Left=lower, Right=higher -->
+            <!-- So: first item (right in RTL) = higher/next day, second item (left in RTL) = lower/current day -->
             <div class="omer-timeline-label">
-              <span class="icon">⭐</span>
-              <span class="day" id="omerTimelineDay">יום 18</span>
+              <span class="icon">✨</span>
+              <span class="day" id="omerTimelineNextDay">יום 19</span>
             </div>
             <div class="omer-timeline-label">
-              <span class="icon">⭐</span>
-              <span class="day" id="omerTimelineNextDay">יום 19</span>
+              <span class="icon">✨</span>
+              <span class="day" id="omerTimelineDay">יום 18</span>
             </div>
           </div>
           <div class="omer-timeline-position" id="omerTimelinePosition">אתה כאן</div>
@@ -3802,12 +3792,14 @@ CITY_CHECKBOXES_PLACEHOLDER
     const omerContentWrapper = document.getElementById("omerContentWrapper");
     const omerGenerateBtn = document.getElementById("omerGenerateBtn");
     const omerGenerateBtnText = document.getElementById("omerGenerateBtnText");
+    const modeButtonGroup = document.querySelector('.mode-button-group');
 
     let omerPreviewUrl = null; // Store the generated preview URL
     let omerPreviewLoading = false;
     let currentOmerDay = 1; // Currently selected Omer day
     let omerData = null; // Store fetched Omer data
     let testTimeParam = null; // Store test time from URL
+    let isOmerPeriodAvailable = false; // Track if Omer button should be visible
 
     // Check for testTime URL parameter
     function checkTestTimeParam() {
@@ -3823,17 +3815,60 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     }
 
-    // Show/hide Omer content based on period and testTime
+    // Show/hide the Omer button in the mode selector
+    function updateOmerButtonVisibility(shouldShow) {
+      isOmerPeriodAvailable = shouldShow;
+      if (shouldShow) {
+        // Show Omer button
+        omerModeBtn.style.display = '';
+        modeButtonGroup.style.display = ''; // Ensure button group is visible
+      } else {
+        // Hide Omer button - only show Shabbat mode
+        omerModeBtn.style.display = 'none';
+        // If currently in Omer mode but shouldn't be, switch to showing blocked state
+        // (handled by updateOmerContentVisibility)
+      }
+    }
+
+    // Show/hide Omer content based on whether we're in Omer period
+    // (The API already considers testTime when calculating isOmerPeriod)
     function updateOmerContentVisibility(isOmerPeriod) {
-      if (isOmerPeriod || testTimeParam) {
+      if (isOmerPeriod) {
         // Show full UI
         omerDisabledMessage.classList.remove('show');
         omerContentWrapper.classList.remove('hidden');
       } else {
-        // Show disabled message
+        // Show ONLY disabled message - hide everything else
         omerDisabledMessage.classList.add('show');
         omerContentWrapper.classList.add('hidden');
       }
+    }
+
+    // Initialize Omer button visibility on page load
+    async function initOmerButtonVisibility() {
+      checkTestTimeParam();
+
+      // Build query params
+      const params = new URLSearchParams();
+      if (testTimeParam) {
+        params.set('testTime', testTimeParam);
+      }
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+
+      try {
+        const resp = await fetch(`/omer-info${queryString}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          // Show Omer button based on API response (which accounts for testTime)
+          updateOmerButtonVisibility(data.isOmerPeriod);
+          return data.isOmerPeriod;
+        }
+      } catch (err) {
+        console.error('Failed to check omer period:', err);
+      }
+      // Default to hidden if error
+      updateOmerButtonVisibility(false);
+      return false;
     }
 
     // Update the generate button text
@@ -5332,7 +5367,15 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Load mode from URL (omer or shabbat)
       const modeParam = urlParams.get('mode');
       if (modeParam && ['omer', 'shabbat'].includes(modeParam)) {
-        setMode(modeParam);
+        // Only allow Omer mode if Omer period is available
+        if (modeParam === 'omer' && !isOmerPeriodAvailable) {
+          // User arrived with mode=omer but not in Omer period
+          // Show Omer info panel with only the blocked message
+          setMode('omer');
+          // The blocked state is handled by setMode -> updateOmerDisplay -> updateOmerContentVisibility
+        } else {
+          setMode(modeParam);
+        }
         hasParams = true;
       }
 
@@ -5423,8 +5466,12 @@ CITY_CHECKBOXES_PLACEHOLDER
       loadedFromUrl = false;
     });
 
-    // Load from URL params on page load
-    loadFromUrlParams();
+    // Load from URL params on page load - but first check Omer availability
+    // This async IIFE ensures Omer button visibility is set before loading URL params
+    (async function initPageWithOmer() {
+      await initOmerButtonVisibility();
+      loadFromUrlParams();
+    })();
 
     // ===== End URL Query Parameters Support =====
 
