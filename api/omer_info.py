@@ -1,18 +1,30 @@
 """
 Vercel serverless function for getting Omer day information.
+
+Supports enhanced UX with sunset times, default day selection, and test mode.
 """
 
 import json
 import os
 import sys
-from datetime import date
+from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
+
+import pytz
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text
+from omer_utils import (
+    get_omer_day,
+    get_omer_count_text,
+    get_sefirah_text,
+    get_omer_info_for_time,
+)
+
+# Israel timezone for current time
+ISRAEL_TZ = pytz.timezone("Asia/Jerusalem")
 
 
 class handler(BaseHTTPRequestHandler):
@@ -24,33 +36,50 @@ class handler(BaseHTTPRequestHandler):
             parsed_url = urlparse(self.path)
             query_params = parse_qs(parsed_url.query)
 
-            # Get date parameter (optional, defaults to today)
-            date_param = query_params.get("date", [None])[0]
-            if date_param:
-                target_date = date.fromisoformat(date_param)
-            else:
-                target_date = date.today()
+            # Check for testTime parameter (for development testing)
+            # Format: ?testTime=2026-04-15T22:30
+            test_time_param = query_params.get("testTime", [None])[0]
 
-            # Get Omer day
-            omer_day = get_omer_day(target_date)
-
-            if omer_day is None:
-                # Not in Omer period
-                response = {"isOmerPeriod": False}
+            if test_time_param:
+                # Parse test time
+                try:
+                    test_datetime = datetime.fromisoformat(test_time_param)
+                    target_date = test_datetime.date()
+                    current_hour = test_datetime.hour
+                    current_minute = test_datetime.minute
+                except ValueError:
+                    raise ValueError(f"Invalid testTime format: {test_time_param}. Use ISO format like 2026-04-15T22:30")
             else:
-                # In Omer period - get all the info
-                response = {
-                    "isOmerPeriod": True,
-                    "dayNumber": omer_day,
-                    "hebrewCount": get_omer_count_text(omer_day),
-                    "sefirah": get_sefirah_text(omer_day),
-                }
+                # Get date parameter (optional, defaults to today)
+                date_param = query_params.get("date", [None])[0]
+                if date_param:
+                    target_date = date.fromisoformat(date_param)
+                    # When a specific date is provided without testTime,
+                    # use evening time (20:00) as the default context
+                    current_hour = 20
+                    current_minute = 0
+                else:
+                    # Use actual current time in Israel timezone
+                    now = datetime.now(ISRAEL_TZ)
+                    target_date = now.date()
+                    current_hour = now.hour
+                    current_minute = now.minute
+
+            # Get comprehensive Omer info including sunset times
+            omer_info = get_omer_info_for_time(target_date, current_hour, current_minute)
+
+            # For backward compatibility, also include dayNumber if in Omer period
+            if omer_info.get("isOmerPeriod"):
+                default_day = omer_info.get("defaultDay")
+                if default_day:
+                    omer_info["dayNumber"] = default_day
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Cache-Control", "public, max-age=3600")  # Cache for 1 hour
+            # Shorter cache for dynamic time-based data
+            self.send_header("Cache-Control", "public, max-age=300")  # Cache for 5 minutes
             self.end_headers()
-            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+            self.wfile.write(json.dumps(omer_info, ensure_ascii=False).encode("utf-8"))
 
         except ValueError as e:
             # Invalid date format

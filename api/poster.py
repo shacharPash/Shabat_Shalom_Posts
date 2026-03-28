@@ -124,6 +124,13 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     if omer_date_str:
         omer_date = date.fromisoformat(omer_date_str)
 
+    # Direct omer day specification (overrides date-based calculation)
+    omer_day_direct: Optional[int] = payload.get("omerDay")
+    if omer_day_direct is not None:
+        omer_day_direct = int(omer_day_direct)
+        if omer_day_direct < 1 or omer_day_direct > 49:
+            raise ValueError(f"omerDay must be 1-49, got {omer_day_direct}")
+
     start_date_str: Optional[str] = payload.get("startDate")
     if start_date_str:
         start_date = date.fromisoformat(start_date_str)
@@ -221,6 +228,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         flexible_aspect=flexible_aspect,
         omer_mode=omer_mode,
         omer_date=omer_date,
+        omer_day=omer_day_direct,
     )
 
     return poster_bytes

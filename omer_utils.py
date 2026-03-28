@@ -12,11 +12,16 @@ The counting follows the formula:
 - etc.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Tuple
 
 from jewcal import JewCal
+from jewcal.models.zmanim import Location
+
+# Jerusalem coordinates for sunset calculations
+JERUSALEM_LAT = 31.7683
+JERUSALEM_LON = 35.2137
 
 # The 7 Sefirot in order
 SEFIROT = [
@@ -235,4 +240,130 @@ def _hebrew_day_text(days: int) -> str:
     if days == 6:
         return "שִׁשָּׁה יָמִים"
     return ""
+
+
+def get_jerusalem_sunset(target_date: date) -> Optional[str]:
+    """
+    Get the tzet hakochavim (nightfall/sunset) time for Jerusalem on a given date.
+
+    Uses jewcal's Location-based zmanim calculation for accurate sunset times.
+
+    Args:
+        target_date: The Gregorian date to get sunset for
+
+    Returns:
+        Sunset time as "HH:MM" string, or None if unable to calculate
+    """
+    try:
+        # Create Jerusalem location for zmanim calculation
+        location = Location(
+            latitude=JERUSALEM_LAT,
+            longitude=JERUSALEM_LON,
+            use_tzeis_hakochavim=True,
+            hadlokas_haneiros_minutes=40,  # Standard candle lighting offset
+            tzeis_minutes=42  # Standard tzeis
+        )
+
+        jewcal = JewCal(gregorian_date=target_date, diaspora=False, location=location)
+
+        if jewcal.zmanim:
+            zmanim_dict = jewcal.zmanim.to_dict()
+            # Try tzeis_hakochavim first (nightfall), then fall back to shkiah (sunset)
+            tzeis = zmanim_dict.get('tzeis_hakochavim')
+            if tzeis:
+                # Format: extract HH:MM from ISO datetime string
+                if isinstance(tzeis, str) and 'T' in tzeis:
+                    time_part = tzeis.split('T')[1][:5]  # Get HH:MM
+                    return time_part
+                elif hasattr(tzeis, 'strftime'):
+                    return tzeis.strftime('%H:%M')
+        return None
+    except Exception:
+        return None
+
+
+def get_omer_info_for_time(
+    target_date: date,
+    current_hour: int,
+    current_minute: int = 0
+) -> dict:
+    """
+    Get comprehensive Omer information for display, including sunset times
+    and recommended default day selection.
+
+    Args:
+        target_date: The current Gregorian date
+        current_hour: Current hour (0-23)
+        current_minute: Current minute (0-59)
+
+    Returns:
+        Dict with:
+        - isOmerPeriod: bool
+        - currentDay: int (the day being counted tonight)
+        - nextDay: int (tomorrow's count)
+        - defaultDay: int (recommended day to show based on time)
+        - sunsetTime: str "HH:MM" (Jerusalem tzet hakochavim)
+        - currentTime: str "HH:MM"
+        - beforeMidnight: bool (True if before 00:00)
+        - hebrewCount: str (for currentDay)
+        - sefirah: str (for currentDay)
+    """
+    # Format current time
+    current_time = f"{current_hour:02d}:{current_minute:02d}"
+
+    # Determine if we're before midnight (for default day selection)
+    before_midnight = current_hour >= 12  # After noon = "today" evening's count
+
+    # Get the Omer day for this evening
+    # If it's before midnight, we show today's count (what was/will be counted this evening)
+    # If it's after midnight (00:00-06:00), we show next day's count (preparing ahead)
+    after_midnight = current_hour >= 0 and current_hour < 6
+
+    # Get current Omer day (for this evening)
+    current_omer_day = get_omer_day(target_date, after_midnight=False)
+
+    # Get next day's Omer day
+    next_date = target_date + timedelta(days=1)
+    next_omer_day = get_omer_day(next_date, after_midnight=False)
+
+    # Get sunset time for Jerusalem
+    sunset_time = get_jerusalem_sunset(target_date)
+
+    # Determine if we're in the Omer period
+    is_omer_period = current_omer_day is not None or next_omer_day is not None
+
+    if not is_omer_period:
+        return {
+            "isOmerPeriod": False,
+            "currentTime": current_time,
+            "sunsetTime": sunset_time,
+        }
+
+    # Calculate default day based on time:
+    # - Before midnight (after noon): default to current day
+    # - After midnight (00:00-06:00): default to next day (preparing ahead)
+    if after_midnight and next_omer_day:
+        default_day = next_omer_day
+    elif current_omer_day:
+        default_day = current_omer_day
+    elif next_omer_day:
+        default_day = next_omer_day
+    else:
+        default_day = 1  # Fallback
+
+    # Get Hebrew count and sefirah for the default day
+    hebrew_count = get_omer_count_text(default_day) if 1 <= default_day <= 49 else ""
+    sefirah = get_sefirah_text(default_day) if 1 <= default_day <= 49 else ""
+
+    return {
+        "isOmerPeriod": True,
+        "currentDay": current_omer_day,
+        "nextDay": next_omer_day,
+        "defaultDay": default_day,
+        "sunsetTime": sunset_time,
+        "currentTime": current_time,
+        "beforeMidnight": before_midnight,
+        "hebrewCount": hebrew_count,
+        "sefirah": sefirah,
+    }
 

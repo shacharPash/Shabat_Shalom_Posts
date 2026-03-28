@@ -798,6 +798,7 @@ def generate_poster(
     flexible_aspect: bool = False,  # DEPRECATED: Use aspect_ratio="auto" instead
     omer_mode: bool = False,  # Generate Sefirat HaOmer poster instead of Shabbat
     omer_date: Optional[date] = None,  # Date for Omer calculation (default: today)
+    omer_day: Optional[int] = None,  # Direct Omer day (1-49), overrides date-based calculation
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
@@ -834,6 +835,8 @@ def generate_poster(
         omer_mode: If True, generate a Sefirat HaOmer poster (default: False)
         omer_date: Date for Omer calculation. If None, uses today. If current hour
                    is between 00:00-06:00, counts for next day (after midnight logic).
+        omer_day: Direct Omer day number (1-49). If provided, overrides omer_date
+                  calculation. Useful for letting users select a specific day.
 
     Returns:
         PNG image bytes ready to be saved or transmitted
@@ -859,18 +862,24 @@ def generate_poster(
 
     # === OMER MODE ===
     if omer_mode:
-        # Determine the date for Omer calculation
-        effective_omer_date = omer_date if omer_date else date.today()
+        # If omer_day is directly specified, use it
+        if omer_day is not None:
+            if omer_day < 1 or omer_day > 49:
+                raise ValueError(f"Omer day must be 1-49, got {omer_day}")
+            effective_omer_day = omer_day
+        else:
+            # Calculate from date
+            effective_omer_date = omer_date if omer_date else date.today()
 
-        # Check if we're after midnight (00:00-06:00) - count for next day
-        current_hour = datetime.now(pytz.timezone(TZID)).hour
-        after_midnight = current_hour >= 0 and current_hour < 6
+            # Check if we're after midnight (00:00-06:00) - count for next day
+            current_hour = datetime.now(pytz.timezone(TZID)).hour
+            after_midnight = current_hour >= 0 and current_hour < 6
 
-        # Get the Omer day
-        omer_day = get_omer_day(effective_omer_date, after_midnight=after_midnight)
+            # Get the Omer day
+            effective_omer_day = get_omer_day(effective_omer_date, after_midnight=after_midnight)
 
-        if omer_day is None:
-            raise ValueError(f"Date {effective_omer_date} is not within the Omer period (16 Nisan - Shavuot)")
+            if effective_omer_day is None:
+                raise ValueError(f"Date {effective_omer_date} is not within the Omer period (16 Nisan - Shavuot)")
 
         # Load and fit background image
         bg = fit_background(
@@ -880,8 +889,10 @@ def generate_poster(
         )
 
         # Compose the Omer poster
+        # Use omer_date for display if available, otherwise today
+        effective_omer_date = omer_date if omer_date else date.today()
         img = compose_omer_poster(
-            bg, omer_day,
+            bg, effective_omer_day,
             omer_date=effective_omer_date,
             blessing_text=blessing_text,
             dedication_text=dedication_text,

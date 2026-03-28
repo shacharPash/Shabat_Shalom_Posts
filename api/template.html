@@ -2721,7 +2721,7 @@
     .omer-info {
       display: none;
       margin-top: 8px;
-      padding: 12px 16px;
+      padding: 16px;
       background: var(--input-bg);
       border-radius: 12px;
       border: 1px solid var(--divider-color);
@@ -2729,6 +2729,158 @@
     }
     .omer-info.show {
       display: block;
+    }
+    /* Current status display */
+    .omer-status-display {
+      text-align: center;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(255, 152, 0, 0.12) 100%);
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+    .omer-status-now {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e65100;
+      margin-bottom: 4px;
+    }
+    .omer-status-sunset {
+      font-size: 13px;
+      color: #f57c00;
+      opacity: 0.9;
+    }
+    [data-theme="dark"] .omer-status-now {
+      color: #ffb74d;
+    }
+    [data-theme="dark"] .omer-status-sunset {
+      color: #ffcc80;
+    }
+    .omer-jerusalem-note {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      margin-top: 6px;
+      opacity: 0.8;
+    }
+    /* Timeline bar */
+    .omer-timeline {
+      margin: 16px 0;
+      padding: 12px;
+      background: var(--container-bg);
+      border-radius: 10px;
+      border: 1px solid var(--input-border);
+    }
+    .omer-timeline-bar {
+      position: relative;
+      height: 6px;
+      background: linear-gradient(90deg, #ffc107 0%, #ff9800 50%, #5c6bc0 100%);
+      border-radius: 3px;
+      margin: 10px 0 6px;
+    }
+    .omer-timeline-marker {
+      position: absolute;
+      top: -6px;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border: 3px solid #e65100;
+      border-radius: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      transition: left 0.3s ease;
+    }
+    [data-theme="dark"] .omer-timeline-marker {
+      background: var(--container-bg);
+      border-color: #ffb74d;
+    }
+    .omer-timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+    .omer-timeline-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .omer-timeline-label .icon {
+      font-size: 16px;
+    }
+    .omer-timeline-label .day {
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .omer-timeline-position {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+    /* Day selector */
+    .omer-day-selector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--container-bg);
+      border-radius: 10px;
+      border: 1px solid var(--input-border);
+      margin-bottom: 12px;
+    }
+    .omer-day-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--input-border);
+      background: var(--button-bg);
+      color: var(--text-primary);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .omer-day-btn:hover:not(:disabled) {
+      border-color: #ffc107;
+      background: rgba(255, 193, 7, 0.1);
+    }
+    .omer-day-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .omer-day-value {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 100px;
+    }
+    .omer-day-number {
+      font-size: 28px;
+      font-weight: 700;
+      color: #e65100;
+      line-height: 1;
+    }
+    [data-theme="dark"] .omer-day-number {
+      color: #ffb74d;
+    }
+    .omer-day-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .omer-sefirah-display {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(255, 193, 7, 0.08);
+      border-radius: 6px;
     }
     .omer-count-display {
       text-align: center;
@@ -2814,6 +2966,25 @@
       font-size: 11px;
       color: var(--text-tertiary);
       margin-top: 6px;
+    }
+    /* Test mode indicator */
+    .omer-test-mode {
+      display: none;
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: rgba(244, 67, 54, 0.1);
+      border: 1px dashed #f44336;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #d32f2f;
+      text-align: center;
+    }
+    .omer-test-mode.show {
+      display: block;
+    }
+    [data-theme="dark"] .omer-test-mode {
+      background: rgba(244, 67, 54, 0.15);
+      color: #ff8a80;
     }
     /* Omer preview in floating panel */
     .omer-preview-wrapper {
@@ -2973,18 +3144,64 @@
     </div>
     <!-- Omer Info - appears below when enabled -->
     <div class="omer-info" id="omerInfo">
-      <div class="omer-count-display">
-        <span class="omer-count-text" id="omerCountText">טוען...</span>
+      <!-- Current Status Text -->
+      <div class="omer-status-display" id="omerStatusDisplay">
+        <div class="omer-status-now" id="omerStatusNow">טוען...</div>
+        <div class="omer-status-sunset" id="omerStatusSunset"></div>
+        <div class="omer-jerusalem-note">הזמנים לפי ירושלים</div>
       </div>
+
+      <!-- Timeline Bar -->
+      <div class="omer-timeline" id="omerTimeline">
+        <div class="omer-timeline-bar">
+          <div class="omer-timeline-marker" id="omerTimelineMarker" style="left: 30%;"></div>
+        </div>
+        <div class="omer-timeline-labels">
+          <div class="omer-timeline-label">
+            <span class="icon">☀️</span>
+            <span class="day" id="omerTimelineDay">יום 18</span>
+          </div>
+          <div class="omer-timeline-label">
+            <span class="icon">🌙</span>
+            <span class="day" id="omerTimelineNextDay">יום 19</span>
+          </div>
+        </div>
+        <div class="omer-timeline-position" id="omerTimelinePosition">אתה כאן</div>
+      </div>
+
+      <!-- Day Selector -->
+      <div class="omer-day-selector">
+        <button type="button" class="omer-day-btn" id="omerDayMinus" title="יום קודם">−</button>
+        <div class="omer-day-value">
+          <span class="omer-day-number" id="omerDayNumber">18</span>
+          <span class="omer-day-label">לעומר</span>
+        </div>
+        <button type="button" class="omer-day-btn" id="omerDayPlus" title="יום הבא">+</button>
+      </div>
+
+      <!-- Sefirah Display -->
+      <div class="omer-sefirah-display" id="omerSefirahDisplay">חֶסֶד שֶׁבְּחֶסֶד</div>
+
+      <!-- Hidden input for backward compatibility -->
+      <input type="hidden" id="omerDateInput" class="omer-date-input" />
+      <input type="hidden" id="omerDayInput" value="" />
+
+      <!-- Test Mode Indicator -->
+      <div class="omer-test-mode" id="omerTestMode">🧪 מצב בדיקה - זמן מדומה</div>
+
+      <!-- Advanced Toggle (now for test mode) -->
       <button type="button" class="omer-advanced-toggle" id="omerAdvancedToggle">
         <span>🔧 הגדרות מתקדמות</span>
         <span class="arrow">▼</span>
       </button>
       <div class="omer-date-picker" id="omerDatePicker">
-        <label for="omerDateInput">תאריך עתידי</label>
-        <input type="date" id="omerDateInput" class="omer-date-input" />
-        <div class="omer-hint">לבדיקת ספירה של תאריך אחר</div>
+        <label for="omerTestTimeInput">זמן לבדיקה (לפיתוח)</label>
+        <input type="datetime-local" id="omerTestTimeInput" class="omer-date-input" />
+        <div class="omer-hint">לדימוי זמן אחר - משפיע על כל החישובים</div>
       </div>
+
+      <!-- Hidden legacy omer count text for compatibility -->
+      <span class="omer-count-text" id="omerCountText" style="display: none;"></span>
     </div>
 
     <!-- Step 1: Image -->
@@ -3502,30 +3719,190 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     const omerAdvancedToggle = document.getElementById("omerAdvancedToggle");
     const omerDatePicker = document.getElementById("omerDatePicker");
+    const omerStatusNow = document.getElementById("omerStatusNow");
+    const omerStatusSunset = document.getElementById("omerStatusSunset");
+    const omerTimelineMarker = document.getElementById("omerTimelineMarker");
+    const omerTimelineDay = document.getElementById("omerTimelineDay");
+    const omerTimelineNextDay = document.getElementById("omerTimelineNextDay");
+    const omerTimelinePosition = document.getElementById("omerTimelinePosition");
+    const omerDayNumber = document.getElementById("omerDayNumber");
+    const omerDayMinus = document.getElementById("omerDayMinus");
+    const omerDayPlus = document.getElementById("omerDayPlus");
+    const omerSefirahDisplay = document.getElementById("omerSefirahDisplay");
+    const omerDayInput = document.getElementById("omerDayInput");
+    const omerTestTimeInput = document.getElementById("omerTestTimeInput");
+    const omerTestMode = document.getElementById("omerTestMode");
+
     let omerPreviewUrl = null; // Store the generated preview URL
     let omerPreviewLoading = false;
+    let currentOmerDay = 1; // Currently selected Omer day
+    let omerData = null; // Store fetched Omer data
+    let testTimeParam = null; // Store test time from URL
 
-    // Update Omer count display
-    async function updateOmerCount() {
-      const dateValue = omerDateInput.value;
-      const dateParam = dateValue ? `?date=${dateValue}` : '';
+    // Check for testTime URL parameter
+    function checkTestTimeParam() {
+      const urlParams = new URLSearchParams(window.location.search);
+      testTimeParam = urlParams.get('testTime');
+      if (testTimeParam) {
+        omerTestMode.classList.add('show');
+        // Set the test time input
+        if (omerTestTimeInput) {
+          // Convert ISO format to datetime-local format
+          omerTestTimeInput.value = testTimeParam.slice(0, 16);
+        }
+      }
+    }
+
+    // Update Omer display with all UI components
+    async function updateOmerDisplay() {
+      // Build query params
+      const params = new URLSearchParams();
+      if (testTimeParam) {
+        params.set('testTime', testTimeParam);
+      }
+      const queryString = params.toString() ? `?${params.toString()}` : '';
 
       try {
-        const resp = await fetch(`/omer-info${dateParam}`);
+        const resp = await fetch(`/omer-info${queryString}`);
         if (resp.ok) {
-          const data = await resp.json();
-          if (data.isOmerPeriod) {
-            omerCountText.textContent = `יום ${data.dayNumber} לעומר`;
+          omerData = await resp.json();
+
+          if (omerData.isOmerPeriod) {
+            // Update status text
+            const currentTime = omerData.currentTime || '--:--';
+            const sunsetTime = omerData.sunsetTime || '--:--';
+            const currentDay = omerData.currentDay || omerData.defaultDay;
+            const nextDay = omerData.nextDay || (currentDay + 1);
+
+            omerStatusNow.textContent = `עכשיו (${currentTime}) - יום ${currentDay} לעומר`;
+            omerStatusSunset.textContent = `בצאת הכוכבים (${sunsetTime}) נספור יום ${nextDay}`;
+
+            // Update timeline
+            updateTimeline(currentTime, sunsetTime, currentDay, nextDay);
+
+            // Set default day
+            currentOmerDay = omerData.defaultDay || currentDay;
+            updateDaySelector();
+
+            // Legacy compatibility
+            omerCountText.textContent = `יום ${currentOmerDay} לעומר`;
           } else {
-            omerCountText.textContent = data.message || 'לא בתקופת ספירת העומר';
+            omerStatusNow.textContent = 'לא בתקופת ספירת העומר';
+            omerStatusSunset.textContent = '';
+            omerTimelineDay.textContent = '-';
+            omerTimelineNextDay.textContent = '-';
+            omerCountText.textContent = 'לא בתקופת ספירת העומר';
           }
         } else {
+          omerStatusNow.textContent = 'לא ניתן לחשב';
           omerCountText.textContent = 'לא ניתן לחשב את יום העומר';
         }
       } catch (err) {
         console.error('Failed to fetch omer info:', err);
-        omerCountText.textContent = 'יום X לעומר';
+        omerStatusNow.textContent = 'שגיאה בטעינה';
+        omerCountText.textContent = 'שגיאה';
       }
+    }
+
+    // Update timeline visualization
+    function updateTimeline(currentTime, sunsetTime, currentDay, nextDay) {
+      omerTimelineDay.textContent = `יום ${currentDay}`;
+      omerTimelineNextDay.textContent = `יום ${nextDay}`;
+
+      // Calculate marker position (0-100%)
+      // Parse times to calculate position between sunrise (6:00) and midnight (24:00)
+      const [currentHour, currentMin] = currentTime.split(':').map(Number);
+      const [sunsetHour, sunsetMin] = sunsetTime.split(':').map(Number);
+
+      const currentMinutes = currentHour * 60 + currentMin;
+      const sunsetMinutes = sunsetHour * 60 + sunsetMin;
+      const dayStartMinutes = 6 * 60; // 6:00 AM
+      const dayEndMinutes = 24 * 60; // Midnight
+
+      // Position relative to sunset (sunset at 50%)
+      let position;
+      if (currentMinutes < sunsetMinutes) {
+        // Before sunset: map 6:00-sunset to 0-50%
+        position = ((currentMinutes - dayStartMinutes) / (sunsetMinutes - dayStartMinutes)) * 50;
+      } else {
+        // After sunset: map sunset-midnight to 50-100%
+        position = 50 + ((currentMinutes - sunsetMinutes) / (dayEndMinutes - sunsetMinutes)) * 50;
+      }
+
+      // Clamp position between 5% and 95%
+      position = Math.max(5, Math.min(95, position));
+      omerTimelineMarker.style.left = `${position}%`;
+
+      // Update position text
+      if (currentMinutes < sunsetMinutes) {
+        omerTimelinePosition.textContent = `⏰ ${currentTime} - לפני צאת הכוכבים`;
+      } else {
+        omerTimelinePosition.textContent = `⏰ ${currentTime} - אחרי צאת הכוכבים`;
+      }
+    }
+
+    // Update day selector display
+    function updateDaySelector() {
+      omerDayNumber.textContent = currentOmerDay;
+      omerDayInput.value = currentOmerDay;
+
+      // Update sefirah display
+      if (omerData && omerData.isOmerPeriod) {
+        // Fetch sefirah for selected day
+        updateSefirahForDay(currentOmerDay);
+      }
+
+      // Update button states
+      omerDayMinus.disabled = currentOmerDay <= 1;
+      omerDayPlus.disabled = currentOmerDay >= 49;
+
+      // Update legacy count text
+      omerCountText.textContent = `יום ${currentOmerDay} לעומר`;
+    }
+
+    // Fetch and update sefirah for a specific day
+    async function updateSefirahForDay(day) {
+      if (day === omerData?.defaultDay && omerData?.sefirah) {
+        omerSefirahDisplay.textContent = omerData.sefirah;
+        return;
+      }
+
+      // For other days, we need to calculate locally or make another API call
+      // For now, let's calculate the sefirot locally
+      const sefirot = ['חֶסֶד', 'גְּבוּרָה', 'תִּפְאֶרֶת', 'נֶצַח', 'הוֹד', 'יְסוֹד', 'מַלְכוּת'];
+      const lowerIndex = (day - 1) % 7;
+      const upperIndex = Math.floor((day - 1) / 7);
+      omerSefirahDisplay.textContent = `${sefirot[lowerIndex]} שֶׁבְּ${sefirot[upperIndex]}`;
+    }
+
+    // Day selector button handlers
+    omerDayMinus.addEventListener('click', () => {
+      if (currentOmerDay > 1) {
+        currentOmerDay--;
+        updateDaySelector();
+        regenerateOmerPreview();
+      }
+    });
+
+    omerDayPlus.addEventListener('click', () => {
+      if (currentOmerDay < 49) {
+        currentOmerDay++;
+        updateDaySelector();
+        regenerateOmerPreview();
+      }
+    });
+
+    // Regenerate preview with debounce
+    let omerPreviewDebounce = null;
+    function regenerateOmerPreview() {
+      if (omerPreviewDebounce) clearTimeout(omerPreviewDebounce);
+      omerPreviewDebounce = setTimeout(() => {
+        if (floatingPreviewPanel.classList.contains('show')) {
+          omerPreviewUrl = null;
+          updateOmerPreviewDisplay();
+          generateOmerPreview();
+        }
+      }, 300);
     }
 
     // Generate Omer preview poster
@@ -3533,14 +3910,12 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (omerPreviewLoading) return;
       omerPreviewLoading = true;
 
-      const dateValue = omerDateInput.value;
       const payload = {
         omerMode: true,
-        aspectRatio: selectedAspectRatio
+        aspectRatio: selectedAspectRatio,
+        omerDay: currentOmerDay // Use the selected day
       };
-      if (dateValue) {
-        payload.omerDate = dateValue;
-      }
+
       // Add uploaded image if present
       if (uploadedFiles.length > 0) {
         try {
@@ -3656,15 +4031,8 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
 
       if (omerModeEnabled) {
-        // Set default date to today
-        if (!omerDateInput.value) {
-          const today = new Date();
-          const yyyy = today.getFullYear();
-          const mm = String(today.getMonth() + 1).padStart(2, '0');
-          const dd = String(today.getDate()).padStart(2, '0');
-          omerDateInput.value = `${yyyy}-${mm}-${dd}`;
-        }
-        updateOmerCount();
+        checkTestTimeParam();
+        updateOmerDisplay();
         // Generate preview if panel is open
         if (floatingPreviewPanel.classList.contains('show')) {
           updateOmerPreviewDisplay();
@@ -3684,7 +4052,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       setMode(omerModeToggle.checked ? 'omer' : 'shabbat');
     });
 
-    // Advanced toggle for date picker
+    // Advanced toggle for test time picker
     if (omerAdvancedToggle) {
       omerAdvancedToggle.addEventListener('click', () => {
         omerAdvancedToggle.classList.toggle('open');
@@ -3692,18 +4060,27 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     }
 
-    // Update omer count and preview when date changes
-    omerDateInput.addEventListener('change', () => {
-      if (omerModeEnabled) {
-        updateOmerCount();
-        // Regenerate preview with new date
-        if (floatingPreviewPanel.classList.contains('show')) {
-          omerPreviewUrl = null;
-          updateOmerPreviewDisplay();
-          generateOmerPreview();
+    // Test time input change handler
+    if (omerTestTimeInput) {
+      omerTestTimeInput.addEventListener('change', () => {
+        if (omerTestTimeInput.value) {
+          testTimeParam = omerTestTimeInput.value;
+          omerTestMode.classList.add('show');
+          updateOmerDisplay();
+          regenerateOmerPreview();
+        } else {
+          testTimeParam = null;
+          omerTestMode.classList.remove('show');
+          updateOmerDisplay();
+          regenerateOmerPreview();
         }
-      }
-    });
+      });
+    }
+
+    // Legacy: Update omer count function for backward compatibility
+    async function updateOmerCount() {
+      await updateOmerDisplay();
+    }
 
     // ===== Date Dropdown Functionality =====
 
@@ -5712,9 +6089,7 @@ CITY_CHECKBOXES_PLACEHOLDER
           // Add Omer mode parameters
           if (omerModeEnabled) {
             payload.omerMode = true;
-            if (omerDateInput.value) {
-              payload.omerDate = omerDateInput.value;
-            }
+            payload.omerDay = currentOmerDay; // Use the selected day from day selector
           }
 
           statusEl.textContent = isMultiple
