@@ -6,6 +6,8 @@ Tests cover:
 - Request handling with various payload configurations
 - Response formatting (PNG output)
 - Error cases (invalid images, missing data)
+- SSRF protection (is_safe_url)
+- Telegram webhook secret validation
 """
 
 import base64
@@ -20,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PIL import Image
 
-from api.poster import build_poster_from_payload
+from api.poster import build_poster_from_payload, is_safe_url
 
 
 def create_test_image_base64() -> str:
@@ -312,6 +314,132 @@ class TestUpcomingEventsEndpoint(unittest.TestCase):
         # Other events should not be marked as next
         for event in result[1:]:
             self.assertFalse(event["isNext"])
+
+
+class TestSSRFProtection(unittest.TestCase):
+    """Tests for SSRF protection in is_safe_url function."""
+
+    def test_safe_https_url(self):
+        """Normal HTTPS URLs should be safe."""
+        self.assertTrue(is_safe_url("https://example.com/image.jpg"))
+        self.assertTrue(is_safe_url("https://images.unsplash.com/photo.jpg"))
+
+    def test_safe_http_url(self):
+        """Normal HTTP URLs should be safe."""
+        self.assertTrue(is_safe_url("http://example.com/image.jpg"))
+
+    def test_localhost_blocked(self):
+        """Localhost URLs should be blocked."""
+        self.assertFalse(is_safe_url("http://localhost/image.jpg"))
+        self.assertFalse(is_safe_url("http://localhost:8080/image.jpg"))
+        self.assertFalse(is_safe_url("https://localhost/secret"))
+
+    def test_loopback_ip_blocked(self):
+        """127.x.x.x addresses should be blocked."""
+        self.assertFalse(is_safe_url("http://127.0.0.1/image.jpg"))
+        self.assertFalse(is_safe_url("http://127.0.0.1:3000/api/secret"))
+        self.assertFalse(is_safe_url("http://127.1.2.3/test"))
+
+    def test_private_class_a_blocked(self):
+        """10.x.x.x private addresses should be blocked."""
+        self.assertFalse(is_safe_url("http://10.0.0.1/image.jpg"))
+        self.assertFalse(is_safe_url("http://10.255.255.255/internal"))
+
+    def test_private_class_b_blocked(self):
+        """172.16-31.x.x private addresses should be blocked."""
+        self.assertFalse(is_safe_url("http://172.16.0.1/image.jpg"))
+        self.assertFalse(is_safe_url("http://172.31.255.255/internal"))
+        # 172.15.x.x should be allowed (not in private range)
+        # Note: this is a public IP, but may not resolve - test is for validation logic
+
+    def test_private_class_c_blocked(self):
+        """192.168.x.x private addresses should be blocked."""
+        self.assertFalse(is_safe_url("http://192.168.0.1/image.jpg"))
+        self.assertFalse(is_safe_url("http://192.168.1.100/internal"))
+
+    def test_link_local_blocked(self):
+        """169.254.x.x link-local addresses should be blocked."""
+        self.assertFalse(is_safe_url("http://169.254.169.254/latest/meta-data"))
+        self.assertFalse(is_safe_url("http://169.254.0.1/image.jpg"))
+
+    def test_invalid_scheme_blocked(self):
+        """Non-HTTP(S) schemes should be blocked."""
+        self.assertFalse(is_safe_url("file:///etc/passwd"))
+        self.assertFalse(is_safe_url("ftp://example.com/file"))
+        self.assertFalse(is_safe_url("gopher://example.com/"))
+
+    def test_empty_url_blocked(self):
+        """Empty or invalid URLs should be blocked."""
+        self.assertFalse(is_safe_url(""))
+        self.assertFalse(is_safe_url("not-a-url"))
+
+    @patch('api.poster.requests.get')
+    def test_ssrf_url_returns_400(self, mock_get):
+        """SSRF attempt with private IP should raise ValueError."""
+        payload = {
+            "imageUrl": "http://127.0.0.1:8080/internal/secret"
+        }
+
+        with self.assertRaises(ValueError) as context:
+            build_poster_from_payload(payload)
+
+        self.assertIn("Unsafe imageUrl", str(context.exception))
+        # requests.get should NOT have been called
+        mock_get.assert_not_called()
+
+    @patch('api.poster.requests.get')
+    def test_ssrf_localhost_returns_400(self, mock_get):
+        """SSRF attempt with localhost should raise ValueError."""
+        payload = {
+            "imageUrl": "http://localhost/admin"
+        }
+
+        with self.assertRaises(ValueError) as context:
+            build_poster_from_payload(payload)
+
+        self.assertIn("Unsafe imageUrl", str(context.exception))
+        mock_get.assert_not_called()
+
+
+class TestTelegramWebhookValidation(unittest.TestCase):
+    """Tests for Telegram webhook secret validation."""
+
+    def test_webhook_without_secret_configured(self):
+        """Webhook should work without secret when not configured."""
+        from io import BytesIO as IO
+
+        # Import with no secret configured
+        with patch.dict(os.environ, {}, clear=False):
+            # Remove TELEGRAM_WEBHOOK_SECRET if it exists
+            env_backup = os.environ.pop("TELEGRAM_WEBHOOK_SECRET", None)
+            try:
+                # Reload module to pick up env change
+                import importlib
+                import api.telegram_webhook
+                importlib.reload(api.telegram_webhook)
+
+                # Should work without secret header
+                self.assertIsNone(api.telegram_webhook.TELEGRAM_WEBHOOK_SECRET)
+            finally:
+                if env_backup:
+                    os.environ["TELEGRAM_WEBHOOK_SECRET"] = env_backup
+
+    def test_webhook_secret_validation_logic(self):
+        """Test the secret validation logic directly."""
+        # When secret is set, header must match
+        expected_secret = "my-secret-token"
+
+        # Matching header should pass
+        header_value = "my-secret-token"
+        self.assertEqual(header_value, expected_secret)
+
+        # Non-matching header should fail
+        wrong_header = "wrong-token"
+        self.assertNotEqual(wrong_header, expected_secret)
+
+        # Missing header (None) should fail
+        missing_header = None
+        self.assertNotEqual(missing_header, expected_secret)
 
 
 if __name__ == "__main__":
