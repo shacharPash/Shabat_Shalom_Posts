@@ -16,8 +16,12 @@ from datetime import date, datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Tuple
 
+import pytz
 from jewcal import JewCal
 from jewcal.models.zmanim import Location
+
+# Israel timezone for converting UTC times
+ISRAEL_TZ = pytz.timezone("Asia/Jerusalem")
 
 # Jerusalem coordinates for sunset calculations
 JERUSALEM_LAT = 31.7683
@@ -247,12 +251,13 @@ def get_jerusalem_sunset(target_date: date) -> Optional[str]:
     Get the tzet hakochavim (nightfall/sunset) time for Jerusalem on a given date.
 
     Uses jewcal's Location-based zmanim calculation for accurate sunset times.
+    Returns time in Israel timezone (not UTC).
 
     Args:
         target_date: The Gregorian date to get sunset for
 
     Returns:
-        Sunset time as "HH:MM" string, or None if unable to calculate
+        Sunset time as "HH:MM" string in Israel timezone, or None if unable to calculate
     """
     try:
         # Create Jerusalem location for zmanim calculation
@@ -271,12 +276,14 @@ def get_jerusalem_sunset(target_date: date) -> Optional[str]:
             # Try tzeis_hakochavim first (nightfall), then fall back to shkiah (sunset)
             tzeis = zmanim_dict.get('tzeis_hakochavim')
             if tzeis:
-                # Format: extract HH:MM from ISO datetime string
-                if isinstance(tzeis, str) and 'T' in tzeis:
-                    time_part = tzeis.split('T')[1][:5]  # Get HH:MM
-                    return time_part
-                elif hasattr(tzeis, 'strftime'):
-                    return tzeis.strftime('%H:%M')
+                # Parse the UTC datetime and convert to Israel timezone
+                if isinstance(tzeis, str):
+                    tzeis_datetime = datetime.fromisoformat(tzeis)
+                    tzeis_israel = tzeis_datetime.astimezone(ISRAEL_TZ)
+                    return tzeis_israel.strftime('%H:%M')
+                elif hasattr(tzeis, 'astimezone'):
+                    tzeis_israel = tzeis.astimezone(ISRAEL_TZ)
+                    return tzeis_israel.strftime('%H:%M')
         return None
     except Exception:
         return None
