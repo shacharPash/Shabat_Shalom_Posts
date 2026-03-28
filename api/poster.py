@@ -169,21 +169,35 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
             raise RuntimeError(f"Failed to download image from imageUrl: {e}")
 
     # Priority 3: image (local path) - already set from payload.get("image")
-    # Priority 4: Fallback to first image from images/ folder
+    # Priority 4: Fallback - use mode-specific default or first image from images/ folder
     elif image_path is None:
-        exts = {".jpg", ".jpeg", ".png", ".webp"}
-        # Use absolute path relative to project root (parent of api/ directory)
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        images_dir = os.path.join(project_root, "images")
-        all_files = sorted(os.listdir(images_dir))
-        image_files = [
-            f for f in all_files
-            if os.path.splitext(f)[1].lower() in exts
-        ]
-        if not image_files:
-            raise RuntimeError("No images available in images folder and no 'image' provided")
 
-        image_path = os.path.join(images_dir, image_files[0])
+        # For Omer mode, use the Omer-specific default background
+        if omer_mode:
+            omer_default_paths = [
+                # Vercel serverless - api folder (highest priority)
+                os.path.join(os.path.dirname(__file__), "omer_default.png"),
+                # Local development - public folder
+                os.path.join(project_root, "public", "static", "backgrounds", "omer_default.png"),
+            ]
+            for path in omer_default_paths:
+                if os.path.isfile(path):
+                    image_path = path
+                    break
+
+        # If no Omer default found (or not in Omer mode), use generic fallback
+        if image_path is None:
+            exts = {".jpg", ".jpeg", ".png", ".webp"}
+            images_dir = os.path.join(project_root, "images")
+            all_files = sorted(os.listdir(images_dir))
+            image_files = [
+                f for f in all_files
+                if os.path.splitext(f)[1].lower() in exts
+            ]
+            if not image_files:
+                raise RuntimeError("No images available in images folder and no 'image' provided")
+            image_path = os.path.join(images_dir, image_files[0])
 
     # Use provided cities if any, otherwise use default cities (major Israeli cities)
     # Exception: if custom_cities are provided, allow empty cities list (don't fall back to defaults)
