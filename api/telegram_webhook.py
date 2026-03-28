@@ -51,6 +51,9 @@ class handler(BaseHTTPRequestHandler):
             error_body = b'{"error": "Rate limit exceeded. Try again later."}'
             self.send_response(429)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Retry-After", "60")
             self.end_headers()
             self.wfile.write(error_body)
@@ -62,6 +65,9 @@ class handler(BaseHTTPRequestHandler):
             if secret_header != TELEGRAM_WEBHOOK_SECRET:
                 self.send_response(403)
                 self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type")
                 self.end_headers()
                 self.wfile.write(b'{"ok": false, "error": "forbidden"}')
                 return
@@ -81,23 +87,33 @@ class handler(BaseHTTPRequestHandler):
             # Always return 200 OK to Telegram
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(b'{"ok": true}')
 
         except json.JSONDecodeError as e:
             # Still return 200 to avoid Telegram retries
+            print(f"Telegram webhook JSON decode error: {e}")  # Log full details
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
-            self.wfile.write(b'{"ok": true, "error": "invalid json"}')
+            self.wfile.write(b'{"ok": true}')
 
         except Exception as e:
             # Log error but still return 200 to avoid Telegram retries
-            print(f"Webhook error: {e}")
+            print(f"Telegram webhook error: {e}")  # Log full details
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
-            self.wfile.write(b'{"ok": true, "error": "internal error"}')
+            self.wfile.write(b'{"ok": true}')
 
     def do_GET(self):
         """Handle GET request - health check."""
