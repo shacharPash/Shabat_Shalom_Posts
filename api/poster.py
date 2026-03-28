@@ -222,9 +222,21 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
 
         try:
             headers = {"User-Agent": "Mozilla/5.0"}
-            r = requests.get(image_url, timeout=15, headers=headers)
-            if r.status_code != 200:
-                raise RuntimeError("Failed to download image from imageUrl")
+            # Optimized timeout for Vercel free tier (10s limit) with simple retry
+            r = None
+            last_error = None
+            for attempt in range(2):
+                try:
+                    r = requests.get(image_url, timeout=6, headers=headers)
+                    if r.status_code == 200:
+                        break
+                except requests.RequestException as e:
+                    last_error = e
+                    if attempt == 0:
+                        continue  # Retry once
+                    raise
+            if r is None or r.status_code != 200:
+                raise RuntimeError(f"Failed to download image from imageUrl after retries: {last_error or 'HTTP error'}")
             # Detect format from magic bytes
             suffix = _detect_image_suffix(r.content)
             # Save to a temporary file (cloud-safe: uses /tmp)
@@ -345,6 +357,9 @@ class handler(BaseHTTPRequestHandler):
             error_body = b'{"error": "Rate limit exceeded. Try again later."}'
             self.send_response(429)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Retry-After", "60")
             self.end_headers()
             self.wfile.write(error_body)
@@ -375,28 +390,44 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(poster_bytes)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(poster_bytes)
 
         except json.JSONDecodeError as e:
-            error_msg = f"Invalid JSON: {e}".encode("utf-8")
+            print(f"JSON decode error: {e}")  # Log full details
+            error_msg = "שגיאה בפורמט הבקשה".encode("utf-8")
             self.send_response(400)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(error_msg)
 
         except ValueError as e:
             # Handle validation errors (e.g., unsafe URL for SSRF protection)
-            error_msg = f"Bad Request: {e}".encode("utf-8")
+            print(f"Validation error: {e}")  # Log full details
+            error_msg = "שגיאה בנתוני הבקשה".encode("utf-8")
             self.send_response(400)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(error_msg)
 
         except Exception as e:
-            error_msg = f"Internal Server Error: {e}".encode("utf-8")
+            print(f"Internal error in poster generation: {e}")  # Log full details
+            error_msg = "שגיאה ביצירת הפוסטר".encode("utf-8")
             self.send_response(500)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(error_msg)
 

@@ -973,7 +973,7 @@ def generate_poster(
     # Check if input is a video file (MP4/WebM) - convert to animated GIF
     if is_video_file(image_path):
         # Extract frames from video
-        frames, durations = extract_video_frames(image_path, max_frames=30)
+        frames, durations = extract_video_frames(image_path, max_frames=12)
         processed_frames = []
 
         for frame in frames:
