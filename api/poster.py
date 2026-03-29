@@ -265,7 +265,20 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
                     image_path = path
                     break
 
-        # If no Omer default found (or not in Omer mode), use generic fallback
+        # If no Omer default found (or not in Omer mode), try Shabbat default
+        if image_path is None:
+            shabat_default_paths = [
+                # Vercel serverless - api folder (highest priority)
+                os.path.join(os.path.dirname(__file__), "shabat_default.png"),
+                # Local development - public folder
+                os.path.join(project_root, "public", "static", "backgrounds", "shabat_default.png"),
+            ]
+            for path in shabat_default_paths:
+                if os.path.isfile(path):
+                    image_path = path
+                    break
+
+        # If no Shabbat default found, use generic fallback from images folder
         if image_path is None:
             exts = {".jpg", ".jpeg", ".png", ".webp"}
             images_dir = os.path.join(project_root, "images")
