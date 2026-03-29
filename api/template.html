@@ -4286,6 +4286,12 @@ CITY_CHECKBOXES_PLACEHOLDER
         citiesStep.style.display = omerModeEnabled ? 'none' : 'block';
       }
 
+      // Hide/show final step (generate button) in omer mode - Omer section has its own generate button
+      const stepFinal = document.querySelector('.step-final');
+      if (stepFinal) {
+        stepFinal.style.display = omerModeEnabled ? 'none' : 'block';
+      }
+
       // Hide/show advanced options button and section (עוד אפשרויות) based on omer mode
       // Keep the rest of customization visible
       const toggleAdvancedBtn = document.getElementById('toggleAdvancedBtn');
