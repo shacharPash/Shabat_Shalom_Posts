@@ -2894,6 +2894,57 @@
       background: rgba(255, 193, 7, 0.08);
       border-radius: 6px;
     }
+    /* Nusach selector */
+    .omer-nusach-section {
+      margin-top: 12px;
+      padding: 10px;
+      background: var(--container-bg);
+      border-radius: 10px;
+      border: 1px solid var(--input-border);
+    }
+    .omer-nusach-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .omer-nusach-group {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      background: var(--input-bg);
+      border-radius: 8px;
+      border: 1px solid var(--input-border);
+      padding: 3px;
+      direction: rtl;
+    }
+    .omer-nusach-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .omer-nusach-btn:hover {
+      background: var(--button-hover-bg);
+    }
+    .omer-nusach-btn.active {
+      background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+      color: #1a1a1a;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+    }
+    [data-theme="dark"] .omer-nusach-btn.active {
+      background: linear-gradient(135deg, #ffb74d 0%, #ffa726 100%);
+    }
     .omer-count-display {
       text-align: center;
       padding: 10px 12px;
@@ -3319,6 +3370,16 @@
 
         <!-- Sefirah Display -->
         <div class="omer-sefirah-display" id="omerSefirahDisplay">חֶסֶד שֶׁבְּחֶסֶד</div>
+
+        <!-- Nusach Selector -->
+        <div class="omer-nusach-section" id="omerNusachSection">
+          <div class="omer-nusach-label">נוסח</div>
+          <div class="omer-nusach-group">
+            <button type="button" class="omer-nusach-btn" data-nusach="ashkenaz">אשכנז</button>
+            <button type="button" class="omer-nusach-btn active" data-nusach="sefard">ספרד</button>
+            <button type="button" class="omer-nusach-btn" data-nusach="edot_hamizrach">ע"מ</button>
+          </div>
+        </div>
 
         <!-- Generate Button - Clearer text -->
         <button type="button" class="omer-generate-btn" id="omerGenerateBtn">
@@ -3876,6 +3937,11 @@ CITY_CHECKBOXES_PLACEHOLDER
     let omerData = null; // Store fetched Omer data
     let testTimeParam = null; // Store test time from URL
     let isOmerPeriodAvailable = false; // Track if Omer button should be visible
+    let currentNusach = 'sefard'; // Current nusach: sefard, ashkenaz, edot_hamizrach
+
+    // Nusach selector elements
+    const nusachSection = document.getElementById('omerNusachSection');
+    const nusachButtons = document.querySelectorAll('.omer-nusach-btn');
 
     // Check for testTime URL parameter
     function checkTestTimeParam() {
@@ -4169,7 +4235,8 @@ CITY_CHECKBOXES_PLACEHOLDER
       const payload = {
         omerMode: true,
         aspectRatio: selectedAspectRatio,
-        omerDay: currentOmerDay // Use the selected day
+        omerDay: currentOmerDay, // Use the selected day
+        nusach: currentNusach // Use the selected nusach
       };
 
       // Add uploaded image if present
@@ -4370,6 +4437,40 @@ CITY_CHECKBOXES_PLACEHOLDER
     // Keep legacy checkbox listener for compatibility (in case it's programmatically changed)
     omerModeToggle.addEventListener('change', () => {
       setMode(omerModeToggle.checked ? 'omer' : 'shabbat');
+    });
+
+    // ===== Nusach Selector Functions =====
+
+    // Set current nusach and update UI
+    function setNusach(nusach, skipSave = false) {
+      if (!['sefard', 'ashkenaz', 'edot_hamizrach'].includes(nusach)) {
+        nusach = 'sefard';
+      }
+      currentNusach = nusach;
+
+      // Update button active states
+      nusachButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.nusach === nusach);
+      });
+
+      // Save to localStorage (unless loading from saved state)
+      if (!skipSave) {
+        localStorage.setItem('nusach', nusach);
+      }
+
+      // Regenerate preview if open
+      if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
+        omerPreviewUrl = null;
+        updateOmerPreviewDisplay();
+        generateOmerPreview();
+      }
+    }
+
+    // Nusach button click handlers
+    nusachButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        setNusach(btn.dataset.nusach);
+      });
     });
 
     // Omer generate button - triggers the main generate flow
@@ -5502,6 +5603,11 @@ CITY_CHECKBOXES_PLACEHOLDER
         params.set('dateFormat', selectedDateFormat);
       }
 
+      // Add nusach if not default (only for omer mode)
+      if (omerModeEnabled && currentNusach !== 'sefard') {
+        params.set('nusach', currentNusach);
+      }
+
       const url = window.location.origin + window.location.pathname;
       const queryString = params.toString();
       return queryString ? `${url}?${queryString}` : url;
@@ -5624,6 +5730,19 @@ CITY_CHECKBOXES_PLACEHOLDER
         hasParams = true;
       }
 
+      // Set nusach (omer mode only)
+      const nusachParam = urlParams.get('nusach');
+      if (nusachParam && ['sefard', 'ashkenaz', 'edot_hamizrach'].includes(nusachParam)) {
+        setNusach(nusachParam, true); // skipSave=true since this is from URL
+        hasParams = true;
+      } else {
+        // Try to load from localStorage
+        const savedNusach = localStorage.getItem('nusach');
+        if (savedNusach && ['sefard', 'ashkenaz', 'edot_hamizrach'].includes(savedNusach)) {
+          setNusach(savedNusach, true); // skipSave=true to avoid re-saving
+        }
+      }
+
       // Show notice if form was pre-filled
       if (hasParams) {
         loadedFromUrl = true;
@@ -5664,6 +5783,9 @@ CITY_CHECKBOXES_PLACEHOLDER
       dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
         opt.classList.toggle('selected', opt.dataset.format === 'both');
       });
+
+      // Reset nusach to default (sefard)
+      setNusach('sefard');
 
       // Hide notice
       urlParamsNotice.classList.remove("show");
@@ -6428,6 +6550,7 @@ CITY_CHECKBOXES_PLACEHOLDER
           if (omerModeEnabled) {
             payload.omerMode = true;
             payload.omerDay = currentOmerDay; // Use the selected day from day selector
+            payload.nusach = currentNusach; // Use the selected nusach
           }
 
           statusEl.textContent = isMultiple

@@ -159,6 +159,102 @@ class TestGetOmerCountText(unittest.TestCase):
             get_omer_count_text(50)
 
 
+class TestOmerCountNusachim(unittest.TestCase):
+    """Tests for get_omer_count_text with different nusachim."""
+
+    # --- Sefard nusach tests (default) ---
+    def test_sefard_day_1(self):
+        """Sefard day 1: ends with לָעֹמֶר."""
+        result = get_omer_count_text(1, nusach="sefard")
+        self.assertIn("לָעֹמֶר", result)
+        self.assertTrue(result.endswith("לָעֹמֶר"))
+
+    def test_sefard_day_7(self):
+        """Sefard day 7: ends with לָעֹמֶר."""
+        result = get_omer_count_text(7, nusach="sefard")
+        self.assertIn("שָׁבוּעַ אֶחָד", result)
+        self.assertTrue(result.endswith("לָעֹמֶר"))
+
+    def test_sefard_day_8(self):
+        """Sefard day 8: ends with לָעֹמֶר."""
+        result = get_omer_count_text(8, nusach="sefard")
+        self.assertIn("שָׁבוּעַ אֶחָד", result)
+        self.assertIn("יוֹם אֶחָד", result)
+        self.assertTrue(result.endswith("לָעֹמֶר"))
+
+    def test_sefard_day_49(self):
+        """Sefard day 49: ends with לָעֹמֶר."""
+        result = get_omer_count_text(49, nusach="sefard")
+        self.assertIn("שִׁבְעָה שָׁבוּעוֹת", result)
+        self.assertTrue(result.endswith("לָעֹמֶר"))
+
+    # --- Ashkenaz nusach tests ---
+    def test_ashkenaz_day_1(self):
+        """Ashkenaz day 1: ends with בָּעֹמֶר."""
+        result = get_omer_count_text(1, nusach="ashkenaz")
+        self.assertIn("בָּעֹמֶר", result)
+        self.assertTrue(result.endswith("בָּעֹמֶר"))
+
+    def test_ashkenaz_day_7(self):
+        """Ashkenaz day 7: ends with בָּעֹמֶר."""
+        result = get_omer_count_text(7, nusach="ashkenaz")
+        self.assertIn("שָׁבוּעַ אֶחָד", result)
+        self.assertTrue(result.endswith("בָּעֹמֶר"))
+
+    def test_ashkenaz_day_8(self):
+        """Ashkenaz day 8: ends with בָּעֹמֶר."""
+        result = get_omer_count_text(8, nusach="ashkenaz")
+        self.assertIn("שָׁבוּעַ אֶחָד", result)
+        self.assertIn("יוֹם אֶחָד", result)
+        self.assertTrue(result.endswith("בָּעֹמֶר"))
+
+    def test_ashkenaz_day_49(self):
+        """Ashkenaz day 49: ends with בָּעֹמֶר."""
+        result = get_omer_count_text(49, nusach="ashkenaz")
+        self.assertIn("שִׁבְעָה שָׁבוּעוֹת", result)
+        self.assertTrue(result.endswith("בָּעֹמֶר"))
+
+    # --- Edot HaMizrach nusach tests ---
+    def test_edot_hamizrach_day_1(self):
+        """Edot HaMizrach day 1: לָעֹמֶר at end (same as sefard for day 1)."""
+        result = get_omer_count_text(1, nusach="edot_hamizrach")
+        self.assertIn("לָעֹמֶר", result)
+
+    def test_edot_hamizrach_day_7(self):
+        """Edot HaMizrach day 7: לָעֹמֶר before week breakdown."""
+        result = get_omer_count_text(7, nusach="edot_hamizrach")
+        self.assertIn("לָעֹמֶר", result)
+        self.assertIn("שָׁבוּעַ אֶחָד", result)
+        # לָעֹמֶר should come before שָׁבוּעַ
+        self.assertTrue(result.index("לָעֹמֶר") < result.index("שָׁבוּעַ"))
+
+    def test_edot_hamizrach_day_8(self):
+        """Edot HaMizrach day 8: לָעֹמֶר after day count, before week breakdown."""
+        result = get_omer_count_text(8, nusach="edot_hamizrach")
+        self.assertIn("לָעֹמֶר", result)
+        self.assertIn("שָׁבוּעַ אֶחָד", result)
+        self.assertIn("יוֹם אֶחָד", result)
+        # לָעֹמֶר should come before שָׁבוּעַ
+        self.assertTrue(result.index("לָעֹמֶר") < result.index("שָׁבוּעַ"))
+        # Should NOT end with לָעֹמֶר
+        self.assertFalse(result.endswith("לָעֹמֶר"))
+
+    def test_edot_hamizrach_day_49(self):
+        """Edot HaMizrach day 49: לָעֹמֶר after day count, before week breakdown."""
+        result = get_omer_count_text(49, nusach="edot_hamizrach")
+        self.assertIn("לָעֹמֶר", result)
+        self.assertIn("שִׁבְעָה שָׁבוּעוֹת", result)
+        # לָעֹמֶר should come before שָׁבוּעוֹת
+        self.assertTrue(result.index("לָעֹמֶר") < result.index("שָׁבוּעוֹת"))
+        # Should NOT end with לָעֹמֶר
+        self.assertFalse(result.endswith("לָעֹמֶר"))
+
+    def test_invalid_nusach_raises_error(self):
+        """Invalid nusach should raise ValueError."""
+        with self.assertRaises(ValueError):
+            get_omer_count_text(1, nusach="invalid")
+
+
 if __name__ == "__main__":
     unittest.main()
 

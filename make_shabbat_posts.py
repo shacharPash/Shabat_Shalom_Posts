@@ -584,6 +584,7 @@ def compose_omer_poster(
     dedication_text: str | None = None,
     date_format: str = "both",
     show_watermark: bool = True,
+    nusach: str = "sefard",
 ) -> Image.Image:
     """
     Compose a Sefirat HaOmer poster with blessing, count, and Harachaman text.
@@ -596,6 +597,7 @@ def compose_omer_poster(
         dedication_text: Custom dedication text (optional)
         date_format: Date format for subtitle - "gregorian", "hebrew", or "both"
         show_watermark: Whether to show watermark
+        nusach: Liturgical tradition - "sefard", "ashkenaz", or "edot_hamizrach"
 
     Returns:
         Composed poster image
@@ -641,7 +643,7 @@ def compose_omer_poster(
 
     # Omer content texts
     omer_blessing = "בָּרוּךְ אַתָּה יְיָ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם, אֲשֶׁר קִדְּשָׁנוּ בְּמִצְוֹתָיו וְצִוָּנוּ עַל סְפִירַת הָעֹמֶר"
-    omer_count = get_omer_count_text(omer_day)
+    omer_count = get_omer_count_text(omer_day, nusach=nusach)
     harachaman = "הָרַחֲמָן הוּא יַחֲזִיר לָנוּ עֲבוֹדַת בֵּית הַמִּקְדָּשׁ לִמְקוֹמָהּ, בִּמְהֵרָה בְיָמֵינוּ אָמֵן סֶלָה"
 
     # Handle bottom text area
@@ -799,6 +801,7 @@ def generate_poster(
     omer_mode: bool = False,  # Generate Sefirat HaOmer poster instead of Shabbat
     omer_date: Optional[date] = None,  # Date for Omer calculation (default: today)
     omer_day: Optional[int] = None,  # Direct Omer day (1-49), overrides date-based calculation
+    nusach: str = "sefard",  # Nusach for Omer counting: "sefard", "ashkenaz", or "edot_hamizrach"
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
@@ -837,6 +840,10 @@ def generate_poster(
                    is between 00:00-06:00, counts for next day (after midnight logic).
         omer_day: Direct Omer day number (1-49). If provided, overrides omer_date
                   calculation. Useful for letting users select a specific day.
+        nusach: Liturgical tradition for Omer counting text. Options:
+                - "sefard" (default): Uses "לָעֹמֶר"
+                - "ashkenaz": Uses "בָּעֹמֶר"
+                - "edot_hamizrach": Uses "לָעֹמֶר" with different structure
 
     Returns:
         PNG image bytes ready to be saved or transmitted
@@ -898,6 +905,7 @@ def generate_poster(
             dedication_text=dedication_text,
             date_format=date_format,
             show_watermark=show_watermark,
+            nusach=nusach,
         )
 
         # Save to BytesIO buffer as PNG and return bytes
