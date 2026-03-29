@@ -4200,6 +4200,14 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     }
 
+    // Get sefirah text for a day (local calculation)
+    function getSefirahForDay(day) {
+      const sefirot = ['חֶסֶד', 'גְּבוּרָה', 'תִּפְאֶרֶת', 'נֶצַח', 'הוֹד', 'יְסוֹד', 'מַלְכוּת'];
+      const lowerIndex = (day - 1) % 7;
+      const upperIndex = Math.floor((day - 1) / 7);
+      return `${sefirot[lowerIndex]} שֶׁבְּ${sefirot[upperIndex]}`;
+    }
+
     // Update the preview display for Omer mode
     function updateOmerPreviewDisplay() {
       const previewContent = document.querySelector('.floating-preview-content');
@@ -4219,9 +4227,24 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
 
       if (omerPreviewUrl) {
+        // Show the generated poster image
         omerPreviewContainer.innerHTML = `<img src="${omerPreviewUrl}" alt="תצוגה מקדימה" class="omer-preview-image" />`;
       } else {
-        omerPreviewContainer.innerHTML = `<div class="omer-preview-loading"><div class="spinner"></div><span>🌾 יוצר תצוגה מקדימה...</span></div>`;
+        // Show instant text-based preview while image generates
+        const day = currentOmerDay || 1;
+        const sefirah = getSefirahForDay(day);
+        omerPreviewContainer.innerHTML = `
+          <div class="omer-preview-text">
+            <div class="omer-title">ספירת העומר</div>
+            <div class="omer-day-num">${day}</div>
+            <div class="omer-day-label">יום ${day} לעומר</div>
+            <div class="omer-sefirah">${sefirah}</div>
+            <div class="omer-loading-hint">
+              <div class="mini-spinner"></div>
+              <span>יוצר תמונה...</span>
+            </div>
+          </div>
+        `;
       }
     }
 
