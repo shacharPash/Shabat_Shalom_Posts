@@ -3003,6 +3003,71 @@
       max-width: 300px;
       margin: 0 auto;
     }
+    /* Instant text-based preview */
+    .omer-preview-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      aspect-ratio: 1 / 1;
+      background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+      border-radius: 12px;
+      color: white;
+      padding: 16px;
+      text-align: center;
+      direction: rtl;
+      position: relative;
+      overflow: hidden;
+    }
+    .omer-preview-text::before {
+      content: '🌾';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 20px;
+    }
+    .omer-preview-text .omer-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #ffc107;
+    }
+    .omer-preview-text .omer-day-num {
+      font-size: 48px;
+      font-weight: bold;
+      line-height: 1;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .omer-preview-text .omer-day-label {
+      font-size: 16px;
+      color: #ffc107;
+    }
+    .omer-preview-text .omer-sefirah {
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.15);
+      padding: 4px 12px;
+      border-radius: 12px;
+      margin-top: 4px;
+    }
+    .omer-preview-text .omer-loading-hint {
+      font-size: 10px;
+      color: rgba(255,255,255,0.6);
+      position: absolute;
+      bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .omer-preview-text .mini-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #ffc107;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    /* Legacy loading state (fallback) */
     .omer-preview-loading {
       display: flex;
       flex-direction: column;
@@ -3829,11 +3894,12 @@ CITY_CHECKBOXES_PLACEHOLDER
     function updateOmerButtonVisibility(shouldShow) {
       isOmerPeriodAvailable = shouldShow;
       if (shouldShow) {
-        // Show Omer button
+        // Show mode selector with both buttons
+        modeSelectorSection.style.display = '';
         omerModeBtn.style.display = '';
-        modeButtonGroup.style.display = ''; // Ensure button group is visible
       } else {
-        // Hide Omer button - only show Shabbat mode
+        // Hide entire mode selector - no point showing menu with one option
+        modeSelectorSection.style.display = 'none';
         omerModeBtn.style.display = 'none';
         // If currently in Omer mode but shouldn't be, switch to showing blocked state
         // (handled by updateOmerContentVisibility)
