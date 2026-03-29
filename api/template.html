@@ -3003,6 +3003,71 @@
       max-width: 300px;
       margin: 0 auto;
     }
+    /* Instant text-based preview */
+    .omer-preview-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      aspect-ratio: 1 / 1;
+      background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+      border-radius: 12px;
+      color: white;
+      padding: 16px;
+      text-align: center;
+      direction: rtl;
+      position: relative;
+      overflow: hidden;
+    }
+    .omer-preview-text::before {
+      content: '🌾';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 20px;
+    }
+    .omer-preview-text .omer-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #ffc107;
+    }
+    .omer-preview-text .omer-day-num {
+      font-size: 48px;
+      font-weight: bold;
+      line-height: 1;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .omer-preview-text .omer-day-label {
+      font-size: 16px;
+      color: #ffc107;
+    }
+    .omer-preview-text .omer-sefirah {
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.15);
+      padding: 4px 12px;
+      border-radius: 12px;
+      margin-top: 4px;
+    }
+    .omer-preview-text .omer-loading-hint {
+      font-size: 10px;
+      color: rgba(255,255,255,0.6);
+      position: absolute;
+      bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .omer-preview-text .mini-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #ffc107;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    /* Legacy loading state (fallback) */
     .omer-preview-loading {
       display: flex;
       flex-direction: column;
@@ -3829,11 +3894,12 @@ CITY_CHECKBOXES_PLACEHOLDER
     function updateOmerButtonVisibility(shouldShow) {
       isOmerPeriodAvailable = shouldShow;
       if (shouldShow) {
-        // Show Omer button
+        // Show mode selector with both buttons
+        modeSelectorSection.style.display = '';
         omerModeBtn.style.display = '';
-        modeButtonGroup.style.display = ''; // Ensure button group is visible
       } else {
-        // Hide Omer button - only show Shabbat mode
+        // Hide entire mode selector - no point showing menu with one option
+        modeSelectorSection.style.display = 'none';
         omerModeBtn.style.display = 'none';
         // If currently in Omer mode but shouldn't be, switch to showing blocked state
         // (handled by updateOmerContentVisibility)
@@ -3885,6 +3951,13 @@ CITY_CHECKBOXES_PLACEHOLDER
     function updateGenerateButtonText() {
       if (omerGenerateBtnText) {
         omerGenerateBtnText.textContent = `צור פוסטר ליום ${currentOmerDay} לעומר`;
+      }
+      // Also update the main generate button when in Omer mode
+      const mainBtnText = document.querySelector('#generateBtn .btn-text');
+      if (mainBtnText && omerModeEnabled) {
+        mainBtnText.textContent = `🌾 צור פוסטר ליום ${currentOmerDay} לעומר`;
+      } else if (mainBtnText && !omerModeEnabled) {
+        mainBtnText.textContent = '✨ צור זְמוּנָה!';
       }
     }
 
@@ -4134,6 +4207,14 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     }
 
+    // Get sefirah text for a day (local calculation)
+    function getSefirahForDay(day) {
+      const sefirot = ['חֶסֶד', 'גְּבוּרָה', 'תִּפְאֶרֶת', 'נֶצַח', 'הוֹד', 'יְסוֹד', 'מַלְכוּת'];
+      const lowerIndex = (day - 1) % 7;
+      const upperIndex = Math.floor((day - 1) / 7);
+      return `${sefirot[lowerIndex]} שֶׁבְּ${sefirot[upperIndex]}`;
+    }
+
     // Update the preview display for Omer mode
     function updateOmerPreviewDisplay() {
       const previewContent = document.querySelector('.floating-preview-content');
@@ -4153,9 +4234,24 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
 
       if (omerPreviewUrl) {
+        // Show the generated poster image
         omerPreviewContainer.innerHTML = `<img src="${omerPreviewUrl}" alt="תצוגה מקדימה" class="omer-preview-image" />`;
       } else {
-        omerPreviewContainer.innerHTML = `<div class="omer-preview-loading"><div class="spinner"></div><span>🌾 יוצר תצוגה מקדימה...</span></div>`;
+        // Show instant text-based preview while image generates
+        const day = currentOmerDay || 1;
+        const sefirah = getSefirahForDay(day);
+        omerPreviewContainer.innerHTML = `
+          <div class="omer-preview-text">
+            <div class="omer-title">ספירת העומר</div>
+            <div class="omer-day-num">${day}</div>
+            <div class="omer-day-label">יום ${day} לעומר</div>
+            <div class="omer-sefirah">${sefirah}</div>
+            <div class="omer-loading-hint">
+              <div class="mini-spinner"></div>
+              <span>יוצר תמונה...</span>
+            </div>
+          </div>
+        `;
       }
     }
 
@@ -4197,8 +4293,31 @@ CITY_CHECKBOXES_PLACEHOLDER
         citiesStep.style.display = omerModeEnabled ? 'none' : 'block';
       }
 
+      // Hide step numbers only in Omer mode (they should remain in Shabbat mode)
+      const stepNumbers = document.querySelectorAll('.step-number');
+      stepNumbers.forEach(stepNum => {
+        stepNum.style.display = omerModeEnabled ? 'none' : '';
+      });
+
+      // Show final step (generate button) in both modes - only one generate button at the end
+      const stepFinal = document.querySelector('.step-final');
+      if (stepFinal) {
+        stepFinal.style.display = 'block';
+        // Hide the step header (number + title) in Omer mode for cleaner look
+        const stepHeader = stepFinal.querySelector('.step-header');
+        if (stepHeader) {
+          stepHeader.style.display = omerModeEnabled ? 'none' : '';
+        }
+      }
+
+      // Hide Omer's internal generate button (we use the main one at the end)
+      const omerGenerateBtnEl = document.getElementById('omerGenerateBtn');
+      if (omerGenerateBtnEl) {
+        omerGenerateBtnEl.style.display = 'none';
+      }
+
       // Hide/show advanced options button and section (עוד אפשרויות) based on omer mode
-      // Keep the rest of customization visible
+      // Keep the rest of customization visible (blessing, memorial)
       const toggleAdvancedBtn = document.getElementById('toggleAdvancedBtn');
       const advancedSection = document.getElementById('advancedSection');
       if (toggleAdvancedBtn) {
@@ -4206,6 +4325,16 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
       if (advancedSection) {
         advancedSection.style.display = omerModeEnabled ? 'none' : '';
+      }
+
+      // Hide date format button in Omer mode (it's Shabbat-specific)
+      const toggleDateFormatBtn = document.getElementById('toggleDateFormatBtn');
+      const dateFormatSection = document.getElementById('dateFormatSection');
+      if (toggleDateFormatBtn) {
+        toggleDateFormatBtn.style.display = omerModeEnabled ? 'none' : '';
+      }
+      if (dateFormatSection) {
+        dateFormatSection.style.display = omerModeEnabled ? 'none' : '';
       }
 
       // Update the "save link" hint text based on mode
@@ -4216,6 +4345,9 @@ CITY_CHECKBOXES_PLACEHOLDER
           copyLinkHint.innerHTML = 'רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎';
         }
       }
+
+      // Update generate button text for the current mode
+      updateGenerateButtonText();
 
       if (omerModeEnabled) {
         checkTestTimeParam();
