@@ -194,6 +194,11 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         if omer_day_direct < 1 or omer_day_direct > 49:
             raise ValueError(f"omerDay must be 1-49, got {omer_day_direct}")
 
+    # Nusach (liturgical tradition) for Omer counting
+    nusach: str = payload.get("nusach", "sefard")
+    if nusach not in ("sefard", "ashkenaz", "edot_hamizrach"):
+        nusach = "sefard"  # Default to sefard if invalid
+
     start_date_str: Optional[str] = payload.get("startDate")
     if start_date_str:
         start_date = date.fromisoformat(start_date_str)
@@ -335,6 +340,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
         omer_mode=omer_mode,
         omer_date=omer_date,
         omer_day=omer_day_direct,
+        nusach=nusach,
     )
 
     return poster_bytes
