@@ -167,18 +167,28 @@ def _hebrew_number(n: int) -> str:
     return f"{HEBREW_ONES[ones]} וְ{HEBREW_TENS[tens]}"
 
 
-def get_omer_count_text(day: int) -> str:
+def get_omer_count_text(day: int, nusach: str = "sefard") -> str:
     """
     Get the full Hebrew counting text for a given Omer day.
 
     Args:
         day: The Omer day (1-49)
+        nusach: The nusach (liturgical tradition) to use:
+            - "sefard" (default): "לָעֹמֶר" at the end
+            - "ashkenaz": "בָּעֹמֶר" at the end
+            - "edot_hamizrach": "לָעֹמֶר" after day count, before week breakdown
 
     Returns:
         The full Hebrew counting text (e.g., "הַיּוֹם יוֹם אֶחָד לָעֹמֶר")
     """
     if day < 1 or day > 49:
         raise ValueError(f"Omer day must be 1-49, got {day}")
+
+    if nusach not in ("sefard", "ashkenaz", "edot_hamizrach"):
+        raise ValueError(f"Invalid nusach: {nusach}. Must be 'sefard', 'ashkenaz', or 'edot_hamizrach'")
+
+    # Determine the omer suffix based on nusach
+    omer_suffix = "בָּעֹמֶר" if nusach == "ashkenaz" else "לָעֹמֶר"
 
     # Handle weeks and days
     weeks = day // 7
@@ -187,27 +197,64 @@ def get_omer_count_text(day: int) -> str:
     # Build the count text
     day_text = _hebrew_number(day)
 
+    # For edot_hamizrach, the structure is different - omer comes after day count
+    if nusach == "edot_hamizrach":
+        return _build_edot_hamizrach_text(day, day_text, weeks, remaining_days)
+
+    # Sefard and Ashkenaz have the same structure, just different suffix
     if day == 1:
-        return f"הַיּוֹם יוֹם {day_text} לָעֹמֶר"
+        return f"הַיּוֹם יוֹם {day_text} {omer_suffix}"
 
-    # Days 2-6: "היום X ימים לעומר"
+    # Days 2-6: "היום X ימים לעומר/בעומר"
     if day < 7:
-        return f"הַיּוֹם {day_text} יָמִים לָעֹמֶר"
+        return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
 
-    # Day 7: "היום שבעה ימים שהם שבוע אחד לעומר"
+    # Day 7: "היום שבעה ימים שהם שבוע אחד לעומר/בעומר"
     if day == 7:
-        return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד לָעֹמֶר"
+        return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד {omer_suffix}"
 
     # Days 8-49: Include weeks
     if remaining_days == 0:
         # Exact weeks
         week_text = _hebrew_week_text(weeks)
-        return f"הַיּוֹם {day_text} יוֹם שֶׁהֵם {week_text} לָעֹמֶר"
+        return f"הַיּוֹם {day_text} יוֹם שֶׁהֵם {week_text} {omer_suffix}"
     else:
         # Weeks and days
         week_text = _hebrew_week_text(weeks)
         remaining_text = _hebrew_day_text(remaining_days)
-        return f"הַיּוֹם {day_text} יוֹם שֶׁהֵם {week_text} וְ{remaining_text} לָעֹמֶר"
+        return f"הַיּוֹם {day_text} יוֹם שֶׁהֵם {week_text} וְ{remaining_text} {omer_suffix}"
+
+
+def _build_edot_hamizrach_text(day: int, day_text: str, weeks: int, remaining_days: int) -> str:
+    """
+    Build the Omer count text for Edot HaMizrach nusach.
+
+    In this nusach, "לָעֹמֶר" comes after the day count, before the week breakdown.
+    Example: "היום 8 יום לעומר שהם שבוע אחד ויום אחד"
+    """
+    omer_suffix = "לָעֹמֶר"
+
+    if day == 1:
+        return f"הַיּוֹם יוֹם {day_text} {omer_suffix}"
+
+    # Days 2-6: "היום X ימים לעומר" (same as sefard, no week breakdown)
+    if day < 7:
+        return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+
+    # Day 7: "היום שבעה ימים לעומר שהם שבוע אחד"
+    if day == 7:
+        return f"הַיּוֹם {day_text} יָמִים {omer_suffix} שֶׁהֵם שָׁבוּעַ אֶחָד"
+
+    # Days 8-49: "לעומר" comes after day count, before week breakdown
+    if remaining_days == 0:
+        # Exact weeks
+        week_text = _hebrew_week_text(weeks)
+        return f"הַיּוֹם {day_text} יוֹם {omer_suffix} שֶׁהֵם {week_text}"
+    else:
+        # Weeks and days
+        week_text = _hebrew_week_text(weeks)
+        remaining_text = _hebrew_day_text(remaining_days)
+        return f"הַיּוֹם {day_text} יוֹם {omer_suffix} שֶׁהֵם {week_text} וְ{remaining_text}"
 
 
 def _hebrew_week_text(weeks: int) -> str:
