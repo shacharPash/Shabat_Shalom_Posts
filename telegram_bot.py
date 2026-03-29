@@ -193,9 +193,16 @@ def _clear_user_state(user_id: str) -> None:
 # --- Keyboard Builders ---
 
 
-def _build_settings_keyboard() -> List[List[Dict[str, str]]]:
+def _build_settings_keyboard(poster_mode: str = "shabbat", has_saved_image: bool = False) -> List[List[Dict[str, str]]]:
     """Build the main settings inline keyboard."""
-    return [
+    # Toggle button text based on current mode
+    if poster_mode == "omer":
+        mode_button = {"text": "🔢 מצב עומר ✓", "callback_data": "toggle:mode"}
+    else:
+        mode_button = {"text": "🕯️ מצב שבת ✓", "callback_data": "toggle:mode"}
+
+    keyboard = [
+        [mode_button],
         [{"text": "🏙️ ערוך ערים", "callback_data": "edit:cities"}],
         [{"text": "📅 פורמט תאריך", "callback_data": "edit:date"}],
         [
@@ -204,6 +211,12 @@ def _build_settings_keyboard() -> List[List[Dict[str, str]]]:
         ],
         [{"text": "👁️ הצג דוגמה", "callback_data": "show:preview"}],
     ]
+
+    # Add delete saved image button if there's a saved image
+    if has_saved_image:
+        keyboard.append([{"text": "🗑️ מחק תמונה שמורה", "callback_data": "clear:image"}])
+
+    return keyboard
 
 
 def _build_help_keyboard() -> List[List[Dict[str, str]]]:
@@ -324,19 +337,24 @@ def format_settings(prefs: Dict[str, Any]) -> str:
     """Format user preferences as a readable message."""
     cities = prefs.get("cities", [])
     city_names = [c.get("name", "?") for c in cities] if cities else ["ברירת מחדל"]
-    
+
     date_format = prefs.get("date_format", "both")
     date_format_display = {
         "gregorian": "לועזי",
-        "hebrew": "עברי", 
+        "hebrew": "עברי",
         "both": "לועזי + עברי"
     }.get(date_format, date_format)
-    
+
     blessing = prefs.get("blessing_text") or "לא מוגדר"
     dedication = prefs.get("dedication_text") or "לא מוגדר"
-    
+
+    # Poster mode display
+    poster_mode = prefs.get("poster_mode", "shabbat")
+    mode_display = "🔢 ספירת העומר" if poster_mode == "omer" else "🕯️ שבת"
+
     return (
         "⚙️ <b>ההגדרות שלך:</b>\n\n"
+        f"📋 <b>מצב:</b> {mode_display}\n"
         f"🏙 <b>ערים:</b> {', '.join(city_names)}\n"
         f"📅 <b>פורמט תאריך:</b> {date_format_display}\n"
         f"✨ <b>ברכה:</b> {blessing}\n"
@@ -358,12 +376,12 @@ def handle_start(update: Dict[str, Any]) -> None:
         "1️⃣ שלח לי תמונה\n"
         "2️⃣ אני אוסיף את זמני השבת והפרשה\n"
         "3️⃣ תקבל פוסטר מוכן לשיתוף!\n\n"
+        "💡 <b>טיפ:</b> התמונה שתשלח נשמרת לשימוש חוזר עם /poster\n\n"
         "<b>פקודות:</b>\n"
-        "/poster - צור פוסטר עם תמונת ברירת מחדל\n"
+        "/poster - צור פוסטר (עם תמונה שמורה או ברירת מחדל)\n"
         "/settings - צפה בהגדרות שלך\n"
         "/reset - אפס להגדרות ברירת מחדל\n"
-        "/clear_blessing - נקה טקסט ברכה\n"
-        "/clear_memorial - נקה לעילוי נשמת\n\n"
+        "/clear_image - מחק תמונה שמורה\n\n"
         "שלח תמונה כדי להתחיל! 📸"
     )
     keyboard = [
@@ -387,7 +405,8 @@ def handle_settings(update: Dict[str, Any]) -> None:
 
     # Show settings menu (preview is now shown on-demand via button)
     settings_text = format_settings(prefs)
-    keyboard = _build_settings_keyboard()
+    has_saved_image = bool(prefs.get("last_image_file_id"))
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image)
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -416,7 +435,8 @@ def handle_skip(update: Dict[str, Any]) -> None:
         # Show settings
         prefs = get_user_prefs(user_id)
         settings_text = format_settings(prefs)
-        keyboard = _build_settings_keyboard()
+        has_saved_image = bool(prefs.get("last_image_file_id"))
+        keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image)
         send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
     elif state in ("searching_city",) or (state and state.startswith("search_results:")):
         _clear_user_state(user_id)
@@ -459,6 +479,22 @@ def handle_clear_dedication(update: Dict[str, Any]) -> None:
     send_message(chat_id, "✅ לעילוי נשמת נמחק")
 
 
+def handle_clear_image(update: Dict[str, Any]) -> None:
+    """Handle /clear_image command - clear saved image."""
+    chat_id = get_chat_id(update)
+    user_id = get_user_id(update)
+    if not chat_id or not user_id:
+        return
+
+    prefs = get_user_prefs(user_id)
+    if prefs.get("last_image_file_id"):
+        prefs["last_image_file_id"] = None
+        set_user_prefs(user_id, prefs)
+        send_message(chat_id, "✅ התמונה השמורה נמחקה")
+    else:
+        send_message(chat_id, "ℹ️ אין תמונה שמורה למחיקה")
+
+
 def handle_help(update: Dict[str, Any]) -> None:
     """Handle /help command - show available commands."""
     chat_id = get_chat_id(update)
@@ -468,19 +504,26 @@ def handle_help(update: Dict[str, Any]) -> None:
     help_text = (
         "📋 <b>פקודות זמינות:</b>\n\n"
         "/start - התחל מחדש\n"
-        "/poster - 📸 צור פוסטר עם תמונת ברירת מחדל\n"
+        "/poster - 📸 צור פוסטר (שבת/עומר לפי ההגדרות)\n"
+        "/omer - 🔢 צור פוסטר ספירת העומר\n"
         "/settings - ⚙️ הגדרות\n"
         "/reset - 🔄 איפוס להגדרות ברירת מחדל\n"
         "/clear_blessing - נקה טקסט ברכה\n"
-        "/clear_memorial - נקה לעילוי נשמת\n\n"
+        "/clear_memorial - נקה לעילוי נשמת\n"
+        "/clear_image - 🗑️ מחק תמונה שמורה\n\n"
         "💡 <b>שימוש:</b>\n"
-        "שלח תמונה ואני אצור ממנה פוסטר שבת!"
+        "שלח תמונה ואני אצור ממנה פוסטר!"
     )
     send_message(chat_id, help_text)
 
 
-def handle_poster(update: Dict[str, Any]) -> None:
-    """Handle /poster command - generate poster with default image."""
+def handle_poster(update: Dict[str, Any], force_omer: bool = False) -> None:
+    """Handle /poster command - generate poster with saved or default image.
+
+    Args:
+        update: Telegram update object
+        force_omer: If True, force omer mode regardless of user settings
+    """
     chat_id = get_chat_id(update)
     user_id = get_user_id(update)
     if not chat_id or not user_id:
@@ -493,10 +536,27 @@ def handle_poster(update: Dict[str, Any]) -> None:
         # Get user preferences
         prefs = get_user_prefs(user_id)
 
-        # Build payload for poster generation (no image = uses default)
+        # Determine if omer mode should be used
+        use_omer_mode = force_omer or prefs.get("poster_mode") == "omer"
+
+        # Build payload for poster generation
         payload = {
             "dateFormat": prefs.get("date_format", "both"),
         }
+
+        # Add omer mode if enabled
+        if use_omer_mode:
+            payload["omerMode"] = True
+
+        # Check if user has a saved image
+        saved_file_id = prefs.get("last_image_file_id")
+        used_saved_image = False
+        if saved_file_id:
+            # Download the saved image from Telegram
+            photo_bytes = download_photo(saved_file_id)
+            if photo_bytes:
+                payload["imageBase64"] = base64.b64encode(photo_bytes).decode("utf-8")
+                used_saved_image = True
 
         # Add cities if defined
         cities = prefs.get("cities")
@@ -522,14 +582,28 @@ def handle_poster(update: Dict[str, Any]) -> None:
         if dedication:
             payload["leiluyNeshama"] = dedication
 
-        # Generate poster with default image
+        # Generate poster
         poster_bytes = build_poster_from_payload(payload)
 
-        # Send poster back to user
-        send_photo(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!")
+        # Send poster back to user with appropriate caption
+        if use_omer_mode:
+            caption = "🔢 פוסטר ספירת העומר שלך מוכן!"
+            if used_saved_image:
+                caption += "\n📸 נוצר עם התמונה השמורה שלך."
+        else:
+            if used_saved_image:
+                caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!\n📸 נוצר עם התמונה השמורה שלך."
+            else:
+                caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!"
+        send_photo(chat_id, poster_bytes, caption)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+
+
+def handle_omer(update: Dict[str, Any]) -> None:
+    """Handle /omer command - generate omer poster directly."""
+    handle_poster(update, force_omer=True)
 
 
 def handle_photo(update: Dict[str, Any]) -> None:
@@ -565,11 +639,22 @@ def handle_photo(update: Dict[str, Any]) -> None:
         # Get user preferences
         prefs = get_user_prefs(user_id)
 
+        # Save the file_id for future use
+        prefs["last_image_file_id"] = file_id
+        set_user_prefs(user_id, prefs)
+
+        # Determine if omer mode should be used
+        use_omer_mode = prefs.get("poster_mode") == "omer"
+
         # Build payload for poster generation
         payload = {
             "imageBase64": base64.b64encode(photo_bytes).decode("utf-8"),
             "dateFormat": prefs.get("date_format", "both"),
         }
+
+        # Add omer mode if enabled
+        if use_omer_mode:
+            payload["omerMode"] = True
 
         # Add cities if defined
         cities = prefs.get("cities")
@@ -599,8 +684,12 @@ def handle_photo(update: Dict[str, Any]) -> None:
         # Generate poster
         poster_bytes = build_poster_from_payload(payload)
 
-        # Send poster back to user
-        send_photo(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!")
+        # Send poster back to user with appropriate caption
+        if use_omer_mode:
+            caption = "🔢 פוסטר ספירת העומר שלך מוכן!\n📸 התמונה נשמרה לשימוש חוזר."
+        else:
+            caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!\n📸 התמונה נשמרה לשימוש חוזר."
+        send_photo(chat_id, poster_bytes, caption)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
@@ -665,6 +754,10 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_start_poster(chat_id, user_id)
     elif data == "show:preview":
         handle_show_preview(chat_id, user_id)
+    elif data == "clear:image":
+        handle_clear_image_callback(chat_id, message_id, user_id)
+    elif data == "toggle:mode":
+        handle_toggle_mode(chat_id, message_id, user_id)
 
 
 def handle_edit_cities(chat_id: int, message_id: int, user_id: str) -> None:
@@ -781,11 +874,41 @@ def handle_edit_text(chat_id: int, message_id: int, user_id: str, field: str) ->
     )
 
 
+def handle_clear_image_callback(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle clear:image callback - clear saved image and refresh settings."""
+    prefs = get_user_prefs(user_id)
+    prefs["last_image_file_id"] = None
+    set_user_prefs(user_id, prefs)
+
+    # Show updated settings without saved image button
+    settings_text = format_settings(prefs)
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), False)
+    edit_message_with_keyboard(chat_id, message_id, settings_text + "\n\n✅ התמונה השמורה נמחקה", keyboard, parse_mode="HTML")
+
+
+def handle_toggle_mode(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle toggle:mode callback - toggle between shabbat and omer modes."""
+    prefs = get_user_prefs(user_id)
+
+    # Toggle the mode
+    current_mode = prefs.get("poster_mode", "shabbat")
+    new_mode = "shabbat" if current_mode == "omer" else "omer"
+    prefs["poster_mode"] = new_mode
+    set_user_prefs(user_id, prefs)
+
+    # Refresh settings display
+    settings_text = format_settings(prefs)
+    has_saved_image = bool(prefs.get("last_image_file_id"))
+    keyboard = _build_settings_keyboard(new_mode, has_saved_image)
+    edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
+
+
 def handle_settings_back(chat_id: int, message_id: int, user_id: str) -> None:
     """Return to main settings view."""
     prefs = get_user_prefs(user_id)
     settings_text = format_settings(prefs)
-    keyboard = _build_settings_keyboard()
+    has_saved_image = bool(prefs.get("last_image_file_id"))
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -793,7 +916,8 @@ def handle_start_settings(chat_id: int, user_id: str) -> None:
     """Handle start:settings callback - send settings as new message."""
     prefs = get_user_prefs(user_id)
     settings_text = format_settings(prefs)
-    keyboard = _build_settings_keyboard()
+    has_saved_image = bool(prefs.get("last_image_file_id"))
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image)
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -812,10 +936,17 @@ def handle_start_poster(chat_id: int, user_id: str) -> None:
         # Get user preferences
         prefs = get_user_prefs(user_id)
 
+        # Determine if omer mode should be used
+        use_omer_mode = prefs.get("poster_mode") == "omer"
+
         # Build payload for poster generation (no image = uses default)
         payload = {
             "dateFormat": prefs.get("date_format", "both"),
         }
+
+        # Add omer mode if enabled
+        if use_omer_mode:
+            payload["omerMode"] = True
 
         # Add cities if defined
         cities = prefs.get("cities")
@@ -844,8 +975,12 @@ def handle_start_poster(chat_id: int, user_id: str) -> None:
         # Generate poster with default image
         poster_bytes = build_poster_from_payload(payload)
 
-        # Send poster back to user
-        send_photo(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!")
+        # Send poster back to user with appropriate caption
+        if use_omer_mode:
+            caption = "🔢 פוסטר ספירת העומר שלך מוכן!"
+        else:
+            caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!"
+        send_photo(chat_id, poster_bytes, caption)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
@@ -855,9 +990,17 @@ def handle_show_preview(chat_id: int, user_id: str) -> None:
     """Handle show:preview callback - show preview poster with current settings."""
     try:
         prefs = get_user_prefs(user_id)
+
+        # Determine if omer mode should be used
+        use_omer_mode = prefs.get("poster_mode") == "omer"
+
         preview_payload = {
             "dateFormat": prefs.get("date_format", "both"),
         }
+
+        # Add omer mode if enabled
+        if use_omer_mode:
+            preview_payload["omerMode"] = True
 
         # Add cities if defined
         cities = prefs.get("cities")
@@ -885,7 +1028,11 @@ def handle_show_preview(chat_id: int, user_id: str) -> None:
 
         # Generate and send preview poster
         poster_bytes = build_poster_from_payload(preview_payload)
-        send_photo(chat_id, poster_bytes, "👆 כך ייראה הפוסטר שלך עם ההגדרות הנוכחיות")
+        if use_omer_mode:
+            caption = "👆 כך ייראה פוסטר העומר שלך עם ההגדרות הנוכחיות"
+        else:
+            caption = "👆 כך ייראה הפוסטר שלך עם ההגדרות הנוכחיות"
+        send_photo(chat_id, poster_bytes, caption)
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הדוגמה: {str(e)}")
 
@@ -933,7 +1080,8 @@ def handle_text_message(update: Dict[str, Any]) -> None:
 
         # Show updated settings
         settings_text = format_settings(prefs)
-        keyboard = _build_settings_keyboard()
+        has_saved_image = bool(prefs.get("last_image_file_id"))
+        keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image)
         send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
         return
 
@@ -967,6 +1115,8 @@ def process_update(update: Dict[str, Any]) -> None:
             handle_start(update)
         elif command == "/poster":
             handle_poster(update)
+        elif command == "/omer":
+            handle_omer(update)
         elif command == "/settings":
             handle_settings(update)
         elif command == "/reset":
@@ -979,6 +1129,8 @@ def process_update(update: Dict[str, Any]) -> None:
             handle_clear_dedication(update)
         elif command == "/clear_memorial":
             handle_clear_dedication(update)  # Alias for /clear_dedication
+        elif command == "/clear_image":
+            handle_clear_image(update)
         elif command == "/help":
             handle_help(update)
         return
@@ -1009,7 +1161,8 @@ def set_bot_commands() -> Dict[str, Any]:
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setMyCommands"
     commands = [
         {"command": "start", "description": "התחל מחדש"},
-        {"command": "poster", "description": "📸 צור פוסטר עם תמונת ברירת מחדל"},
+        {"command": "poster", "description": "📸 צור פוסטר שבת/עומר"},
+        {"command": "omer", "description": "🔢 צור פוסטר ספירת העומר"},
         {"command": "settings", "description": "⚙️ הגדרות"},
         {"command": "help", "description": "📋 עזרה"},
         {"command": "reset", "description": "🔄 איפוס להגדרות ברירת מחדל"},

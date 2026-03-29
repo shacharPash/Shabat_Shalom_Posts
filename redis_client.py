@@ -22,7 +22,9 @@ DEFAULT_PREFERENCES: Dict[str, Any] = {
     ],
     "date_format": "both",
     "blessing_text": None,
-    "dedication_text": None
+    "dedication_text": None,
+    "last_image_file_id": None,
+    "poster_mode": "shabbat"  # "shabbat" or "omer"
 }
 
 # Cached Redis client
