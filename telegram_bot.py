@@ -193,7 +193,7 @@ def _clear_user_state(user_id: str) -> None:
 # --- Keyboard Builders ---
 
 
-def _build_settings_keyboard(poster_mode: str = "shabbat", has_saved_image: bool = False, reminder_enabled: bool = False) -> List[List[Dict[str, str]]]:
+def _build_settings_keyboard(poster_mode: str = "shabbat", has_saved_image: bool = False, reminder_enabled: bool = False, nusach: str = "sefard") -> List[List[Dict[str, str]]]:
     """Build the main settings inline keyboard."""
     # Toggle button text based on current mode
     if poster_mode == "omer":
@@ -207,9 +207,17 @@ def _build_settings_keyboard(poster_mode: str = "shabbat", has_saved_image: bool
     else:
         reminder_button = {"text": "🔕 תזכורת יומית", "callback_data": "toggle:reminder"}
 
+    # Nusach display for button
+    nusach_display = {
+        "sefard": "ספרד",
+        "ashkenaz": "אשכנז",
+        "edot_hamizrach": "ע״מ"
+    }.get(nusach, "ספרד")
+
     keyboard = [
         [mode_button],
         [reminder_button],
+        [{"text": f"📖 נוסח: {nusach_display}", "callback_data": "edit:nusach"}],
         [{"text": "🏙️ ערוך ערים", "callback_data": "edit:cities"}],
         [{"text": "📅 פורמט תאריך", "callback_data": "edit:date"}],
         [
@@ -363,10 +371,19 @@ def format_settings(prefs: Dict[str, Any]) -> str:
     reminder_enabled = prefs.get("reminder_enabled", False)
     reminder_display = "🔔 פעיל" if reminder_enabled else "🔕 כבוי"
 
+    # Nusach display
+    nusach = prefs.get("nusach", "sefard")
+    nusach_display = {
+        "sefard": "ספרד",
+        "ashkenaz": "אשכנז",
+        "edot_hamizrach": "עדות המזרח"
+    }.get(nusach, "ספרד")
+
     return (
         "⚙️ <b>ההגדרות שלך:</b>\n\n"
         f"📋 <b>מצב:</b> {mode_display}\n"
         f"⏰ <b>תזכורת יומית:</b> {reminder_display}\n"
+        f"📖 <b>נוסח:</b> {nusach_display}\n"
         f"🏙 <b>ערים:</b> {', '.join(city_names)}\n"
         f"📅 <b>פורמט תאריך:</b> {date_format_display}\n"
         f"✨ <b>ברכה:</b> {blessing}\n"
@@ -419,7 +436,8 @@ def handle_settings(update: Dict[str, Any]) -> None:
     settings_text = format_settings(prefs)
     has_saved_image = bool(prefs.get("last_image_file_id"))
     reminder_enabled = prefs.get("reminder_enabled", False)
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled)
+    nusach = prefs.get("nusach", "sefard")
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach)
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -450,7 +468,8 @@ def handle_skip(update: Dict[str, Any]) -> None:
         settings_text = format_settings(prefs)
         has_saved_image = bool(prefs.get("last_image_file_id"))
         reminder_enabled = prefs.get("reminder_enabled", False)
-        keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled)
+        nusach = prefs.get("nusach", "sefard")
+        keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach)
         send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
     elif state in ("searching_city",) or (state and state.startswith("search_results:")):
         _clear_user_state(user_id)
@@ -611,6 +630,7 @@ def handle_poster(update: Dict[str, Any], force_omer: bool = False) -> None:
         # Add omer mode if enabled
         if use_omer_mode:
             payload["omerMode"] = True
+            payload["nusach"] = prefs.get("nusach", "sefard")
 
         # Check if user has a saved image
         saved_file_id = prefs.get("last_image_file_id")
@@ -719,6 +739,7 @@ def handle_photo(update: Dict[str, Any]) -> None:
         # Add omer mode if enabled
         if use_omer_mode:
             payload["omerMode"] = True
+            payload["nusach"] = prefs.get("nusach", "sefard")
 
         # Add cities if defined
         cities = prefs.get("cities")
@@ -824,6 +845,11 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_toggle_mode(chat_id, message_id, user_id)
     elif data == "toggle:reminder":
         handle_toggle_reminder(chat_id, message_id, user_id)
+    elif data == "edit:nusach":
+        handle_edit_nusach(chat_id, message_id, user_id)
+    elif data.startswith("nusach:"):
+        nusach_value = data.split(":", 1)[1]
+        handle_set_nusach(chat_id, message_id, user_id, nusach_value)
 
 
 def handle_edit_cities(chat_id: int, message_id: int, user_id: str) -> None:
@@ -949,7 +975,8 @@ def handle_clear_image_callback(chat_id: int, message_id: int, user_id: str) -> 
     # Show updated settings without saved image button
     settings_text = format_settings(prefs)
     reminder_enabled = prefs.get("reminder_enabled", False)
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), False, reminder_enabled)
+    nusach = prefs.get("nusach", "sefard")
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), False, reminder_enabled, nusach)
     edit_message_with_keyboard(chat_id, message_id, settings_text + "\n\n✅ התמונה השמורה נמחקה", keyboard, parse_mode="HTML")
 
 
@@ -967,7 +994,8 @@ def handle_toggle_mode(chat_id: int, message_id: int, user_id: str) -> None:
     settings_text = format_settings(prefs)
     has_saved_image = bool(prefs.get("last_image_file_id"))
     reminder_enabled = prefs.get("reminder_enabled", False)
-    keyboard = _build_settings_keyboard(new_mode, has_saved_image, reminder_enabled)
+    nusach = prefs.get("nusach", "sefard")
+    keyboard = _build_settings_keyboard(new_mode, has_saved_image, reminder_enabled, nusach)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -984,7 +1012,49 @@ def handle_toggle_reminder(chat_id: int, message_id: int, user_id: str) -> None:
     # Refresh settings display
     settings_text = format_settings(prefs)
     has_saved_image = bool(prefs.get("last_image_file_id"))
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, new_state)
+    nusach = prefs.get("nusach", "sefard")
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, new_state, nusach)
+    edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
+
+
+def handle_edit_nusach(chat_id: int, message_id: int, user_id: str) -> None:
+    """Show nusach selection keyboard."""
+    prefs = get_user_prefs(user_id)
+    current_nusach = prefs.get("nusach", "sefard")
+
+    # Build nusach selection keyboard with checkmark on current selection
+    keyboard = [
+        [
+            {"text": f"{'✓ ' if current_nusach == 'sefard' else ''}ספרד", "callback_data": "nusach:sefard"},
+            {"text": f"{'✓ ' if current_nusach == 'ashkenaz' else ''}אשכנז", "callback_data": "nusach:ashkenaz"},
+            {"text": f"{'✓ ' if current_nusach == 'edot_hamizrach' else ''}עדות המזרח", "callback_data": "nusach:edot_hamizrach"},
+        ],
+        [{"text": "⬅️ חזרה", "callback_data": "settings:back"}],
+    ]
+    edit_message_with_keyboard(
+        chat_id, message_id,
+        "📖 <b>בחר נוסח לספירת העומר:</b>\n\n"
+        "• <b>ספרד:</b> לָעֹמֶר\n"
+        "• <b>אשכנז:</b> בָּעֹמֶר\n"
+        "• <b>עדות המזרח:</b> לָעֹמֶר (מיקום שונה)",
+        keyboard, parse_mode="HTML"
+    )
+
+
+def handle_set_nusach(chat_id: int, message_id: int, user_id: str, nusach: str) -> None:
+    """Handle nusach selection."""
+    if nusach not in ("sefard", "ashkenaz", "edot_hamizrach"):
+        return
+
+    prefs = get_user_prefs(user_id)
+    prefs["nusach"] = nusach
+    set_user_prefs(user_id, prefs)
+
+    # Return to settings view
+    settings_text = format_settings(prefs)
+    has_saved_image = bool(prefs.get("last_image_file_id"))
+    reminder_enabled = prefs.get("reminder_enabled", False)
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -994,7 +1064,8 @@ def handle_settings_back(chat_id: int, message_id: int, user_id: str) -> None:
     settings_text = format_settings(prefs)
     has_saved_image = bool(prefs.get("last_image_file_id"))
     reminder_enabled = prefs.get("reminder_enabled", False)
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled)
+    nusach = prefs.get("nusach", "sefard")
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -1004,7 +1075,8 @@ def handle_start_settings(chat_id: int, user_id: str) -> None:
     settings_text = format_settings(prefs)
     has_saved_image = bool(prefs.get("last_image_file_id"))
     reminder_enabled = prefs.get("reminder_enabled", False)
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled)
+    nusach = prefs.get("nusach", "sefard")
+    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach)
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -1034,6 +1106,7 @@ def handle_start_poster(chat_id: int, user_id: str) -> None:
         # Add omer mode if enabled
         if use_omer_mode:
             payload["omerMode"] = True
+            payload["nusach"] = prefs.get("nusach", "sefard")
 
         # Add cities if defined
         cities = prefs.get("cities")
@@ -1169,7 +1242,8 @@ def handle_text_message(update: Dict[str, Any]) -> None:
         settings_text = format_settings(prefs)
         has_saved_image = bool(prefs.get("last_image_file_id"))
         reminder_enabled = prefs.get("reminder_enabled", False)
-        keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled)
+        nusach = prefs.get("nusach", "sefard")
+        keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach)
         send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
         return
 

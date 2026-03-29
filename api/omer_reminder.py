@@ -48,8 +48,9 @@ def send_omer_reminder(user_id: str) -> bool:
         payload = {
             "omerMode": True,
             "dateFormat": prefs.get("date_format", "both"),
+            "nusach": prefs.get("nusach", "sefard"),
         }
-        
+
         # Add cities if defined
         cities = prefs.get("cities")
         if cities:
