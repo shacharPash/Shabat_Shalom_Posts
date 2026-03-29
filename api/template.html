@@ -3952,6 +3952,13 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (omerGenerateBtnText) {
         omerGenerateBtnText.textContent = `צור פוסטר ליום ${currentOmerDay} לעומר`;
       }
+      // Also update the main generate button when in Omer mode
+      const mainBtnText = document.querySelector('#generateBtn .btn-text');
+      if (mainBtnText && omerModeEnabled) {
+        mainBtnText.textContent = `🌾 צור פוסטר ליום ${currentOmerDay} לעומר`;
+      } else if (mainBtnText && !omerModeEnabled) {
+        mainBtnText.textContent = '✨ צור זְמוּנָה!';
+      }
     }
 
     // Update Omer display with all UI components
@@ -4286,14 +4293,31 @@ CITY_CHECKBOXES_PLACEHOLDER
         citiesStep.style.display = omerModeEnabled ? 'none' : 'block';
       }
 
-      // Hide/show final step (generate button) in omer mode - Omer section has its own generate button
+      // Hide step numbers only in Omer mode (they should remain in Shabbat mode)
+      const stepNumbers = document.querySelectorAll('.step-number');
+      stepNumbers.forEach(stepNum => {
+        stepNum.style.display = omerModeEnabled ? 'none' : '';
+      });
+
+      // Show final step (generate button) in both modes - only one generate button at the end
       const stepFinal = document.querySelector('.step-final');
       if (stepFinal) {
-        stepFinal.style.display = omerModeEnabled ? 'none' : 'block';
+        stepFinal.style.display = 'block';
+        // Hide the step header (number + title) in Omer mode for cleaner look
+        const stepHeader = stepFinal.querySelector('.step-header');
+        if (stepHeader) {
+          stepHeader.style.display = omerModeEnabled ? 'none' : '';
+        }
+      }
+
+      // Hide Omer's internal generate button (we use the main one at the end)
+      const omerGenerateBtnEl = document.getElementById('omerGenerateBtn');
+      if (omerGenerateBtnEl) {
+        omerGenerateBtnEl.style.display = 'none';
       }
 
       // Hide/show advanced options button and section (עוד אפשרויות) based on omer mode
-      // Keep the rest of customization visible
+      // Keep the rest of customization visible (blessing, memorial)
       const toggleAdvancedBtn = document.getElementById('toggleAdvancedBtn');
       const advancedSection = document.getElementById('advancedSection');
       if (toggleAdvancedBtn) {
@@ -4301,6 +4325,16 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
       if (advancedSection) {
         advancedSection.style.display = omerModeEnabled ? 'none' : '';
+      }
+
+      // Hide date format button in Omer mode (it's Shabbat-specific)
+      const toggleDateFormatBtn = document.getElementById('toggleDateFormatBtn');
+      const dateFormatSection = document.getElementById('dateFormatSection');
+      if (toggleDateFormatBtn) {
+        toggleDateFormatBtn.style.display = omerModeEnabled ? 'none' : '';
+      }
+      if (dateFormatSection) {
+        dateFormatSection.style.display = omerModeEnabled ? 'none' : '';
       }
 
       // Update the "save link" hint text based on mode
@@ -4311,6 +4345,9 @@ CITY_CHECKBOXES_PLACEHOLDER
           copyLinkHint.innerHTML = 'רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎';
         }
       }
+
+      // Update generate button text for the current mode
+      updateGenerateButtonText();
 
       if (omerModeEnabled) {
         checkTestTimeParam();
