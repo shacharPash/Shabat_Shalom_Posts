@@ -6,6 +6,9 @@
     { "source": "/upcoming-events", "destination": "/api/upcoming_events" },
     { "source": "/api/telegram", "destination": "/api/telegram_webhook" },
     { "source": "/omer-info", "destination": "/api/omer_info" }
+  ],
+  "crons": [
+    { "path": "/api/omer_reminder", "schedule": "0 15 * * *" }
   ]
 }
 

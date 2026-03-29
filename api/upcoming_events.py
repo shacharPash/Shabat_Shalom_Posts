@@ -89,7 +89,8 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(events, ensure_ascii=False).encode("utf-8"))
 
         except Exception as e:
-            error_msg = json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8")
+            print(f"Upcoming events error: {e}")  # Log full details
+            error_msg = json.dumps({"error": "שגיאה בקבלת האירועים"}, ensure_ascii=False).encode("utf-8")
             self.send_response(500)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()

@@ -22,7 +22,10 @@ DEFAULT_PREFERENCES: Dict[str, Any] = {
     ],
     "date_format": "both",
     "blessing_text": None,
-    "dedication_text": None
+    "dedication_text": None,
+    "last_image_file_id": None,
+    "poster_mode": "shabbat",  # "shabbat" or "omer"
+    "reminder_enabled": False  # Daily Omer reminder
 }
 
 # Cached Redis client
@@ -84,13 +87,47 @@ def get_user_prefs(user_id: str) -> Dict[str, Any]:
 def set_user_prefs(user_id: str, prefs: Dict[str, Any]) -> None:
     """
     Save user preferences to Redis.
-    
+
     Args:
         user_id: The Telegram user ID
         prefs: Dictionary of user preferences
     """
     client = get_redis_client()
     key = f"{USER_PREFS_KEY_PREFIX}{user_id}"
-    
+
     client.set(key, json.dumps(prefs, ensure_ascii=False))
+
+
+def get_users_with_reminders_enabled() -> list:
+    """
+    Get all user IDs that have reminder_enabled=True.
+
+    Uses Redis SCAN to iterate over all user keys efficiently.
+
+    Returns:
+        list: List of user IDs (as strings) with reminders enabled
+    """
+    client = get_redis_client()
+    pattern = f"{USER_PREFS_KEY_PREFIX}*"
+    users_with_reminders = []
+
+    # Use SCAN for efficient iteration
+    cursor = 0
+    while True:
+        cursor, keys = client.scan(cursor, match=pattern, count=100)
+        for key in keys:
+            data = client.get(key)
+            if data:
+                try:
+                    prefs = json.loads(data)
+                    if prefs.get("reminder_enabled", False):
+                        # Extract user_id from key
+                        user_id = key.replace(USER_PREFS_KEY_PREFIX, "")
+                        users_with_reminders.append(user_id)
+                except json.JSONDecodeError:
+                    continue
+        if cursor == 0:
+            break
+
+    return users_with_reminders
 

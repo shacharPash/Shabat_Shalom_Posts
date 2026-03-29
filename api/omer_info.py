@@ -83,14 +83,16 @@ class handler(BaseHTTPRequestHandler):
 
         except ValueError as e:
             # Invalid date format
-            error_response = {"error": f"Invalid date format: {e}"}
+            print(f"Omer info validation error: {e}")  # Log full details
+            error_response = {"error": "פורמט תאריך לא תקין"}
             self.send_response(400)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
             self.wfile.write(json.dumps(error_response, ensure_ascii=False).encode("utf-8"))
 
         except Exception as e:
-            error_response = {"error": str(e)}
+            print(f"Omer info error: {e}")  # Log full details
+            error_response = {"error": "שגיאה בקבלת מידע העומר"}
             self.send_response(500)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()

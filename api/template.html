@@ -4011,8 +4011,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         // After sunset - counting currentDay now, nextDay in X hours
         omerTimelinePosition.innerHTML = `📍 אתה נמצא כאן (${currentTime})<br>בעוד ${hoursUntilNextSunset} שעות נספור יום ${nextDay}`;
       } else {
-        // Before sunset - counting currentDay in X hours
-        omerTimelinePosition.innerHTML = `📍 אתה נמצא כאן (${currentTime})<br>בעוד ${hoursUntilNextSunset} שעות ו-${minsUntilNextSunset} דקות נספור יום ${currentDay}`;
+        // Before sunset - nextDay will be counted at sunset
+        omerTimelinePosition.innerHTML = `📍 אתה נמצא כאן (${currentTime})<br>בעוד ${hoursUntilNextSunset} שעות ו-${minsUntilNextSunset} דקות נספור יום ${nextDay}`;
       }
     }
 

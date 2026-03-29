@@ -2,24 +2,87 @@ import json
 import os
 import sys
 from http.server import BaseHTTPRequestHandler
+from ipaddress import ip_address, ip_network
+from urllib.parse import urlparse
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Import other dependencies (may fail, but handler should still load)
 import base64
+import socket
 import tempfile
 from datetime import date
 from typing import Any, Dict, List, Optional
 
 import requests
 
+
+# Private/internal IP ranges to block for SSRF protection
+BLOCKED_IP_NETWORKS = [
+    ip_network("127.0.0.0/8"),      # Loopback
+    ip_network("10.0.0.0/8"),       # Private Class A
+    ip_network("172.16.0.0/12"),    # Private Class B
+    ip_network("192.168.0.0/16"),   # Private Class C
+    ip_network("169.254.0.0/16"),   # Link-local
+    ip_network("::1/128"),          # IPv6 loopback
+    ip_network("fc00::/7"),         # IPv6 private
+    ip_network("fe80::/10"),        # IPv6 link-local
+]
+
+
+def is_safe_url(url: str) -> bool:
+    """
+    Check if a URL is safe to fetch (not pointing to internal/private resources).
+
+    Returns True if the URL is safe, False if it could be an SSRF attack.
+    """
+    try:
+        parsed = urlparse(url)
+
+        # Only allow http and https schemes
+        if parsed.scheme not in ("http", "https"):
+            return False
+
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+
+        # Block localhost variants
+        hostname_lower = hostname.lower()
+        if hostname_lower in ("localhost", "localhost.localdomain"):
+            return False
+
+        # Resolve hostname to IP addresses
+        try:
+            addr_info = socket.getaddrinfo(hostname, None)
+            for family, _, _, _, sockaddr in addr_info:
+                ip_str = sockaddr[0]
+                ip = ip_address(ip_str)
+
+                # Check if IP is in any blocked network
+                for network in BLOCKED_IP_NETWORKS:
+                    if ip in network:
+                        return False
+        except socket.gaierror:
+            # DNS resolution failed - allow it (will fail at request time anyway)
+            pass
+
+        return True
+    except Exception:
+        # Any parsing error means unsafe URL
+        return False
+
 from make_shabbat_posts import generate_poster, DEFAULT_CITIES
 from cities import get_cities_list, build_city_lookup, map_city_payload
+from rate_limiter import RateLimiter
 
 # Load cities once at module level (cached internally)
 GEOJSON_CITIES = get_cities_list()
 CITY_BY_NAME = build_city_lookup(GEOJSON_CITIES)
+
+# Rate limiter: 10 requests per minute per IP
+_rate_limiter = RateLimiter(max_requests=10, window_seconds=60)
 
 
 def _detect_image_suffix(image_data: bytes) -> str:
@@ -153,11 +216,27 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
 
     # Priority 2: imageUrl
     elif image_url:
+        # SSRF protection: validate URL before fetching
+        if not is_safe_url(image_url):
+            raise ValueError("Unsafe imageUrl: URL points to internal/private resource")
+
         try:
             headers = {"User-Agent": "Mozilla/5.0"}
-            r = requests.get(image_url, timeout=15, headers=headers)
-            if r.status_code != 200:
-                raise RuntimeError("Failed to download image from imageUrl")
+            # Optimized timeout for Vercel free tier (10s limit) with simple retry
+            r = None
+            last_error = None
+            for attempt in range(2):
+                try:
+                    r = requests.get(image_url, timeout=6, headers=headers)
+                    if r.status_code == 200:
+                        break
+                except requests.RequestException as e:
+                    last_error = e
+                    if attempt == 0:
+                        continue  # Retry once
+                    raise
+            if r is None or r.status_code != 200:
+                raise RuntimeError(f"Failed to download image from imageUrl after retries: {last_error or 'HTTP error'}")
             # Detect format from magic bytes
             suffix = _detect_image_suffix(r.content)
             # Save to a temporary file (cloud-safe: uses /tmp)
@@ -252,8 +331,40 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
 class handler(BaseHTTPRequestHandler):
     """Vercel serverless function entrypoint for poster generation."""
 
+    def _get_client_ip(self) -> str:
+        """Extract client IP from request headers."""
+        # Check X-Forwarded-For header (set by Vercel/proxies)
+        forwarded_for = self.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # Take the first IP in the chain (original client)
+            return forwarded_for.split(",")[0].strip()
+
+        # Check X-Real-IP header
+        real_ip = self.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+
+        # Fall back to client address
+        return self.client_address[0] if self.client_address else "unknown"
+
     def do_POST(self):
         """Handle POST request to generate a poster."""
+        # Rate limiting check
+        client_ip = self._get_client_ip()
+        is_allowed, remaining = _rate_limiter.check(client_ip)
+
+        if not is_allowed:
+            error_body = b'{"error": "Rate limit exceeded. Try again later."}'
+            self.send_response(429)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Retry-After", "60")
+            self.end_headers()
+            self.wfile.write(error_body)
+            return
+
         try:
             # Read request body
             content_length = int(self.headers.get("Content-Length", 0))
@@ -279,20 +390,44 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(poster_bytes)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(poster_bytes)
 
         except json.JSONDecodeError as e:
-            error_msg = f"Invalid JSON: {e}".encode("utf-8")
+            print(f"JSON decode error: {e}")  # Log full details
+            error_msg = "שגיאה בפורמט הבקשה".encode("utf-8")
             self.send_response(400)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.end_headers()
+            self.wfile.write(error_msg)
+
+        except ValueError as e:
+            # Handle validation errors (e.g., unsafe URL for SSRF protection)
+            print(f"Validation error: {e}")  # Log full details
+            error_msg = "שגיאה בנתוני הבקשה".encode("utf-8")
+            self.send_response(400)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(error_msg)
 
         except Exception as e:
-            error_msg = f"Internal Server Error: {e}".encode("utf-8")
+            print(f"Internal error in poster generation: {e}")  # Log full details
+            error_msg = "שגיאה ביצירת הפוסטר".encode("utf-8")
             self.send_response(500)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(error_msg)
 
