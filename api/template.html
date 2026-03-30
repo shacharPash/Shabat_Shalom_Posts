@@ -2884,6 +2884,59 @@
       color: var(--text-secondary);
       margin-top: 2px;
     }
+    .omer-day-quick-jumps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    .omer-quick-btn {
+      border: 1px solid var(--input-border);
+      background: var(--button-bg);
+      color: var(--text-primary);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    .omer-quick-btn:hover {
+      border-color: #ffc107;
+      background: rgba(255, 193, 7, 0.1);
+    }
+    .omer-quick-btn.active {
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.24), rgba(255, 152, 0, 0.2));
+      border-color: #ff9800;
+      font-weight: 700;
+    }
+    .omer-today-card {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 152, 0, 0.35);
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.12), rgba(255, 152, 0, 0.08));
+      text-align: center;
+    }
+    .omer-today-card .title {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+    .omer-today-card .day {
+      font-size: 18px;
+      font-weight: 700;
+      color: #e65100;
+    }
+    .omer-today-card .meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+    [data-theme="dark"] .omer-today-card .day {
+      color: #ffb74d;
+    }
     .omer-sefirah-display {
       text-align: center;
       font-size: 14px;
@@ -3366,6 +3419,19 @@
             <span class="omer-day-label">לעומר</span>
           </div>
           <button type="button" class="omer-day-btn" id="omerDayPlus" title="יום הבא">+</button>
+        </div>
+        <div class="omer-day-quick-jumps" id="omerQuickJumps" aria-label="קפיצה מהירה לימי עומר מרכזיים">
+          <button type="button" class="omer-quick-btn" data-day="1">יום 1</button>
+          <button type="button" class="omer-quick-btn" data-day="7">יום 7</button>
+          <button type="button" class="omer-quick-btn" data-day="14">יום 14</button>
+          <button type="button" class="omer-quick-btn" data-day="21">יום 21</button>
+          <button type="button" class="omer-quick-btn" data-day="33">ל\"ג בעומר</button>
+          <button type="button" class="omer-quick-btn" data-day="49">יום 49</button>
+        </div>
+        <div class="omer-today-card" id="omerTodayCard" role="status" aria-live="polite">
+          <div class="title">היום לעומר</div>
+          <div class="day" id="omerTodayText">טוען...</div>
+          <div class="meta" id="omerTodayMeta">הזמנים לפי ירושלים</div>
         </div>
 
         <!-- Sefirah Display -->
@@ -3921,6 +3987,9 @@ CITY_CHECKBOXES_PLACEHOLDER
     const omerDayNumber = document.getElementById("omerDayNumber");
     const omerDayMinus = document.getElementById("omerDayMinus");
     const omerDayPlus = document.getElementById("omerDayPlus");
+    const omerQuickJumps = document.getElementById("omerQuickJumps");
+    const omerTodayText = document.getElementById("omerTodayText");
+    const omerTodayMeta = document.getElementById("omerTodayMeta");
     const omerSefirahDisplay = document.getElementById("omerSefirahDisplay");
     const omerDayInput = document.getElementById("omerDayInput");
     const omerTestTimeInput = document.getElementById("omerTestTimeInput");
@@ -4028,6 +4097,27 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     }
 
+    function setOmerDay(day, shouldRegenerate = true, shouldSave = true) {
+      const parsed = Number(day);
+      if (!Number.isFinite(parsed)) return;
+      const next = Math.max(1, Math.min(49, Math.round(parsed)));
+      if (next === currentOmerDay) return;
+      currentOmerDay = next;
+      updateDaySelector();
+      if (shouldRegenerate) regenerateOmerPreview();
+      if (shouldSave) localStorage.setItem('omerSelectedDay', currentOmerDay);
+    }
+
+    function updateQuickDayButtons() {
+      if (!omerQuickJumps) return;
+      const quickButtons = omerQuickJumps.querySelectorAll('.omer-quick-btn');
+      quickButtons.forEach((btn) => {
+        const btnDay = parseInt(btn.dataset.day || '0', 10);
+        btn.classList.toggle('active', btnDay === currentOmerDay);
+        btn.setAttribute('aria-pressed', btnDay === currentOmerDay ? 'true' : 'false');
+      });
+    }
+
     // Update Omer display with all UI components
     async function updateOmerDisplay() {
       // Build query params
@@ -4068,6 +4158,15 @@ CITY_CHECKBOXES_PLACEHOLDER
             // Update timeline - note: RTL means left is lower day, right is higher day
             updateTimeline(currentTime, sunsetTime, currentDay, nextDay);
 
+            if (omerTodayText) {
+              omerTodayText.textContent = `יום ${currentDay} לעומר`;
+            }
+            if (omerTodayMeta) {
+              omerTodayMeta.textContent = isAfterSunset
+                ? `כעת אחרי שקיעה • היום הנספר: ${currentDay}`
+                : `לפני שקיעה • בצאת הכוכבים יתחיל יום ${nextDay}`;
+            }
+
             // Set default day
             currentOmerDay = omerData.defaultDay || currentDay;
             updateDaySelector();
@@ -4082,6 +4181,8 @@ CITY_CHECKBOXES_PLACEHOLDER
             omerTimelineNextDay.textContent = '--';
             omerDayNumber.textContent = '--';
             omerCountText.textContent = 'לא בתקופת ספירת העומר';
+            if (omerTodayText) omerTodayText.textContent = 'לא בתקופת ספירת העומר';
+            if (omerTodayMeta) omerTodayMeta.textContent = 'הפיצ׳ר יחזור בעונת העומר';
           }
         } else {
           omerStatusNow.textContent = 'לא ניתן לחשב';
@@ -4160,6 +4261,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     function updateDaySelector() {
       omerDayNumber.textContent = currentOmerDay;
       omerDayInput.value = currentOmerDay;
+      updateQuickDayButtons();
 
       // Update sefirah display
       if (omerData && omerData.isOmerPeriod) {
@@ -4195,24 +4297,40 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Day selector button handlers
     omerDayMinus.addEventListener('click', () => {
-      if (currentOmerDay > 1) {
-        currentOmerDay--;
-        updateDaySelector();
-        regenerateOmerPreview();
-        // Save selected day to localStorage
-        localStorage.setItem('omerSelectedDay', currentOmerDay);
-      }
+      if (currentOmerDay > 1) setOmerDay(currentOmerDay - 1);
     });
 
     omerDayPlus.addEventListener('click', () => {
-      if (currentOmerDay < 49) {
-        currentOmerDay++;
-        updateDaySelector();
-        regenerateOmerPreview();
-        // Save selected day to localStorage
-        localStorage.setItem('omerSelectedDay', currentOmerDay);
-      }
+      if (currentOmerDay < 49) setOmerDay(currentOmerDay + 1);
     });
+
+    if (omerQuickJumps) {
+      omerQuickJumps.querySelectorAll('.omer-quick-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          setOmerDay(parseInt(btn.dataset.day || '1', 10));
+        });
+      });
+    }
+
+    if (omerDayNumber) {
+      omerDayNumber.setAttribute('tabindex', '0');
+      omerDayNumber.setAttribute('title', 'אפשר להשתמש בחיצים ימינה/שמאלה לשינוי יום');
+      omerDayNumber.addEventListener('keydown', (evt) => {
+        if (evt.key === 'ArrowRight' || evt.key === 'ArrowUp') {
+          evt.preventDefault();
+          setOmerDay(currentOmerDay + 1);
+        } else if (evt.key === 'ArrowLeft' || evt.key === 'ArrowDown') {
+          evt.preventDefault();
+          setOmerDay(currentOmerDay - 1);
+        } else if (evt.key === 'Home') {
+          evt.preventDefault();
+          setOmerDay(1);
+        } else if (evt.key === 'End') {
+          evt.preventDefault();
+          setOmerDay(49);
+        }
+      });
+    }
 
     // Regenerate preview with debounce
     let omerPreviewDebounce = null;
