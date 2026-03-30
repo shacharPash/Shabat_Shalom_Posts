@@ -629,40 +629,6 @@
     .selected-range-info.show {
       display: block;
     }
-    /* Date format selector */
-    .date-format-section {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #e0e0e0;
-    }
-    .date-format-selector {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .date-format-option {
-      padding: 8px 16px;
-      border-radius: 8px;
-      border: 2px solid var(--input-border);
-      background: var(--input-bg);
-      color: var(--text-primary);
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .date-format-option:hover {
-      border-color: var(--button-border);
-      background: var(--button-hover-bg);
-    }
-    .date-format-option:focus-visible {
-      outline: 2px solid var(--text-primary);
-      outline-offset: 2px;
-    }
-    .date-format-option.selected {
-      border-color: var(--input-border-focus);
-      background: var(--button-bg);
-      font-weight: 600;
-    }
     /* Manual override section */
     .override-section {
       margin-top: 20px;
@@ -2731,13 +2697,56 @@
       display: block;
       margin-bottom: 24px; /* Space between omer-info panel and the first step container */
     }
-    /* Current status display */
+    .omer-step-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    /* Step numbers in Omer mode should match Shabbat/Chag style (blue-purple circle with white number) */
+    .omer-step-label .num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c8ce8 0%, #5c6bc0 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(92, 107, 192, 0.3);
+    }
+    [data-theme="dark"] .omer-step-label .num {
+      background: linear-gradient(135deg, #7986cb 0%, #5c6bc0 100%);
+      box-shadow: 0 2px 8px rgba(92, 107, 192, 0.4);
+    }
+    .omer-step-label .text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    /* Omer step containers - hidden by default, shown when in Omer mode */
+    .omer-step {
+      display: none;
+    }
+    .omer-step.show {
+      display: block;
+    }
+    /* Remove label from inside nusach section (now in step header) */
+    .omer-nusach-section .omer-nusach-label {
+      display: none;
+    }
+    .omer-step-help {
+      display: none; /* Hidden - replaced by minimal section */
+    }
+    .omer-step-action-hint {
+      display: none; /* Hidden - we now use inline compact selector */
+    }
+    /* Current status display (legacy - hidden, replaced by today card) */
     .omer-status-display {
-      text-align: center;
-      padding: 12px 16px;
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(255, 152, 0, 0.12) 100%);
-      border-radius: 10px;
-      margin-bottom: 14px;
+      display: none;
     }
     .omer-status-now {
       font-size: 15px;
@@ -2764,39 +2773,50 @@
     }
     /* Timeline bar */
     .omer-timeline {
-      margin: 16px 0;
+      margin: 10px 0 12px;
       padding: 12px;
       background: var(--container-bg);
       border-radius: 10px;
       border: 1px solid var(--input-border);
     }
+    .omer-timeline-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
     .omer-timeline-bar {
       position: relative;
-      height: 6px;
-      /* Jewish day: sunset (left) → night → sunrise → day → sunset (right) */
-      /* 0% = צאת הכוכבים, ~25% = חצות, ~35% = זריחה, 50% = צהריים, ~90% = שקיעה, 100% = צאת הכוכבים הבא */
-      background: linear-gradient(90deg,
-        #1a237e 0%,      /* צאת הכוכבים - לילה */
-        #1a237e 25%,     /* חצות - עדיין לילה */
-        #3f51b5 30%,     /* לפני זריחה */
-        #ffc107 35%,     /* זריחה */
-        #ffeb3b 50%,     /* צהריים */
-        #ffc107 75%,     /* אחה"צ */
-        #3f51b5 90%,     /* שקיעה */
-        #1a237e 100%     /* צאת הכוכבים הבא */
-      );
-      border-radius: 3px;
-      margin: 10px 0 6px;
+      height: 10px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      margin: 6px 0;
+      overflow: hidden;
+    }
+    [data-theme="dark"] .omer-timeline-bar {
+      background: #3a3f4f;
+    }
+    .omer-timeline-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 30%;
+      background: linear-gradient(90deg, #ff9800, #ffc107);
+      border-radius: 999px;
+      transition: width 0.3s ease;
     }
     .omer-timeline-marker {
       position: absolute;
-      top: -6px;
-      width: 18px;
-      height: 18px;
+      top: 50%;
+      width: 14px;
+      height: 14px;
       background: white;
-      border: 3px solid #e65100;
+      border: 2px solid #e65100;
       border-radius: 50%;
-      transform: translateX(-50%);
+      transform: translate(-50%, -50%);
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       transition: left 0.3s ease;
     }
@@ -2804,95 +2824,103 @@
       background: var(--container-bg);
       border-color: #ffb74d;
     }
-    .omer-timeline-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 8px;
-    }
-    .omer-timeline-label {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-    }
-    .omer-timeline-label .icon {
-      font-size: 16px;
-    }
-    .omer-timeline-label .day {
-      font-weight: 600;
-      font-size: 11px;
-    }
     .omer-timeline-position {
       text-align: center;
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-tertiary);
-      margin-top: 4px;
+      margin-top: 8px;
     }
-    /* Day selector */
+    /* Legacy day selector - hidden, replaced by compact inline selector */
     .omer-day-selector {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 12px;
-      background: var(--container-bg);
-      border-radius: 10px;
-      border: 1px solid var(--input-border);
-      margin-bottom: 12px;
+      display: none;
     }
     .omer-day-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 2px solid var(--input-border);
-      background: var(--button-bg);
-      color: var(--text-primary);
-      font-size: 16px;
-      cursor: pointer;
+      display: none;
+    }
+    .omer-day-number {
+      display: none;
+    }
+    .omer-day-label {
+      display: none;
+    }
+    /* Legacy today card - hidden, replaced by minimal info section */
+    .omer-today-card {
+      display: none;
+    }
+    /* Sefirah display - hidden from menu (shown only in final poster) */
+    .omer-sefirah-display {
+      display: none;
+    }
+    /* Day selector button group - similar to mode-button-group */
+    .omer-day-button-group {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
+      background: var(--input-bg);
+      border-radius: 12px;
+      border: 2px solid var(--input-border);
+      padding: 4px;
+      gap: 4px;
+      transition: all 0.3s ease;
+      margin-bottom: 16px;
     }
-    .omer-day-btn:hover:not(:disabled) {
-      border-color: #ffc107;
-      background: rgba(255, 193, 7, 0.1);
-    }
-    .omer-day-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .omer-day-value {
+    .omer-day-button {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-width: 100px;
-    }
-    .omer-day-number {
-      font-size: 28px;
-      font-weight: 700;
-      color: #e65100;
-      line-height: 1;
-    }
-    [data-theme="dark"] .omer-day-number {
-      color: #ffb74d;
-    }
-    .omer-day-label {
-      font-size: 12px;
+      justify-content: center;
+      gap: 2px;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
       color: var(--text-secondary);
-      margin-top: 2px;
-    }
-    .omer-sefirah-display {
-      text-align: center;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
-      color: var(--text-secondary);
-      margin-top: 8px;
-      padding: 8px;
-      background: rgba(255, 193, 7, 0.08);
-      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .omer-day-button:hover:not(.active) {
+      background: var(--button-hover-bg);
+    }
+    .omer-day-button:focus-visible {
+      outline: 2px solid var(--input-border-focus);
+      outline-offset: -2px;
+    }
+    .omer-day-button.active {
+      background: linear-gradient(135deg, #ff9800 0%, #ffc107 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+    }
+    .omer-day-button .day-btn-icon {
+      font-size: 16px;
+    }
+    .omer-day-button .day-btn-label {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .omer-day-button .day-btn-day {
+      font-size: 11px;
+      opacity: 0.85;
+    }
+    .omer-day-button.active .day-btn-day {
+      opacity: 1;
+    }
+    [data-theme="dark"] .omer-day-button.active {
+      background: linear-gradient(135deg, #f57c00 0%, #ffb300 100%);
+    }
+    /* Hidden compact selector - replaced by button group */
+    .omer-compact-selector {
+      display: none;
+    }
+    .omer-customization-step {
+      display: none;
+      margin-top: 12px;
+      margin-bottom: 8px;
+    }
+    .omer-customization-step.show {
+      display: block;
     }
     /* Nusach selector */
     .omer-nusach-section {
@@ -3055,61 +3083,61 @@
       max-width: 300px;
       margin: 0 auto;
     }
-    /* Instant text-based preview */
+    /* Instant preview mock - close to final poster look */
     .omer-preview-text {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
+      justify-content: space-between;
       aspect-ratio: 1 / 1;
-      background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+      background: #1a237e;
+      background-size: cover;
+      background-position: center;
       border-radius: 12px;
       color: white;
-      padding: 16px;
-      text-align: center;
+      padding: 12px;
+      text-align: right;
       direction: rtl;
       position: relative;
       overflow: hidden;
     }
-    .omer-preview-text::before {
-      content: '🌾';
+    .omer-preview-text::after {
+      content: '';
       position: absolute;
-      top: 8px;
-      right: 8px;
-      font-size: 20px;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.58) 100%);
+      pointer-events: none;
+    }
+    .omer-preview-top,
+    .omer-preview-bottom {
+      position: relative;
+      z-index: 1;
     }
     .omer-preview-text .omer-title {
-      font-size: 14px;
-      font-weight: bold;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
       color: #ffc107;
-    }
-    .omer-preview-text .omer-day-num {
-      font-size: 48px;
-      font-weight: bold;
-      line-height: 1;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     .omer-preview-text .omer-day-label {
       font-size: 16px;
-      color: #ffc107;
+      font-weight: 700;
+      line-height: 1;
     }
     .omer-preview-text .omer-sefirah {
-      font-size: 12px;
+      font-size: 13px;
       color: rgba(255,255,255,0.9);
       background: rgba(255,255,255,0.15);
-      padding: 4px 12px;
-      border-radius: 12px;
-      margin-top: 4px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      width: fit-content;
     }
     .omer-preview-text .omer-loading-hint {
-      font-size: 10px;
-      color: rgba(255,255,255,0.6);
-      position: absolute;
-      bottom: 8px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.85);
       display: flex;
       align-items: center;
       gap: 6px;
+      margin-top: 8px;
     }
     .omer-preview-text .mini-spinner {
       width: 12px;
@@ -3218,9 +3246,9 @@
         <span id="themeIcon">🌙</span>
       </button>
       <div class="logo"><img src="/static/watermark.png" alt="לוגו" class="logo-img" /></div>
-      <h1>יוצר זְמוּנָה לשבת וחג</h1>
-      <div class="subtitle">צור תמונה יפה עם זמני הדלקת נרות לשבת או לחג</div>
-      <div class="subtitle" style="font-size: 11px; opacity: 0.7;">זְמוּנָה = זְמַן + תְּמוּנָה 🕐🖼️</div>
+      <h1 id="pageTitle">יוצר זְמוּנָה לשבת וחג</h1>
+      <div class="subtitle" id="pageSubtitle">צור תמונה יפה עם זמני הדלקת נרות לשבת או לחג</div>
+      <div class="subtitle shabbat-only-text" style="font-size: 11px; opacity: 0.7;">זְמוּנָה = זְמַן + תְּמוּנָה 🕐🖼️</div>
     </div>
 
     <!-- Live Preview Section (hidden - replaced by floating) -->
@@ -3329,83 +3357,99 @@
         <div class="disabled-text">לא סופרים את העומר כרגע</div>
       </div>
 
-      <!-- Omer content wrapper - hidden when not in period -->
+      <!-- Omer content wrapper - hidden when not in period (contains hidden legacy elements) -->
       <div class="omer-content-wrapper" id="omerContentWrapper">
-        <!-- Current Status Text -->
-        <div class="omer-status-display" id="omerStatusDisplay">
-          <div class="omer-status-now" id="omerStatusNow">טוען...</div>
-          <div class="omer-status-sunset" id="omerStatusSunset"></div>
-          <div class="omer-jerusalem-note">הזמנים לפי ירושלים</div>
-        </div>
-
-        <!-- Timeline Bar -->
-        <div class="omer-timeline" id="omerTimeline">
+        <!-- Hidden legacy elements for backward compatibility -->
+        <div class="omer-timeline" id="omerTimeline" style="display: none;">
+          <div class="omer-timeline-header">
+            <span id="omerTimelineNextDay"></span>
+            <span id="omerTimelineDay"></span>
+          </div>
           <div class="omer-timeline-bar">
-            <div class="omer-timeline-marker" id="omerTimelineMarker" style="left: 30%;"></div>
+            <div class="omer-timeline-progress" id="omerTimelineProgress"></div>
+            <div class="omer-timeline-marker" id="omerTimelineMarker"></div>
           </div>
-          <div class="omer-timeline-labels">
-            <!-- RTL with flex: first child on right, last on left. We want: Left=lower, Right=higher -->
-            <!-- So: first item (right in RTL) = higher/next day, second item (left in RTL) = lower/current day -->
-            <div class="omer-timeline-label">
-              <span class="icon">✨</span>
-              <span class="day" id="omerTimelineNextDay">יום 19</span>
-            </div>
-            <div class="omer-timeline-label">
-              <span class="icon">✨</span>
-              <span class="day" id="omerTimelineDay">יום 18</span>
-            </div>
-          </div>
-          <div class="omer-timeline-position" id="omerTimelinePosition">אתה כאן</div>
+          <div class="omer-timeline-position" id="omerTimelinePosition"></div>
         </div>
-
-        <!-- Day Selector -->
-        <div class="omer-day-selector" id="omerDaySelector">
-          <button type="button" class="omer-day-btn" id="omerDayMinus" title="יום קודם">−</button>
-          <div class="omer-day-value">
-            <span class="omer-day-number" id="omerDayNumber">--</span>
-            <span class="omer-day-label">לעומר</span>
-          </div>
-          <button type="button" class="omer-day-btn" id="omerDayPlus" title="יום הבא">+</button>
+        <div class="omer-today-card" id="omerTodayCard" style="display: none;">
+          <div class="day" id="omerTodayText"></div>
+          <div class="meta" id="omerTodayMeta"></div>
         </div>
+        <div class="omer-day-selector" id="omerDaySelector" style="display: none;">
+          <button type="button" class="omer-day-btn" id="omerDayMinus">−</button>
+          <span class="omer-day-number" id="omerDayNumber">1</span>
+          <button type="button" class="omer-day-btn" id="omerDayPlus">+</button>
+        </div>
+        <div class="omer-step-action-hint" id="omerActionHint" style="display: none;"></div>
+        <div class="omer-sefirah-display" id="omerSefirahDisplay" style="display: none;"></div>
+        <button type="button" class="omer-generate-btn" id="omerGenerateBtn" style="display: none;">
+          <span>🌾</span>
+          <span id="omerGenerateBtnText">צור פוסטר</span>
+        </button>
+        <input type="hidden" id="omerDateInput" class="omer-date-input" />
+        <input type="hidden" id="omerDayInput" value="" />
+        <!-- Hidden compact selector - kept for backward compatibility -->
+        <div class="omer-compact-selector" id="omerCompactSelector" style="display: none;">
+          <input type="number" id="omerDayInputCompact" class="day-input" min="1" max="49" value="1" />
+        </div>
+        <!-- Test mode banner - only shown when ?testTime= URL param exists -->
+        <div class="omer-test-mode" id="omerTestMode" style="display: none;">🧪 מצב בדיקה - זמן מדומה</div>
+        <span class="omer-count-text" id="omerCountText" style="display: none;"></span>
+      </div>
+    </div>
 
-        <!-- Sefirah Display -->
-        <div class="omer-sefirah-display" id="omerSefirahDisplay">חֶסֶד שֶׁבְּחֶסֶד</div>
+    <!-- Omer Step 1: Day Selection (only visible in Omer mode) -->
+    <div class="step-container omer-step" id="omerDayStep">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-info">
+          <div class="step-title">🌾 בחירת יום</div>
+          <div class="step-subtitle" id="omerTodayInfoContent">טוען...</div>
+        </div>
+      </div>
+      <div class="step-content">
+        <div class="omer-day-button-group" id="omerDayButtonGroup">
+          <button type="button" class="omer-day-button" id="omerDayNowBtn" data-day-type="now">
+            <span class="day-btn-icon">📅</span>
+            <span class="day-btn-label" id="omerDayNowLabel">יום X</span>
+            <span class="day-btn-day" id="omerDayNowText">(XX.X)</span>
+          </button>
+          <button type="button" class="omer-day-button active" id="omerDayNextBtn" data-day-type="next">
+            <span class="day-btn-icon">🌙</span>
+            <span class="day-btn-label" id="omerDayNextLabel">יום X+1</span>
+            <span class="day-btn-day" id="omerDayNextText">(XX.X)</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
-        <!-- Nusach Selector -->
+    <!-- Omer Step 2: Nusach Selection (only visible in Omer mode) -->
+    <div class="step-container omer-step" id="omerNusachStep">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-info">
+          <div class="step-title">📜 בחירת נוסח</div>
+          <div class="step-subtitle">בחרו את הנוסח לברכה</div>
+        </div>
+      </div>
+      <div class="step-content">
         <div class="omer-nusach-section" id="omerNusachSection">
-          <div class="omer-nusach-label">נוסח</div>
           <div class="omer-nusach-group">
             <button type="button" class="omer-nusach-btn" data-nusach="ashkenaz">אשכנז</button>
             <button type="button" class="omer-nusach-btn active" data-nusach="sefard">ספרד</button>
             <button type="button" class="omer-nusach-btn" data-nusach="edot_hamizrach">ע"מ</button>
           </div>
         </div>
-
-        <!-- Generate Button - Clearer text -->
-        <button type="button" class="omer-generate-btn" id="omerGenerateBtn">
-          <span>🌾</span>
-          <span id="omerGenerateBtnText">צור פוסטר ליום X לעומר</span>
-        </button>
-
-        <!-- Hidden input for backward compatibility -->
-        <input type="hidden" id="omerDateInput" class="omer-date-input" />
-        <input type="hidden" id="omerDayInput" value="" />
-
-        <!-- Test Mode Indicator -->
-        <div class="omer-test-mode" id="omerTestMode">🧪 מצב בדיקה - זמן מדומה</div>
-
-        <!-- Hidden legacy omer count text for compatibility -->
-        <span class="omer-count-text" id="omerCountText" style="display: none;"></span>
       </div>
     </div>
 
     <!-- Step 1: Image -->
-    <div class="step-container">
+    <div class="step-container" id="imageStepContainer">
       <div class="step-header">
-        <div class="step-number">1</div>
+        <div class="step-number" id="imageStepNumber">1</div>
         <div class="step-info">
-          <div class="step-title">תמונת רקע</div>
-          <div class="step-subtitle">לא חובה - יש תמונת ברירת מחדל יפה</div>
+          <div class="step-title" id="imageStepTitle">תמונת רקע</div>
+          <div class="step-subtitle" id="imageStepSubtitle">לא חובה - יש תמונת ברירת מחדל יפה</div>
         </div>
       </div>
       <div class="step-content">
@@ -3529,6 +3573,12 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
+    <div class="omer-customization-step" id="omerCustomizationStep">
+      <div class="omer-step-label">
+        <span class="num">4</span>
+        <span class="text">התאמה אישית</span>
+      </div>
+    </div>
     <!-- Customization Panel (unified wrapper) -->
     <div class="customization-wrapper">
       <button type="button" id="customizationToggle" class="customization-toggle">
@@ -3547,10 +3597,6 @@ CITY_CHECKBOXES_PLACEHOLDER
             <span class="customize-icon">🕯️</span>
             <span class="customize-text">הוסף הקדשה (לעילוי נשמת)</span>
           </button>
-        <button type="button" class="customize-btn" id="toggleDateFormatBtn" data-section="dateFormat">
-          <span class="customize-icon">📅</span>
-          <span class="customize-text">פורמט תאריך</span>
-        </button>
         <button type="button" class="customize-btn" id="toggleAdvancedBtn" data-section="advanced">
           <span class="customize-icon">⚙️</span>
           <span class="customize-text">עוד אפשרויות</span>
@@ -3560,10 +3606,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       <!-- Blessing Section -->
       <div id="blessingSection" class="customize-section">
         <div class="form-group">
-          <label for="message">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
+          <label for="message" id="blessingLabel">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
           <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
-          <div class="hint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
-          <div class="field-location-hint">מופיע מתחת לטבלת הזמנים</div>
+          <div class="hint shabbat-only-text" id="blessingHint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
+          <div class="field-location-hint" id="blessingLocationHint">מופיע מתחת לטבלת הזמנים</div>
         </div>
       </div>
 
@@ -3573,18 +3619,6 @@ CITY_CHECKBOXES_PLACEHOLDER
           <label for="neshama">🕯️ לעילוי נשמת <span class="optional-hint">(לא חובה)</span></label>
           <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
           <div class="field-location-hint">מופיע בתחתית הזמונה</div>
-        </div>
-      </div>
-
-      <!-- Date Format Section -->
-      <div id="dateFormatSection" class="customize-section">
-        <div class="form-group">
-          <label>📅 פורמט תאריך בזְמוּנָה</label>
-          <div id="dateFormatSelector" class="date-format-selector">
-            <div class="date-format-option" data-format="gregorian">לועזי</div>
-            <div class="date-format-option" data-format="hebrew">עברי</div>
-            <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
-          </div>
         </div>
       </div>
 
@@ -3780,7 +3814,6 @@ CITY_CHECKBOXES_PLACEHOLDER
     const neshamaInput = document.getElementById("neshama");
     const messageInput = document.getElementById("message");
     const MAX_CITIES = 8;
-    const dateFormatSelector = document.getElementById("dateFormatSelector");
     const copyLinkBtn = document.getElementById("copyLinkBtn");
     const copyLinkIcon = document.getElementById("copyLinkIcon");
     const copyLinkText = document.getElementById("copyLinkText");
@@ -3860,7 +3893,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     let selectedDates = []; // Array of selected dates
     let allEvents = []; // Store all events
     let selectedStartIndex = 0; // Index of the selected start date
-    let selectedDateFormat = "both"; // "gregorian", "hebrew", or "both" - default is both
+    const selectedDateFormat = "both"; // Always use both (Hebrew + Gregorian dates)
     let loadedFromUrl = false; // Track if form was pre-filled from URL
 
     // Crop state - stores crop position (0-1) for each image
@@ -3870,15 +3903,6 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Ordered list of selected cities (maintains user-defined order)
     let orderedSelectedCities = []; // Array of city names in user's preferred order
-
-    // Date format selector
-    dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
-      opt.addEventListener('click', () => {
-        dateFormatSelector.querySelectorAll('.date-format-option').forEach(o => o.classList.remove('selected'));
-        opt.classList.add('selected');
-        selectedDateFormat = opt.dataset.format;
-      });
-    });
 
     // Customization panel toggle
     if (customizationToggle && customizationPanel) {
@@ -3894,7 +3918,6 @@ CITY_CHECKBOXES_PLACEHOLDER
         const sectionMap = {
           'blessing': 'blessingSection',
           'memorial': 'memorialSection',
-          'dateFormat': 'dateFormatSection',
           'advanced': 'advancedSection'
         };
         const sectionId = sectionMap[btn.dataset.section];
@@ -3912,15 +3935,16 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // ===== Omer Mode Functionality =====
 
-    const omerStatusNow = document.getElementById("omerStatusNow");
-    const omerStatusSunset = document.getElementById("omerStatusSunset");
     const omerTimelineMarker = document.getElementById("omerTimelineMarker");
+    const omerTimelineProgress = document.getElementById("omerTimelineProgress");
     const omerTimelineDay = document.getElementById("omerTimelineDay");
     const omerTimelineNextDay = document.getElementById("omerTimelineNextDay");
     const omerTimelinePosition = document.getElementById("omerTimelinePosition");
     const omerDayNumber = document.getElementById("omerDayNumber");
     const omerDayMinus = document.getElementById("omerDayMinus");
     const omerDayPlus = document.getElementById("omerDayPlus");
+    const omerTodayText = document.getElementById("omerTodayText");
+    const omerTodayMeta = document.getElementById("omerTodayMeta");
     const omerSefirahDisplay = document.getElementById("omerSefirahDisplay");
     const omerDayInput = document.getElementById("omerDayInput");
     const omerTestTimeInput = document.getElementById("omerTestTimeInput");
@@ -3929,11 +3953,28 @@ CITY_CHECKBOXES_PLACEHOLDER
     const omerContentWrapper = document.getElementById("omerContentWrapper");
     const omerGenerateBtn = document.getElementById("omerGenerateBtn");
     const omerGenerateBtnText = document.getElementById("omerGenerateBtnText");
+    const omerActionHint = document.getElementById("omerActionHint");
     const modeButtonGroup = document.querySelector('.mode-button-group');
+    const imageStepNumber = document.getElementById('imageStepNumber');
+    const imageStepTitle = document.getElementById('imageStepTitle');
+    const imageStepSubtitle = document.getElementById('imageStepSubtitle');
+    const omerCustomizationStep = document.getElementById('omerCustomizationStep');
+    // New compact day input (hidden, for backward compatibility)
+    const omerDayInputCompact = document.getElementById('omerDayInputCompact');
+    const omerTodayInfoContent = document.getElementById('omerTodayInfoContent');
+    // New day button group elements
+    const omerDayNowBtn = document.getElementById('omerDayNowBtn');
+    const omerDayNextBtn = document.getElementById('omerDayNextBtn');
+    const omerDayNowLabel = document.getElementById('omerDayNowLabel');
+    const omerDayNextLabel = document.getElementById('omerDayNextLabel');
+    const omerDayNowText = document.getElementById('omerDayNowText');
+    const omerDayNextText = document.getElementById('omerDayNextText');
 
     let omerPreviewUrl = null; // Store the generated preview URL
     let omerPreviewLoading = false;
     let currentOmerDay = 1; // Currently selected Omer day
+    let omerCurrentDayValue = 1; // The "now" day (before sunset)
+    let omerNextDayValue = 2; // The "tonight" day (after sunset)
     let omerData = null; // Store fetched Omer data
     let testTimeParam = null; // Store test time from URL
     let isOmerPeriodAvailable = false; // Track if Omer button should be visible
@@ -3948,6 +3989,8 @@ CITY_CHECKBOXES_PLACEHOLDER
       const urlParams = new URLSearchParams(window.location.search);
       testTimeParam = urlParams.get('testTime');
       if (testTimeParam) {
+        // Show test mode banner (override inline display:none)
+        omerTestMode.style.display = 'block';
         omerTestMode.classList.add('show');
         // Set the test time input
         if (omerTestTimeInput) {
@@ -4019,6 +4062,9 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (omerGenerateBtnText) {
         omerGenerateBtnText.textContent = `צור פוסטר ליום ${currentOmerDay} לעומר`;
       }
+      if (omerActionHint) {
+        omerActionHint.textContent = `צור פוסטר ליום ${currentOmerDay} לעומר`;
+      }
       // Also update the main generate button when in Omer mode
       const mainBtnText = document.querySelector('#generateBtn .btn-text');
       if (mainBtnText && omerModeEnabled) {
@@ -4026,6 +4072,17 @@ CITY_CHECKBOXES_PLACEHOLDER
       } else if (mainBtnText && !omerModeEnabled) {
         mainBtnText.textContent = '✨ צור זְמוּנָה!';
       }
+    }
+
+    function setOmerDay(day, shouldRegenerate = true, shouldSave = true) {
+      const parsed = Number(day);
+      if (!Number.isFinite(parsed)) return;
+      const next = Math.max(1, Math.min(49, Math.round(parsed)));
+      if (next === currentOmerDay) return;
+      currentOmerDay = next;
+      updateDaySelector();
+      if (shouldRegenerate) regenerateOmerPreview();
+      if (shouldSave) localStorage.setItem('omerSelectedDay', currentOmerDay);
     }
 
     // Update Omer display with all UI components
@@ -4046,51 +4103,118 @@ CITY_CHECKBOXES_PLACEHOLDER
           updateOmerContentVisibility(omerData.isOmerPeriod);
 
           if (omerData.isOmerPeriod) {
-            // Update status text
+            // Get new API fields
             const currentTime = omerData.currentTime || '--:--';
-            const sunsetTime = omerData.sunsetTime || '--:--';
-            const nextSunsetTime = omerData.nextSunsetTime || sunsetTime;
-            const currentDay = omerData.currentDay || omerData.defaultDay;
-            const nextDay = omerData.nextDay || (currentDay + 1);
-            const isAfterSunset = omerData.isAfterSunset || false;
+            const tzetTime = omerData.tzetTime || omerData.sunsetTime || '--:--';
+            const canCountWithBlessing = omerData.canCountWithBlessing;
+            const todayOmerDay = omerData.todayOmerDay;
+            const posterDay = omerData.posterDay;
 
-            // Different text based on whether we're before or after sunset
-            if (isAfterSunset) {
-              // After sunset - we're actively counting currentDay now
-              omerStatusNow.textContent = `עכשיו (${currentTime}) - סופרים יום ${currentDay} לעומר`;
-              omerStatusSunset.textContent = `מחר בצאת הכוכבים (${nextSunsetTime}) נספור יום ${nextDay}`;
-            } else {
-              // Before sunset - currentDay will be counted at sunset
-              omerStatusNow.textContent = `עכשיו (${currentTime}) - יום ${currentDay} לעומר`;
-              omerStatusSunset.textContent = `בצאת הכוכבים (${sunsetTime}) נספור יום ${nextDay}`;
+            // For backward compatibility
+            const currentDay = omerData.currentDay || todayOmerDay;
+            const nextDay = omerData.nextDay || (currentDay + 1);
+
+            // Update timeline (legacy - hidden but kept for compatibility)
+            updateTimeline(currentTime, tzetTime, currentDay, nextDay);
+
+            // Calculate dates for display
+            const today = testTimeParam ? new Date(testTimeParam) : new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            // Format date as DD.M (e.g., "30.3")
+            function formatShortDate(d) {
+              return `${d.getDate()}.${d.getMonth() + 1}`;
             }
 
-            // Update timeline - note: RTL means left is lower day, right is higher day
-            updateTimeline(currentTime, sunsetTime, currentDay, nextDay);
+            // Update step 1 subtitle based on blessing time
+            if (omerTodayInfoContent) {
+              if (canCountWithBlessing) {
+                // During blessing time - show current count
+                omerTodayInfoContent.innerHTML = `🕯️ זמן ברכה • היום יום ${posterDay} לעומר`;
+              } else {
+                // Outside blessing time - show today's day + message
+                omerTodayInfoContent.innerHTML = `היום יום ${todayOmerDay} לעומר • <span style="color: #f57c00;">אפשר לספור בלי ברכה</span>`;
+              }
+            }
 
-            // Set default day
-            currentOmerDay = omerData.defaultDay || currentDay;
+            // Update day button group - show only relevant option based on timing
+            // During blessing time: show current day
+            // Outside blessing time: show "next day at tzet" option
+            if (canCountWithBlessing) {
+              // During blessing time - poster is for current count
+              omerCurrentDayValue = posterDay;
+              omerNextDayValue = posterDay;
+
+              if (omerDayNowLabel) omerDayNowLabel.textContent = `יום ${posterDay}`;
+              if (omerDayNowText) omerDayNowText.textContent = `(עכשיו)`;
+              if (omerDayNextLabel) omerDayNextLabel.textContent = `יום ${posterDay}`;
+              if (omerDayNextText) omerDayNextText.textContent = `(עכשיו)`;
+
+              // Hide "next" button since we're in blessing time
+              const nextBtn = document.getElementById('omerDayNextBtn');
+              const nowBtn = document.getElementById('omerDayNowBtn');
+              if (nextBtn) nextBtn.style.display = 'none';
+              if (nowBtn) {
+                nowBtn.style.display = 'flex';
+                nowBtn.classList.add('active');
+              }
+            } else {
+              // Outside blessing time - poster is for next day (at tzet)
+              omerCurrentDayValue = todayOmerDay;
+              omerNextDayValue = posterDay;
+
+              if (omerDayNowLabel) omerDayNowLabel.textContent = `יום ${todayOmerDay}`;
+              if (omerDayNowText) omerDayNowText.textContent = `(היום)`;
+              if (omerDayNextLabel) omerDayNextLabel.textContent = `יום ${posterDay}`;
+              if (omerDayNextText) omerDayNextText.textContent = `(בצאה"כ ${tzetTime})`;
+
+              // Show both buttons, but select "next" by default
+              const nextBtn = document.getElementById('omerDayNextBtn');
+              const nowBtn = document.getElementById('omerDayNowBtn');
+              if (nextBtn) {
+                nextBtn.style.display = 'flex';
+                nextBtn.classList.add('active');
+              }
+              if (nowBtn) {
+                nowBtn.style.display = 'flex';
+                nowBtn.classList.remove('active');
+              }
+            }
+
+            // Set the poster day
+            currentOmerDay = posterDay;
             updateDaySelector();
+            updateDayButtonSelection();
+
+            // Legacy elements - keep for compatibility
+            if (omerTodayText) {
+              omerTodayText.textContent = `יום ${posterDay} לעומר`;
+            }
+            if (omerTodayMeta) {
+              omerTodayMeta.textContent = canCountWithBlessing
+                ? `זמן ברכה • יום ${posterDay}`
+                : `אפשר לספור בלי ברכה • צאה"כ ב-${tzetTime}`;
+            }
 
             // Legacy compatibility
             omerCountText.textContent = `יום ${currentOmerDay} לעומר`;
           } else {
             // Not in Omer period - update UI accordingly
-            omerStatusNow.textContent = 'לא בתקופת ספירת העומר';
-            omerStatusSunset.textContent = '';
             omerTimelineDay.textContent = '--';
             omerTimelineNextDay.textContent = '--';
             omerDayNumber.textContent = '--';
             omerCountText.textContent = 'לא בתקופת ספירת העומר';
+            if (omerTodayText) omerTodayText.textContent = 'לא בתקופת ספירת העומר';
+            if (omerTodayMeta) omerTodayMeta.textContent = 'הפיצ׳ר יחזור בעונת העומר';
+            if (omerTodayInfoContent) omerTodayInfoContent.textContent = 'לא בתקופת ספירת העומר';
           }
         } else {
-          omerStatusNow.textContent = 'לא ניתן לחשב';
           omerCountText.textContent = 'לא ניתן לחשב את יום העומר';
           updateOmerContentVisibility(false);
         }
       } catch (err) {
         console.error('Failed to fetch omer info:', err);
-        omerStatusNow.textContent = 'שגיאה בטעינה';
         omerCountText.textContent = 'שגיאה';
         updateOmerContentVisibility(false);
       }
@@ -4127,11 +4251,14 @@ CITY_CHECKBOXES_PLACEHOLDER
         elapsed = (24 * 60 - sunsetMinutes) + currentMinutes;
       }
 
-      // Position: 0% = sunset, 100% = next sunset
+      // Position: 0% = start of day, 100% = next tzeit
       let position = (elapsed / dayLength) * 100;
       position = Math.max(2, Math.min(98, position));
 
       omerTimelineMarker.style.left = `${position}%`;
+      if (omerTimelineProgress) {
+        omerTimelineProgress.style.width = `${position}%`;
+      }
 
       // Calculate hours until next sunset
       let minutesUntilNextSunset;
@@ -4146,13 +4273,11 @@ CITY_CHECKBOXES_PLACEHOLDER
       const hoursUntilNextSunset = Math.floor(minutesUntilNextSunset / 60);
       const minsUntilNextSunset = minutesUntilNextSunset % 60;
 
-      // Update position text with countdown
+      // Update position text with clear countdown
       if (currentMinutes >= sunsetMinutes) {
-        // After sunset - counting currentDay now, nextDay in X hours
-        omerTimelinePosition.innerHTML = `📍 אתה נמצא כאן (${currentTime})<br>בעוד ${hoursUntilNextSunset} שעות נספור יום ${nextDay}`;
+        omerTimelinePosition.textContent = `עוד ${hoursUntilNextSunset} שעות ליום ${nextDay}`;
       } else {
-        // Before sunset - nextDay will be counted at sunset
-        omerTimelinePosition.innerHTML = `📍 אתה נמצא כאן (${currentTime})<br>בעוד ${hoursUntilNextSunset} שעות ו-${minsUntilNextSunset} דקות נספור יום ${nextDay}`;
+        omerTimelinePosition.textContent = `עוד ${hoursUntilNextSunset} שעות ו-${minsUntilNextSunset} דקות ליום ${nextDay}`;
       }
     }
 
@@ -4160,6 +4285,10 @@ CITY_CHECKBOXES_PLACEHOLDER
     function updateDaySelector() {
       omerDayNumber.textContent = currentOmerDay;
       omerDayInput.value = currentOmerDay;
+      // Also update the new compact input
+      if (omerDayInputCompact) {
+        omerDayInputCompact.value = currentOmerDay;
+      }
 
       // Update sefirah display
       if (omerData && omerData.isOmerPeriod) {
@@ -4193,26 +4322,86 @@ CITY_CHECKBOXES_PLACEHOLDER
       omerSefirahDisplay.textContent = `${sefirot[lowerIndex]} שֶׁבְּ${sefirot[upperIndex]}`;
     }
 
-    // Day selector button handlers
+    // Day selector button handlers (legacy)
     omerDayMinus.addEventListener('click', () => {
-      if (currentOmerDay > 1) {
-        currentOmerDay--;
-        updateDaySelector();
-        regenerateOmerPreview();
-        // Save selected day to localStorage
-        localStorage.setItem('omerSelectedDay', currentOmerDay);
-      }
+      if (currentOmerDay > 1) setOmerDay(currentOmerDay - 1);
     });
 
     omerDayPlus.addEventListener('click', () => {
-      if (currentOmerDay < 49) {
-        currentOmerDay++;
-        updateDaySelector();
-        regenerateOmerPreview();
-        // Save selected day to localStorage
-        localStorage.setItem('omerSelectedDay', currentOmerDay);
-      }
+      if (currentOmerDay < 49) setOmerDay(currentOmerDay + 1);
     });
+
+    // New day button group handlers
+    function updateDayButtonSelection() {
+      // Update button active states based on currentOmerDay
+      if (omerDayNowBtn && omerDayNextBtn) {
+        if (currentOmerDay === omerCurrentDayValue) {
+          omerDayNowBtn.classList.add('active');
+          omerDayNextBtn.classList.remove('active');
+        } else if (currentOmerDay === omerNextDayValue) {
+          omerDayNowBtn.classList.remove('active');
+          omerDayNextBtn.classList.add('active');
+        } else {
+          // Custom day selected (neither now nor next) - show next as active by default
+          omerDayNowBtn.classList.remove('active');
+          omerDayNextBtn.classList.add('active');
+        }
+      }
+    }
+
+    if (omerDayNowBtn) {
+      omerDayNowBtn.addEventListener('click', () => {
+        setOmerDay(omerCurrentDayValue);
+        updateDayButtonSelection();
+      });
+    }
+
+    if (omerDayNextBtn) {
+      omerDayNextBtn.addEventListener('click', () => {
+        setOmerDay(omerNextDayValue);
+        updateDayButtonSelection();
+      });
+    }
+
+    // Hidden compact day input handler (kept for backward compatibility)
+    if (omerDayInputCompact) {
+      omerDayInputCompact.addEventListener('input', () => {
+        const val = parseInt(omerDayInputCompact.value, 10);
+        if (val >= 1 && val <= 49) {
+          setOmerDay(val);
+          updateDayButtonSelection();
+        }
+      });
+      omerDayInputCompact.addEventListener('blur', () => {
+        // Clamp value on blur
+        let val = parseInt(omerDayInputCompact.value, 10);
+        if (!Number.isFinite(val)) val = currentOmerDay;
+        val = Math.max(1, Math.min(49, val));
+        omerDayInputCompact.value = val;
+        setOmerDay(val);
+        updateDayButtonSelection();
+      });
+    }
+
+    if (omerDayNumber) {
+      omerDayNumber.setAttribute('tabindex', '0');
+      omerDayNumber.setAttribute('title', 'אפשר להשתמש בחיצים ימינה/שמאלה לשינוי יום');
+      omerDayNumber.addEventListener('keydown', (evt) => {
+        if (evt.key === 'ArrowRight' || evt.key === 'ArrowUp') {
+          evt.preventDefault();
+          setOmerDay(currentOmerDay + 1);
+        } else if (evt.key === 'ArrowLeft' || evt.key === 'ArrowDown') {
+          evt.preventDefault();
+          setOmerDay(currentOmerDay - 1);
+        } else if (evt.key === 'Home') {
+          evt.preventDefault();
+          setOmerDay(1);
+        } else if (evt.key === 'End') {
+          evt.preventDefault();
+          setOmerDay(49);
+        }
+      });
+    }
 
     // Regenerate preview with debounce
     let omerPreviewDebounce = null;
@@ -4305,18 +4494,22 @@ CITY_CHECKBOXES_PLACEHOLDER
         // Show the generated poster image
         omerPreviewContainer.innerHTML = `<img src="${omerPreviewUrl}" alt="תצוגה מקדימה" class="omer-preview-image" />`;
       } else {
-        // Show instant text-based preview while image generates
+        // Show instant preview immediately - no spinner/loading (requirement #6)
+        // Preview should be close to the final poster look
         const day = currentOmerDay || 1;
+        const dayText = `היום ${day} ימים לעומר`;
         const sefirah = getSefirahForDay(day);
+        const previewBg = (livePreviewBg && livePreviewBg.style.backgroundImage)
+          ? livePreviewBg.style.backgroundImage
+          : 'linear-gradient(135deg, #1a237e 0%, #3949ab 100%)';
         omerPreviewContainer.innerHTML = `
-          <div class="omer-preview-text">
-            <div class="omer-title">ספירת העומר</div>
-            <div class="omer-day-num">${day}</div>
-            <div class="omer-day-label">יום ${day} לעומר</div>
-            <div class="omer-sefirah">${sefirah}</div>
-            <div class="omer-loading-hint">
-              <div class="mini-spinner"></div>
-              <span>יוצר תמונה...</span>
+          <div class="omer-preview-text" style="background-image: ${previewBg};">
+            <div class="omer-preview-top">
+              <div class="omer-title">ספירת העומר</div>
+              <div class="omer-day-label">${dayText}</div>
+            </div>
+            <div class="omer-preview-bottom">
+              <div class="omer-sefirah">${sefirah}</div>
             </div>
           </div>
         `;
@@ -4353,28 +4546,73 @@ CITY_CHECKBOXES_PLACEHOLDER
       omerModeBtn.classList.toggle('active', omerModeEnabled);
       omerModeBtn.classList.toggle('omer-active', omerModeEnabled);
 
+      // Update page title and subtitle based on mode
+      const pageTitle = document.getElementById('pageTitle');
+      const pageSubtitle = document.getElementById('pageSubtitle');
+      const blessingLabel = document.getElementById('blessingLabel');
+      const blessingLocationHint = document.getElementById('blessingLocationHint');
+
+      if (pageTitle) {
+        pageTitle.textContent = omerModeEnabled ? 'יוצר פוסטר ספירת העומר' : 'יוצר זְמוּנָה לשבת וחג';
+      }
+      if (pageSubtitle) {
+        pageSubtitle.textContent = omerModeEnabled
+          ? 'צרו פוסטר יפה עם ברכת ספירת העומר'
+          : 'צור תמונה יפה עם זמני הדלקת נרות לשבת או לחג';
+      }
+      if (blessingLabel) {
+        blessingLabel.innerHTML = omerModeEnabled
+          ? '✨ ברכה לפוסטר <span class="optional-hint">(לא חובה)</span>'
+          : '✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span>';
+      }
+      if (blessingLocationHint) {
+        blessingLocationHint.textContent = omerModeEnabled
+          ? 'מופיע מתחת לספירה'
+          : 'מופיע מתחת לטבלת הזמנים';
+      }
+
+      // Hide/show Shabbat-specific text elements
+      document.querySelectorAll('.shabbat-only-text').forEach(el => {
+        el.style.display = omerModeEnabled ? 'none' : '';
+      });
+
       // Show/hide omer info section
       omerInfo.classList.toggle('show', omerModeEnabled);
+
+      // Show/hide omer step containers
+      document.querySelectorAll('.omer-step').forEach(step => {
+        step.classList.toggle('show', omerModeEnabled);
+      });
 
       // Hide/show cities step based on omer mode
       if (citiesStep) {
         citiesStep.style.display = omerModeEnabled ? 'none' : 'block';
       }
 
-      // Hide step numbers only in Omer mode (they should remain in Shabbat mode)
-      const stepNumbers = document.querySelectorAll('.step-number');
-      stepNumbers.forEach(stepNum => {
-        stepNum.style.display = omerModeEnabled ? 'none' : '';
-      });
+      if (imageStepNumber && imageStepTitle && imageStepSubtitle) {
+        if (omerModeEnabled) {
+          imageStepNumber.textContent = '3';
+          imageStepTitle.textContent = 'בחירת תמונת רקע';
+          imageStepSubtitle.textContent = 'לא חובה - אפשר להישאר עם תמונת ברירת מחדל';
+        } else {
+          imageStepNumber.textContent = '1';
+          imageStepTitle.textContent = 'תמונת רקע';
+          imageStepSubtitle.textContent = 'לא חובה - יש תמונת ברירת מחדל יפה';
+        }
+      }
+      if (omerCustomizationStep) {
+        omerCustomizationStep.classList.toggle('show', omerModeEnabled);
+      }
 
-      // Show final step (generate button) in both modes - only one generate button at the end
+      // Show final step (generate button) in both modes - update step number based on mode
       const stepFinal = document.querySelector('.step-final');
       if (stepFinal) {
         stepFinal.style.display = 'block';
-        // Hide the step header (number + title) in Omer mode for cleaner look
-        const stepHeader = stepFinal.querySelector('.step-header');
-        if (stepHeader) {
-          stepHeader.style.display = omerModeEnabled ? 'none' : '';
+        const stepNumber = stepFinal.querySelector('.step-number');
+        if (stepNumber) {
+          // Omer: 1-יום 2-נוסח 3-תמונה 4-התאמה 5-יוצרים
+          // Shabbat: 1-תמונה 2-ערים 3-יוצרים
+          stepNumber.textContent = omerModeEnabled ? '5' : '3';
         }
       }
 
@@ -4393,16 +4631,6 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
       if (advancedSection) {
         advancedSection.style.display = omerModeEnabled ? 'none' : '';
-      }
-
-      // Hide date format button in Omer mode (it's Shabbat-specific)
-      const toggleDateFormatBtn = document.getElementById('toggleDateFormatBtn');
-      const dateFormatSection = document.getElementById('dateFormatSection');
-      if (toggleDateFormatBtn) {
-        toggleDateFormatBtn.style.display = omerModeEnabled ? 'none' : '';
-      }
-      if (dateFormatSection) {
-        dateFormatSection.style.display = omerModeEnabled ? 'none' : '';
       }
 
       // Update the "save link" hint text based on mode
@@ -5598,11 +5826,6 @@ CITY_CHECKBOXES_PLACEHOLDER
         params.set('neshama', neshamaInput.value.trim());
       }
 
-      // Add date format if not default (default is now "both") - only for shabbat mode
-      if (!omerModeEnabled && selectedDateFormat !== 'both') {
-        params.set('dateFormat', selectedDateFormat);
-      }
-
       // Add nusach if not default (only for omer mode)
       if (omerModeEnabled && currentNusach !== 'sefard') {
         params.set('nusach', currentNusach);
@@ -5720,16 +5943,6 @@ CITY_CHECKBOXES_PLACEHOLDER
         hasParams = true;
       }
 
-      // Set date format
-      const dateFormatParam = urlParams.get('dateFormat');
-      if (dateFormatParam && ['gregorian', 'hebrew', 'both'].includes(dateFormatParam)) {
-        selectedDateFormat = dateFormatParam;
-        dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
-          opt.classList.toggle('selected', opt.dataset.format === dateFormatParam);
-        });
-        hasParams = true;
-      }
-
       // Set nusach (omer mode only)
       const nusachParam = urlParams.get('nusach');
       if (nusachParam && ['sefard', 'ashkenaz', 'edot_hamizrach'].includes(nusachParam)) {
@@ -5777,12 +5990,6 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Reset message and neshama
       messageInput.value = "";
       neshamaInput.value = "";
-
-      // Reset date format to default (both)
-      selectedDateFormat = "both";
-      dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
-        opt.classList.toggle('selected', opt.dataset.format === 'both');
-      });
 
       // Reset nusach to default (sefard)
       setNusach('sefard');

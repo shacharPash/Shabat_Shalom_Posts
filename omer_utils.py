@@ -336,14 +336,63 @@ def get_jerusalem_sunset(target_date: date) -> Optional[str]:
         return None
 
 
+def get_jerusalem_alos(target_date: date) -> Optional[str]:
+    """
+    Get the alot hashachar (dawn) time for Jerusalem on a given date.
+
+    Alot hashachar marks the end of the blessing time for Sefirat HaOmer.
+    Returns time in Israel timezone (not UTC).
+
+    Args:
+        target_date: The Gregorian date to get alot hashachar for
+
+    Returns:
+        Alot hashachar time as "HH:MM" string in Israel timezone, or None if unable to calculate
+    """
+    try:
+        # Create Jerusalem location for zmanim calculation
+        location = Location(
+            latitude=JERUSALEM_LAT,
+            longitude=JERUSALEM_LON,
+            use_tzeis_hakochavim=True,
+            hadlokas_haneiros_minutes=40,
+            tzeis_minutes=42
+        )
+
+        jewcal = JewCal(gregorian_date=target_date, diaspora=False, location=location)
+
+        if jewcal.zmanim:
+            zmanim_dict = jewcal.zmanim.to_dict()
+            # Get alot_hashachar (dawn)
+            alos = zmanim_dict.get('alot_hashachar')
+            if alos:
+                # Parse the UTC datetime and convert to Israel timezone
+                if isinstance(alos, str):
+                    alos_datetime = datetime.fromisoformat(alos)
+                    alos_israel = alos_datetime.astimezone(ISRAEL_TZ)
+                    return alos_israel.strftime('%H:%M')
+                elif hasattr(alos, 'astimezone'):
+                    alos_israel = alos.astimezone(ISRAEL_TZ)
+                    return alos_israel.strftime('%H:%M')
+        return None
+    except Exception:
+        return None
+
+
 def get_omer_info_for_time(
     target_date: date,
     current_hour: int,
     current_minute: int = 0
 ) -> dict:
     """
-    Get comprehensive Omer information for display, including sunset times
-    and recommended default day selection.
+    Get comprehensive Omer information for display, including timing for blessing.
+
+    New logic:
+    - During blessing time (tzet hakochavim to alot hashachar): create poster for current day
+    - Outside blessing time (alot hashachar to next tzet hakochavim):
+      - Show "Today is day X of the Omer"
+      - Show message "Can count without blessing"
+      - Poster creation is only for the NEXT day
 
     Args:
         target_date: The current Gregorian date
@@ -353,104 +402,118 @@ def get_omer_info_for_time(
     Returns:
         Dict with:
         - isOmerPeriod: bool
-        - currentDay: int (the day being counted tonight)
-        - nextDay: int (tomorrow's count)
-        - defaultDay: int (recommended day to show based on time)
-        - sunsetTime: str "HH:MM" (Jerusalem tzet hakochavim)
+        - canCountWithBlessing: bool (True if between tzet and alos)
+        - todayOmerDay: int (what was counted last night - "today is day X")
+        - posterDay: int (which day the poster should be created for)
+        - tzetTime: str "HH:MM" (Jerusalem tzet hakochavim)
         - currentTime: str "HH:MM"
-        - beforeMidnight: bool (True if before 00:00)
-        - hebrewCount: str (for currentDay)
-        - sefirah: str (for currentDay)
+        - hebrewCount: str (for posterDay)
+        - sefirah: str (for posterDay)
     """
     # Format current time
     current_time = f"{current_hour:02d}:{current_minute:02d}"
-
-    # Determine if we're before midnight (for default day selection)
-    before_midnight = current_hour >= 12  # After noon = "today" evening's count
-
-    # Get the Omer day for this evening
-    # If it's before midnight, we show today's count (what was/will be counted this evening)
-    # If it's after midnight (00:00-06:00), we show next day's count (preparing ahead)
-    after_midnight = current_hour >= 0 and current_hour < 6
-
-    # Get sunset time for Jerusalem
-    sunset_time = get_jerusalem_sunset(target_date)
-
-    # Parse sunset time to check if we're after sunset
-    sunset_hour, sunset_min = 19, 45  # default fallback
-    if sunset_time:
-        parts = sunset_time.split(':')
-        if len(parts) == 2:
-            sunset_hour, sunset_min = int(parts[0]), int(parts[1])
-
     current_minutes = current_hour * 60 + current_minute
-    sunset_minutes = sunset_hour * 60 + sunset_min
-    is_after_sunset = current_minutes >= sunset_minutes
 
-    # Get the base Omer day for this calendar date (what would be counted tonight)
+    # Get tzet hakochavim (nightfall) for today
+    tzet_time = get_jerusalem_sunset(target_date)
+
+    # Get alot hashachar (dawn) for today
+    alos_time = get_jerusalem_alos(target_date)
+
+    # Parse tzet time
+    tzet_hour, tzet_min = 19, 45  # default fallback
+    if tzet_time:
+        parts = tzet_time.split(':')
+        if len(parts) == 2:
+            tzet_hour, tzet_min = int(parts[0]), int(parts[1])
+    tzet_minutes = tzet_hour * 60 + tzet_min
+
+    # Parse alos time
+    alos_hour, alos_min = 5, 0  # default fallback
+    if alos_time:
+        parts = alos_time.split(':')
+        if len(parts) == 2:
+            alos_hour, alos_min = int(parts[0]), int(parts[1])
+    alos_minutes = alos_hour * 60 + alos_min
+
+    # Determine if we're in blessing time
+    # Blessing time: from tzet hakochavim until alot hashachar (next morning)
+    # Case 1: After tzet (same day) - can count with blessing
+    # Case 2: Before alos (early morning) - can still count with blessing
+    is_after_tzet = current_minutes >= tzet_minutes
+    is_before_alos = current_minutes < alos_minutes
+    can_count_with_blessing = is_after_tzet or is_before_alos
+
+    # Get the base Omer day for this calendar date
     base_omer_day = get_omer_day(target_date, after_midnight=False)
 
     # Get tomorrow's Omer day
     next_date = target_date + timedelta(days=1)
     next_base_omer_day = get_omer_day(next_date, after_midnight=False)
 
-    # Get the day after tomorrow (for when we're after sunset)
-    next_next_date = target_date + timedelta(days=2)
-    next_next_omer_day = get_omer_day(next_next_date, after_midnight=False)
+    # Get yesterday's date for calculating "today's" omer day
+    yesterday = target_date - timedelta(days=1)
+    yesterday_omer_day = get_omer_day(yesterday, after_midnight=False)
 
-    # Determine if we're in the Omer period
+    # Determine if we're in the Omer period at all
     is_omer_period = base_omer_day is not None or next_base_omer_day is not None
 
     if not is_omer_period:
         return {
             "isOmerPeriod": False,
             "currentTime": current_time,
-            "sunsetTime": sunset_time,
+            "tzetTime": tzet_time,
         }
 
-    # Adjust current/next day based on whether we're after sunset
-    # If after sunset: the "current day" becomes what was "next day"
-    # and "next day" becomes the day after that
-    if is_after_sunset:
-        current_omer_day = next_base_omer_day
-        next_omer_day = next_next_omer_day
-        # Next sunset is tomorrow's sunset
-        next_sunset_time = get_jerusalem_sunset(next_date)
+    # Calculate which day is "today" (what was counted last night)
+    # and which day the poster should show
+    if can_count_with_blessing:
+        # During blessing time: poster is for current night's day
+        if is_before_alos:
+            # Early morning (before dawn) - still counting "yesterday evening's" day
+            # which is based on yesterday's date
+            today_omer_day = yesterday_omer_day
+            poster_day = today_omer_day  # Same as what we're counting
+        else:
+            # After tzet - we're counting tonight's day
+            today_omer_day = base_omer_day  # What we counted last night
+            poster_day = next_base_omer_day  # What we're counting now (tonight)
     else:
-        current_omer_day = base_omer_day
-        next_omer_day = next_base_omer_day
-        next_sunset_time = sunset_time  # Same day sunset
+        # Outside blessing time (between alos and tzet)
+        # "Today is day X" = what was counted last night
+        today_omer_day = base_omer_day
+        # Poster is for next day (what will be counted tonight at tzet)
+        poster_day = next_base_omer_day
 
-    # Calculate default day based on time:
-    # - After sunset: we're counting current day NOW
-    # - Before midnight (after noon, before sunset): default to current day (will count soon)
-    # - After midnight (00:00-06:00): default to next day (preparing ahead)
-    if is_after_sunset and current_omer_day:
-        default_day = current_omer_day
-    elif after_midnight and next_omer_day:
-        default_day = next_omer_day
-    elif current_omer_day:
-        default_day = current_omer_day
-    elif next_omer_day:
-        default_day = next_omer_day
+    # Get next tzet time for display
+    if is_after_tzet:
+        next_tzet_time = get_jerusalem_sunset(next_date)
     else:
-        default_day = 1  # Fallback
+        next_tzet_time = tzet_time
 
-    # Get Hebrew count and sefirah for the default day
-    hebrew_count = get_omer_count_text(default_day) if 1 <= default_day <= 49 else ""
-    sefirah = get_sefirah_text(default_day) if 1 <= default_day <= 49 else ""
+    # Get Hebrew count and sefirah for the poster day
+    hebrew_count = ""
+    sefirah = ""
+    if poster_day and 1 <= poster_day <= 49:
+        hebrew_count = get_omer_count_text(poster_day)
+        sefirah = get_sefirah_text(poster_day)
 
     return {
         "isOmerPeriod": True,
-        "currentDay": current_omer_day,
-        "nextDay": next_omer_day,
-        "defaultDay": default_day,
-        "sunsetTime": sunset_time,
-        "nextSunsetTime": next_sunset_time,
+        "canCountWithBlessing": can_count_with_blessing,
+        "todayOmerDay": today_omer_day,
+        "posterDay": poster_day,
+        "tzetTime": tzet_time,
+        "nextTzetTime": next_tzet_time,
         "currentTime": current_time,
-        "beforeMidnight": before_midnight,
-        "isAfterSunset": is_after_sunset,
         "hebrewCount": hebrew_count,
         "sefirah": sefirah,
+        # Backward compatibility fields
+        "currentDay": today_omer_day,
+        "nextDay": next_base_omer_day,
+        "defaultDay": poster_day,
+        "sunsetTime": tzet_time,
+        "nextSunsetTime": next_tzet_time,
+        "isAfterSunset": is_after_tzet,
     }
 

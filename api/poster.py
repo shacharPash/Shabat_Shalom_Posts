@@ -155,7 +155,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     hide_dedication: bool = payload.get("hideDedication", False)
     hide_blessing: bool = payload.get("hideBlessing", False)
     cities: Optional[List[Dict[str, Any]]] = payload.get("cities")
-    date_format: str = payload.get("dateFormat", "gregorian")  # "gregorian", "hebrew", or "both"
+    date_format: str = payload.get("dateFormat", "both")  # "gregorian", "hebrew", or "both" - default: both (Hebrew + Gregorian)
 
     # Manual overrides
     override_main_title: Optional[str] = payload.get("overrideMainTitle")
