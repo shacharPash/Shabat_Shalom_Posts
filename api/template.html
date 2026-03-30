@@ -629,40 +629,6 @@
     .selected-range-info.show {
       display: block;
     }
-    /* Date format selector */
-    .date-format-section {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #e0e0e0;
-    }
-    .date-format-selector {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .date-format-option {
-      padding: 8px 16px;
-      border-radius: 8px;
-      border: 2px solid var(--input-border);
-      background: var(--input-bg);
-      color: var(--text-primary);
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .date-format-option:hover {
-      border-color: var(--button-border);
-      background: var(--button-hover-bg);
-    }
-    .date-format-option:focus-visible {
-      outline: 2px solid var(--text-primary);
-      outline-offset: 2px;
-    }
-    .date-format-option.selected {
-      border-color: var(--input-border-focus);
-      background: var(--button-bg);
-      font-weight: 600;
-    }
     /* Manual override section */
     .override-section {
       margin-top: 20px;
@@ -3630,10 +3596,6 @@ CITY_CHECKBOXES_PLACEHOLDER
             <span class="customize-icon">🕯️</span>
             <span class="customize-text">הוסף הקדשה (לעילוי נשמת)</span>
           </button>
-        <button type="button" class="customize-btn" id="toggleDateFormatBtn" data-section="dateFormat">
-          <span class="customize-icon">📅</span>
-          <span class="customize-text">פורמט תאריך</span>
-        </button>
         <button type="button" class="customize-btn" id="toggleAdvancedBtn" data-section="advanced">
           <span class="customize-icon">⚙️</span>
           <span class="customize-text">עוד אפשרויות</span>
@@ -3656,18 +3618,6 @@ CITY_CHECKBOXES_PLACEHOLDER
           <label for="neshama">🕯️ לעילוי נשמת <span class="optional-hint">(לא חובה)</span></label>
           <input id="neshama" type="text" placeholder="למשל: אורי בורנשטיין הי״ד" />
           <div class="field-location-hint">מופיע בתחתית הזמונה</div>
-        </div>
-      </div>
-
-      <!-- Date Format Section -->
-      <div id="dateFormatSection" class="customize-section">
-        <div class="form-group">
-          <label>📅 פורמט תאריך בזְמוּנָה</label>
-          <div id="dateFormatSelector" class="date-format-selector">
-            <div class="date-format-option" data-format="gregorian">לועזי</div>
-            <div class="date-format-option" data-format="hebrew">עברי</div>
-            <div class="date-format-option selected" data-format="both">לועזי + עברי</div>
-          </div>
         </div>
       </div>
 
@@ -3863,7 +3813,6 @@ CITY_CHECKBOXES_PLACEHOLDER
     const neshamaInput = document.getElementById("neshama");
     const messageInput = document.getElementById("message");
     const MAX_CITIES = 8;
-    const dateFormatSelector = document.getElementById("dateFormatSelector");
     const copyLinkBtn = document.getElementById("copyLinkBtn");
     const copyLinkIcon = document.getElementById("copyLinkIcon");
     const copyLinkText = document.getElementById("copyLinkText");
@@ -3943,7 +3892,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     let selectedDates = []; // Array of selected dates
     let allEvents = []; // Store all events
     let selectedStartIndex = 0; // Index of the selected start date
-    let selectedDateFormat = "both"; // "gregorian", "hebrew", or "both" - default is both
+    const selectedDateFormat = "both"; // Always use both (Hebrew + Gregorian dates)
     let loadedFromUrl = false; // Track if form was pre-filled from URL
 
     // Crop state - stores crop position (0-1) for each image
@@ -3953,15 +3902,6 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Ordered list of selected cities (maintains user-defined order)
     let orderedSelectedCities = []; // Array of city names in user's preferred order
-
-    // Date format selector
-    dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
-      opt.addEventListener('click', () => {
-        dateFormatSelector.querySelectorAll('.date-format-option').forEach(o => o.classList.remove('selected'));
-        opt.classList.add('selected');
-        selectedDateFormat = opt.dataset.format;
-      });
-    });
 
     // Customization panel toggle
     if (customizationToggle && customizationPanel) {
@@ -3977,7 +3917,6 @@ CITY_CHECKBOXES_PLACEHOLDER
         const sectionMap = {
           'blessing': 'blessingSection',
           'memorial': 'memorialSection',
-          'dateFormat': 'dateFormatSection',
           'advanced': 'advancedSection'
         };
         const sectionId = sectionMap[btn.dataset.section];
@@ -4622,16 +4561,6 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
       if (advancedSection) {
         advancedSection.style.display = omerModeEnabled ? 'none' : '';
-      }
-
-      // Hide date format button in Omer mode (it's Shabbat-specific)
-      const toggleDateFormatBtn = document.getElementById('toggleDateFormatBtn');
-      const dateFormatSection = document.getElementById('dateFormatSection');
-      if (toggleDateFormatBtn) {
-        toggleDateFormatBtn.style.display = omerModeEnabled ? 'none' : '';
-      }
-      if (dateFormatSection) {
-        dateFormatSection.style.display = omerModeEnabled ? 'none' : '';
       }
 
       // Update the "save link" hint text based on mode
@@ -5827,11 +5756,6 @@ CITY_CHECKBOXES_PLACEHOLDER
         params.set('neshama', neshamaInput.value.trim());
       }
 
-      // Add date format if not default (default is now "both") - only for shabbat mode
-      if (!omerModeEnabled && selectedDateFormat !== 'both') {
-        params.set('dateFormat', selectedDateFormat);
-      }
-
       // Add nusach if not default (only for omer mode)
       if (omerModeEnabled && currentNusach !== 'sefard') {
         params.set('nusach', currentNusach);
@@ -5949,16 +5873,6 @@ CITY_CHECKBOXES_PLACEHOLDER
         hasParams = true;
       }
 
-      // Set date format
-      const dateFormatParam = urlParams.get('dateFormat');
-      if (dateFormatParam && ['gregorian', 'hebrew', 'both'].includes(dateFormatParam)) {
-        selectedDateFormat = dateFormatParam;
-        dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
-          opt.classList.toggle('selected', opt.dataset.format === dateFormatParam);
-        });
-        hasParams = true;
-      }
-
       // Set nusach (omer mode only)
       const nusachParam = urlParams.get('nusach');
       if (nusachParam && ['sefard', 'ashkenaz', 'edot_hamizrach'].includes(nusachParam)) {
@@ -6006,12 +5920,6 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Reset message and neshama
       messageInput.value = "";
       neshamaInput.value = "";
-
-      // Reset date format to default (both)
-      selectedDateFormat = "both";
-      dateFormatSelector.querySelectorAll('.date-format-option').forEach(opt => {
-        opt.classList.toggle('selected', opt.dataset.format === 'both');
-      });
 
       // Reset nusach to default (sefard)
       setNusach('sefard');
