@@ -3246,9 +3246,9 @@
         <span id="themeIcon">🌙</span>
       </button>
       <div class="logo"><img src="/static/watermark.png" alt="לוגו" class="logo-img" /></div>
-      <h1>יוצר זְמוּנָה לשבת וחג</h1>
-      <div class="subtitle">צור תמונה יפה עם זמני הדלקת נרות לשבת או לחג</div>
-      <div class="subtitle" style="font-size: 11px; opacity: 0.7;">זְמוּנָה = זְמַן + תְּמוּנָה 🕐🖼️</div>
+      <h1 id="pageTitle">יוצר זְמוּנָה לשבת וחג</h1>
+      <div class="subtitle" id="pageSubtitle">צור תמונה יפה עם זמני הדלקת נרות לשבת או לחג</div>
+      <div class="subtitle shabbat-only-text" style="font-size: 11px; opacity: 0.7;">זְמוּנָה = זְמַן + תְּמוּנָה 🕐🖼️</div>
     </div>
 
     <!-- Live Preview Section (hidden - replaced by floating) -->
@@ -3410,13 +3410,13 @@
         <div class="omer-day-button-group" id="omerDayButtonGroup">
           <button type="button" class="omer-day-button" id="omerDayNowBtn" data-day-type="now">
             <span class="day-btn-icon">📅</span>
-            <span class="day-btn-label">עכשיו</span>
-            <span class="day-btn-day" id="omerDayNowText">יום X</span>
+            <span class="day-btn-label" id="omerDayNowLabel">יום X</span>
+            <span class="day-btn-day" id="omerDayNowText">(XX.X)</span>
           </button>
           <button type="button" class="omer-day-button active" id="omerDayNextBtn" data-day-type="next">
             <span class="day-btn-icon">🌙</span>
-            <span class="day-btn-label">הערב</span>
-            <span class="day-btn-day" id="omerDayNextText">יום X+1</span>
+            <span class="day-btn-label" id="omerDayNextLabel">יום X+1</span>
+            <span class="day-btn-day" id="omerDayNextText">(XX.X)</span>
           </button>
         </div>
       </div>
@@ -3605,10 +3605,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       <!-- Blessing Section -->
       <div id="blessingSection" class="customize-section">
         <div class="form-group">
-          <label for="message">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
+          <label for="message" id="blessingLabel">✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span></label>
           <textarea id="message" placeholder="למשל: לחיי שמחות קטנות וגדולות"></textarea>
-          <div class="hint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
-          <div class="field-location-hint">מופיע מתחת לטבלת הזמנים</div>
+          <div class="hint shabbat-only-text" id="blessingHint">אין צורך לכתוב "שבת שלום" - זו כבר הכותרת הראשית של הזְמוּנָה</div>
+          <div class="field-location-hint" id="blessingLocationHint">מופיע מתחת לטבלת הזמנים</div>
         </div>
       </div>
 
@@ -3964,6 +3964,8 @@ CITY_CHECKBOXES_PLACEHOLDER
     // New day button group elements
     const omerDayNowBtn = document.getElementById('omerDayNowBtn');
     const omerDayNextBtn = document.getElementById('omerDayNextBtn');
+    const omerDayNowLabel = document.getElementById('omerDayNowLabel');
+    const omerDayNextLabel = document.getElementById('omerDayNextLabel');
     const omerDayNowText = document.getElementById('omerDayNowText');
     const omerDayNextText = document.getElementById('omerDayNextText');
 
@@ -4126,12 +4128,33 @@ CITY_CHECKBOXES_PLACEHOLDER
               omerNextDayValue = currentDay; // What we'll count tonight
             }
 
-            // Update button texts
+            // Update button texts with day number and date
+            // Calculate dates for each button (today's date and tomorrow's date)
+            const today = testTimeParam ? new Date(testTimeParam) : new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            // Format date as DD.M (e.g., "30.3")
+            function formatShortDate(d) {
+              return `${d.getDate()}.${d.getMonth() + 1}`;
+            }
+
+            // Set button labels with day numbers and dates
+            if (omerDayNowLabel) {
+              omerDayNowLabel.textContent = `יום ${omerCurrentDayValue}`;
+            }
             if (omerDayNowText) {
-              omerDayNowText.textContent = `יום ${omerCurrentDayValue}`;
+              // If same day as current evening's count, use today's date
+              const nowDate = isAfterTzeitWindow ? today : today;
+              omerDayNowText.textContent = `(${formatShortDate(nowDate)})`;
+            }
+            if (omerDayNextLabel) {
+              omerDayNextLabel.textContent = `יום ${omerNextDayValue}`;
             }
             if (omerDayNextText) {
-              omerDayNextText.textContent = `יום ${omerNextDayValue}`;
+              // Next day's count will be on tomorrow's date (after sunset tomorrow)
+              const nextDate = isAfterTzeitWindow ? tomorrow : today;
+              omerDayNextText.textContent = `(${formatShortDate(nextDate)})`;
             }
 
             // Update minimal "today info" section with time context
@@ -4505,6 +4528,36 @@ CITY_CHECKBOXES_PLACEHOLDER
       shabbatModeBtn.classList.toggle('active', !omerModeEnabled);
       omerModeBtn.classList.toggle('active', omerModeEnabled);
       omerModeBtn.classList.toggle('omer-active', omerModeEnabled);
+
+      // Update page title and subtitle based on mode
+      const pageTitle = document.getElementById('pageTitle');
+      const pageSubtitle = document.getElementById('pageSubtitle');
+      const blessingLabel = document.getElementById('blessingLabel');
+      const blessingLocationHint = document.getElementById('blessingLocationHint');
+
+      if (pageTitle) {
+        pageTitle.textContent = omerModeEnabled ? 'יוצר פוסטר ספירת העומר' : 'יוצר זְמוּנָה לשבת וחג';
+      }
+      if (pageSubtitle) {
+        pageSubtitle.textContent = omerModeEnabled
+          ? 'צרו פוסטר יפה עם ברכת ספירת העומר'
+          : 'צור תמונה יפה עם זמני הדלקת נרות לשבת או לחג';
+      }
+      if (blessingLabel) {
+        blessingLabel.innerHTML = omerModeEnabled
+          ? '✨ ברכה לפוסטר <span class="optional-hint">(לא חובה)</span>'
+          : '✨ ברכה לזְמוּנָה <span class="optional-hint">(לא חובה)</span>';
+      }
+      if (blessingLocationHint) {
+        blessingLocationHint.textContent = omerModeEnabled
+          ? 'מופיע מתחת לספירה'
+          : 'מופיע מתחת לטבלת הזמנים';
+      }
+
+      // Hide/show Shabbat-specific text elements
+      document.querySelectorAll('.shabbat-only-text').forEach(el => {
+        el.style.display = omerModeEnabled ? 'none' : '';
+      });
 
       // Show/hide omer info section
       omerInfo.classList.toggle('show', omerModeEnabled);
