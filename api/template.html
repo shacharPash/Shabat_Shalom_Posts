@@ -2761,26 +2761,16 @@
       font-weight: 600;
       color: var(--text-primary);
     }
-    /* Today info section - minimal helper, dashed border, italic, small */
-    .omer-today-info-section {
-      margin-bottom: 16px;
-      padding: 8px 12px;
-      border: 1px dashed var(--divider-color);
-      border-radius: 8px;
-      background: transparent;
-      text-align: center;
+    /* Omer step containers - hidden by default, shown when in Omer mode */
+    .omer-step {
+      display: none;
     }
-    .omer-today-info-header {
-      font-size: 11px;
-      font-style: italic;
-      color: var(--text-tertiary);
-      margin-bottom: 4px;
+    .omer-step.show {
+      display: block;
     }
-    .omer-today-info-content {
-      font-size: 12px;
-      font-style: italic;
-      color: var(--text-secondary);
-      line-height: 1.4;
+    /* Remove label from inside nusach section (now in step header) */
+    .omer-nusach-section .omer-nusach-label {
+      display: none;
     }
     .omer-step-help {
       display: none; /* Hidden - replaced by minimal section */
@@ -3401,50 +3391,8 @@
         <div class="disabled-text">לא סופרים את העומר כרגע</div>
       </div>
 
-      <!-- Omer content wrapper - hidden when not in period -->
+      <!-- Omer content wrapper - hidden when not in period (contains hidden legacy elements) -->
       <div class="omer-content-wrapper" id="omerContentWrapper">
-        <!-- Step 1: Day selector button group -->
-        <div class="omer-step-label">
-          <span class="num">1</span>
-          <span class="text">בחירת יום</span>
-        </div>
-        <div class="omer-day-button-group" id="omerDayButtonGroup">
-          <button type="button" class="omer-day-button" id="omerDayNowBtn" data-day-type="now">
-            <span class="day-btn-icon">📅</span>
-            <span class="day-btn-label">עכשיו</span>
-            <span class="day-btn-day" id="omerDayNowText">יום X</span>
-          </button>
-          <button type="button" class="omer-day-button active" id="omerDayNextBtn" data-day-type="next">
-            <span class="day-btn-icon">🌙</span>
-            <span class="day-btn-label">הערב</span>
-            <span class="day-btn-day" id="omerDayNextText">יום X+1</span>
-          </button>
-        </div>
-        <!-- Hidden compact selector - kept for backward compatibility -->
-        <div class="omer-compact-selector" id="omerCompactSelector" style="display: none;">
-          <input type="number" id="omerDayInputCompact" class="day-input" min="1" max="49" value="1" />
-        </div>
-
-        <!-- Minimal "today info" helper - dashed border, italic, small -->
-        <div class="omer-today-info-section" id="omerTodayInfoSection">
-          <div class="omer-today-info-header">🕐 מה הזמן עכשיו?</div>
-          <div class="omer-today-info-content" id="omerTodayInfoContent">טוען...</div>
-        </div>
-
-        <!-- Step 2: Nusach Selector -->
-        <div class="omer-step-label">
-          <span class="num">2</span>
-          <span class="text">בחירת נוסח</span>
-        </div>
-        <div class="omer-nusach-section" id="omerNusachSection">
-          <div class="omer-nusach-label">נוסח</div>
-          <div class="omer-nusach-group">
-            <button type="button" class="omer-nusach-btn" data-nusach="ashkenaz">אשכנז</button>
-            <button type="button" class="omer-nusach-btn active" data-nusach="sefard">ספרד</button>
-            <button type="button" class="omer-nusach-btn" data-nusach="edot_hamizrach">ע"מ</button>
-          </div>
-        </div>
-
         <!-- Hidden legacy elements for backward compatibility -->
         <div class="omer-timeline" id="omerTimeline" style="display: none;">
           <div class="omer-timeline-header">
@@ -3474,8 +3422,57 @@
         </button>
         <input type="hidden" id="omerDateInput" class="omer-date-input" />
         <input type="hidden" id="omerDayInput" value="" />
+        <!-- Hidden compact selector - kept for backward compatibility -->
+        <div class="omer-compact-selector" id="omerCompactSelector" style="display: none;">
+          <input type="number" id="omerDayInputCompact" class="day-input" min="1" max="49" value="1" />
+        </div>
         <div class="omer-test-mode" id="omerTestMode">🧪 מצב בדיקה - זמן מדומה</div>
         <span class="omer-count-text" id="omerCountText" style="display: none;"></span>
+      </div>
+    </div>
+
+    <!-- Omer Step 1: Day Selection (only visible in Omer mode) -->
+    <div class="step-container omer-step" id="omerDayStep">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-info">
+          <div class="step-title">🌾 בחירת יום</div>
+          <div class="step-subtitle" id="omerTodayInfoContent">טוען...</div>
+        </div>
+      </div>
+      <div class="step-content">
+        <div class="omer-day-button-group" id="omerDayButtonGroup">
+          <button type="button" class="omer-day-button" id="omerDayNowBtn" data-day-type="now">
+            <span class="day-btn-icon">📅</span>
+            <span class="day-btn-label">עכשיו</span>
+            <span class="day-btn-day" id="omerDayNowText">יום X</span>
+          </button>
+          <button type="button" class="omer-day-button active" id="omerDayNextBtn" data-day-type="next">
+            <span class="day-btn-icon">🌙</span>
+            <span class="day-btn-label">הערב</span>
+            <span class="day-btn-day" id="omerDayNextText">יום X+1</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Omer Step 2: Nusach Selection (only visible in Omer mode) -->
+    <div class="step-container omer-step" id="omerNusachStep">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-info">
+          <div class="step-title">📜 בחירת נוסח</div>
+          <div class="step-subtitle">בחרו את הנוסח לברכה</div>
+        </div>
+      </div>
+      <div class="step-content">
+        <div class="omer-nusach-section" id="omerNusachSection">
+          <div class="omer-nusach-group">
+            <button type="button" class="omer-nusach-btn" data-nusach="ashkenaz">אשכנז</button>
+            <button type="button" class="omer-nusach-btn active" data-nusach="sefard">ספרד</button>
+            <button type="button" class="omer-nusach-btn" data-nusach="edot_hamizrach">ע"מ</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -4573,6 +4570,11 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Show/hide omer info section
       omerInfo.classList.toggle('show', omerModeEnabled);
 
+      // Show/hide omer step containers
+      document.querySelectorAll('.omer-step').forEach(step => {
+        step.classList.toggle('show', omerModeEnabled);
+      });
+
       // Hide/show cities step based on omer mode
       if (citiesStep) {
         citiesStep.style.display = omerModeEnabled ? 'none' : 'block';
@@ -4581,7 +4583,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (imageStepNumber && imageStepTitle && imageStepSubtitle) {
         if (omerModeEnabled) {
           imageStepNumber.textContent = '3';
-          imageStepTitle.textContent = 'בחירת תמונה';
+          imageStepTitle.textContent = 'בחירת תמונת רקע';
           imageStepSubtitle.textContent = 'לא חובה - אפשר להישאר עם תמונת ברירת מחדל';
         } else {
           imageStepNumber.textContent = '1';
@@ -4593,14 +4595,15 @@ CITY_CHECKBOXES_PLACEHOLDER
         omerCustomizationStep.classList.toggle('show', omerModeEnabled);
       }
 
-      // Show final step (generate button) in both modes - only one generate button at the end
+      // Show final step (generate button) in both modes - update step number based on mode
       const stepFinal = document.querySelector('.step-final');
       if (stepFinal) {
         stepFinal.style.display = 'block';
-        // Hide the step header (number + title) in Omer mode for cleaner look
-        const stepHeader = stepFinal.querySelector('.step-header');
-        if (stepHeader) {
-          stepHeader.style.display = omerModeEnabled ? 'none' : '';
+        const stepNumber = stepFinal.querySelector('.step-number');
+        if (stepNumber) {
+          // Omer: 1-יום 2-נוסח 3-תמונה 4-התאמה 5-יוצרים
+          // Shabbat: 1-תמונה 2-ערים 3-יוצרים
+          stepNumber.textContent = omerModeEnabled ? '5' : '3';
         }
       }
 
