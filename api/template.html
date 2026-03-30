@@ -4103,36 +4103,21 @@ CITY_CHECKBOXES_PLACEHOLDER
           updateOmerContentVisibility(omerData.isOmerPeriod);
 
           if (omerData.isOmerPeriod) {
-            // Update status text
+            // Get new API fields
             const currentTime = omerData.currentTime || '--:--';
-            const sunsetTime = omerData.sunsetTime || '--:--';
-            const nextSunsetTime = omerData.nextSunsetTime || sunsetTime;
-            const currentDay = omerData.currentDay || omerData.defaultDay;
+            const tzetTime = omerData.tzetTime || omerData.sunsetTime || '--:--';
+            const canCountWithBlessing = omerData.canCountWithBlessing;
+            const todayOmerDay = omerData.todayOmerDay;
+            const posterDay = omerData.posterDay;
+
+            // For backward compatibility
+            const currentDay = omerData.currentDay || todayOmerDay;
             const nextDay = omerData.nextDay || (currentDay + 1);
-            const isAfterSunset = omerData.isAfterSunset || false;
-            const currentHour = Number((currentTime.split(':')[0] || '0'));
-            // UX rule: treat 00:00-04:59 as "after tzeit" window to avoid midnight flip.
-            // From 05:00 onward, switch to "before tzeit" messaging until next tzeit.
-            const isAfterTzeitWindow = isAfterSunset || (!Number.isNaN(currentHour) && currentHour < 5);
 
             // Update timeline (legacy - hidden but kept for compatibility)
-            updateTimeline(currentTime, sunsetTime, currentDay, nextDay);
+            updateTimeline(currentTime, tzetTime, currentDay, nextDay);
 
-            // Update day button group values
-            // "Now" = the currently counting day (what we're in now)
-            // "Next" = the upcoming night's count (what we'll count tonight)
-            if (isAfterTzeitWindow) {
-              // After sunset: we're counting today's day, "tonight" = same day (already counting)
-              omerCurrentDayValue = currentDay;
-              omerNextDayValue = Math.min(49, currentDay + 1); // Next day starts tomorrow night
-            } else {
-              // Before sunset: "now" = yesterday's count still active, "tonight" = tonight's new count
-              omerCurrentDayValue = Math.max(1, currentDay - 1); // What was counted last night
-              omerNextDayValue = currentDay; // What we'll count tonight
-            }
-
-            // Update button texts with day number and date
-            // Calculate dates for each button (today's date and tomorrow's date)
+            // Calculate dates for display
             const today = testTimeParam ? new Date(testTimeParam) : new Date();
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -4142,46 +4127,75 @@ CITY_CHECKBOXES_PLACEHOLDER
               return `${d.getDate()}.${d.getMonth() + 1}`;
             }
 
-            // Set button labels with day numbers and dates
-            if (omerDayNowLabel) {
-              omerDayNowLabel.textContent = `יום ${omerCurrentDayValue}`;
-            }
-            if (omerDayNowText) {
-              // If same day as current evening's count, use today's date
-              const nowDate = isAfterTzeitWindow ? today : today;
-              omerDayNowText.textContent = `(${formatShortDate(nowDate)})`;
-            }
-            if (omerDayNextLabel) {
-              omerDayNextLabel.textContent = `יום ${omerNextDayValue}`;
-            }
-            if (omerDayNextText) {
-              // Next day's count will be on tomorrow's date (after sunset tomorrow)
-              const nextDate = isAfterTzeitWindow ? tomorrow : today;
-              omerDayNextText.textContent = `(${formatShortDate(nextDate)})`;
+            // Update step 1 subtitle based on blessing time
+            if (omerTodayInfoContent) {
+              if (canCountWithBlessing) {
+                // During blessing time - show current count
+                omerTodayInfoContent.innerHTML = `🕯️ זמן ברכה • היום יום ${posterDay} לעומר`;
+              } else {
+                // Outside blessing time - show today's day + message
+                omerTodayInfoContent.innerHTML = `היום יום ${todayOmerDay} לעומר • <span style="color: #f57c00;">אפשר לספור בלי ברכה</span>`;
+              }
             }
 
-            // Update minimal "today info" section with time context
-            if (omerTodayInfoContent) {
-              omerTodayInfoContent.innerHTML = isAfterTzeitWindow
-                ? `השעה ${currentTime} • אחרי צאה"כ (${sunsetTime})`
-                : `השעה ${currentTime} • צאה"כ ב-${sunsetTime}`;
+            // Update day button group - show only relevant option based on timing
+            // During blessing time: show current day
+            // Outside blessing time: show "next day at tzet" option
+            if (canCountWithBlessing) {
+              // During blessing time - poster is for current count
+              omerCurrentDayValue = posterDay;
+              omerNextDayValue = posterDay;
+
+              if (omerDayNowLabel) omerDayNowLabel.textContent = `יום ${posterDay}`;
+              if (omerDayNowText) omerDayNowText.textContent = `(עכשיו)`;
+              if (omerDayNextLabel) omerDayNextLabel.textContent = `יום ${posterDay}`;
+              if (omerDayNextText) omerDayNextText.textContent = `(עכשיו)`;
+
+              // Hide "next" button since we're in blessing time
+              const nextBtn = document.getElementById('omerDayNextBtn');
+              const nowBtn = document.getElementById('omerDayNowBtn');
+              if (nextBtn) nextBtn.style.display = 'none';
+              if (nowBtn) {
+                nowBtn.style.display = 'flex';
+                nowBtn.classList.add('active');
+              }
+            } else {
+              // Outside blessing time - poster is for next day (at tzet)
+              omerCurrentDayValue = todayOmerDay;
+              omerNextDayValue = posterDay;
+
+              if (omerDayNowLabel) omerDayNowLabel.textContent = `יום ${todayOmerDay}`;
+              if (omerDayNowText) omerDayNowText.textContent = `(היום)`;
+              if (omerDayNextLabel) omerDayNextLabel.textContent = `יום ${posterDay}`;
+              if (omerDayNextText) omerDayNextText.textContent = `(בצאה"כ ${tzetTime})`;
+
+              // Show both buttons, but select "next" by default
+              const nextBtn = document.getElementById('omerDayNextBtn');
+              const nowBtn = document.getElementById('omerDayNowBtn');
+              if (nextBtn) {
+                nextBtn.style.display = 'flex';
+                nextBtn.classList.add('active');
+              }
+              if (nowBtn) {
+                nowBtn.style.display = 'flex';
+                nowBtn.classList.remove('active');
+              }
             }
+
+            // Set the poster day
+            currentOmerDay = posterDay;
+            updateDaySelector();
+            updateDayButtonSelection();
 
             // Legacy elements - keep for compatibility
             if (omerTodayText) {
-              omerTodayText.textContent = `יום ${currentDay} לעומר`;
+              omerTodayText.textContent = `יום ${posterDay} לעומר`;
             }
             if (omerTodayMeta) {
-              omerTodayMeta.textContent = isAfterTzeitWindow
-                ? `כעת אחרי צאת הכוכבים • היום הנספר: ${currentDay}`
-                : `כעת לפני צאת הכוכבים • בצאת הכוכבים יתחיל יום ${nextDay}`;
+              omerTodayMeta.textContent = canCountWithBlessing
+                ? `זמן ברכה • יום ${posterDay}`
+                : `אפשר לספור בלי ברכה • צאה"כ ב-${tzetTime}`;
             }
-
-            // Set default day to "tonight" (the upcoming count, most common use case)
-            // Default = omerNextDayValue since users usually prepare poster for tonight
-            currentOmerDay = omerNextDayValue;
-            updateDaySelector();
-            updateDayButtonSelection();
 
             // Legacy compatibility
             omerCountText.textContent = `יום ${currentOmerDay} לעומר`;
