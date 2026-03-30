@@ -2895,47 +2895,68 @@
     .omer-sefirah-display {
       display: none;
     }
-    /* Compact day selector - inline "צור פוסטר ליום [X] לעומר" */
-    .omer-compact-selector {
+    /* Day selector button group - similar to mode-button-group */
+    .omer-day-button-group {
       display: flex;
+      background: var(--input-bg);
+      border-radius: 12px;
+      border: 2px solid var(--input-border);
+      padding: 4px;
+      gap: 4px;
+      transition: all 0.3s ease;
+      margin-bottom: 16px;
+    }
+    .omer-day-button {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 12px 16px;
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.08));
-      border: 1px solid rgba(255, 152, 0, 0.3);
-      border-radius: 10px;
-      margin-bottom: 16px;
-      font-size: 15px;
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-    .omer-compact-selector .prefix-text {
-      color: var(--text-secondary);
-    }
-    .omer-compact-selector .day-input {
-      width: 48px;
-      padding: 6px 8px;
-      border: 2px solid var(--input-border);
+      gap: 2px;
+      padding: 10px 12px;
+      border: none;
       border-radius: 8px;
-      background: var(--input-bg-focus);
-      color: #e65100;
-      font-size: 16px;
-      font-weight: 700;
-      text-align: center;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
       transition: all 0.2s ease;
       font-family: inherit;
+      white-space: nowrap;
     }
-    .omer-compact-selector .day-input:focus {
-      outline: none;
-      border-color: #ffc107;
-      box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.2);
+    .omer-day-button:hover:not(.active) {
+      background: var(--button-hover-bg);
     }
-    [data-theme="dark"] .omer-compact-selector .day-input {
-      color: #ffb74d;
+    .omer-day-button:focus-visible {
+      outline: 2px solid var(--input-border-focus);
+      outline-offset: -2px;
     }
-    .omer-compact-selector .suffix-text {
-      color: var(--text-secondary);
+    .omer-day-button.active {
+      background: linear-gradient(135deg, #ff9800 0%, #ffc107 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+    }
+    .omer-day-button .day-btn-icon {
+      font-size: 16px;
+    }
+    .omer-day-button .day-btn-label {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .omer-day-button .day-btn-day {
+      font-size: 11px;
+      opacity: 0.85;
+    }
+    .omer-day-button.active .day-btn-day {
+      opacity: 1;
+    }
+    [data-theme="dark"] .omer-day-button.active {
+      background: linear-gradient(135deg, #f57c00 0%, #ffb300 100%);
+    }
+    /* Hidden compact selector - replaced by button group */
+    .omer-compact-selector {
+      display: none;
     }
     .omer-customization-step {
       display: none;
@@ -3382,20 +3403,31 @@
 
       <!-- Omer content wrapper - hidden when not in period -->
       <div class="omer-content-wrapper" id="omerContentWrapper">
-        <!-- Step 1: Compact day selector with inline input -->
+        <!-- Step 1: Day selector button group -->
         <div class="omer-step-label">
           <span class="num">1</span>
           <span class="text">בחירת יום</span>
         </div>
-        <div class="omer-compact-selector" id="omerCompactSelector">
-          <span class="prefix-text">צור פוסטר ליום</span>
+        <div class="omer-day-button-group" id="omerDayButtonGroup">
+          <button type="button" class="omer-day-button" id="omerDayNowBtn" data-day-type="now">
+            <span class="day-btn-icon">📅</span>
+            <span class="day-btn-label">עכשיו</span>
+            <span class="day-btn-day" id="omerDayNowText">יום X</span>
+          </button>
+          <button type="button" class="omer-day-button active" id="omerDayNextBtn" data-day-type="next">
+            <span class="day-btn-icon">🌙</span>
+            <span class="day-btn-label">הערב</span>
+            <span class="day-btn-day" id="omerDayNextText">יום X+1</span>
+          </button>
+        </div>
+        <!-- Hidden compact selector - kept for backward compatibility -->
+        <div class="omer-compact-selector" id="omerCompactSelector" style="display: none;">
           <input type="number" id="omerDayInputCompact" class="day-input" min="1" max="49" value="1" />
-          <span class="suffix-text">לעומר</span>
         </div>
 
         <!-- Minimal "today info" helper - dashed border, italic, small -->
         <div class="omer-today-info-section" id="omerTodayInfoSection">
-          <div class="omer-today-info-header">איזה יום היום?</div>
+          <div class="omer-today-info-header">🕐 מה הזמן עכשיו?</div>
           <div class="omer-today-info-content" id="omerTodayInfoContent">טוען...</div>
         </div>
 
@@ -3990,13 +4022,20 @@ CITY_CHECKBOXES_PLACEHOLDER
     const imageStepTitle = document.getElementById('imageStepTitle');
     const imageStepSubtitle = document.getElementById('imageStepSubtitle');
     const omerCustomizationStep = document.getElementById('omerCustomizationStep');
-    // New compact day input
+    // New compact day input (hidden, for backward compatibility)
     const omerDayInputCompact = document.getElementById('omerDayInputCompact');
     const omerTodayInfoContent = document.getElementById('omerTodayInfoContent');
+    // New day button group elements
+    const omerDayNowBtn = document.getElementById('omerDayNowBtn');
+    const omerDayNextBtn = document.getElementById('omerDayNextBtn');
+    const omerDayNowText = document.getElementById('omerDayNowText');
+    const omerDayNextText = document.getElementById('omerDayNextText');
 
     let omerPreviewUrl = null; // Store the generated preview URL
     let omerPreviewLoading = false;
     let currentOmerDay = 1; // Currently selected Omer day
+    let omerCurrentDayValue = 1; // The "now" day (before sunset)
+    let omerNextDayValue = 2; // The "tonight" day (after sunset)
     let omerData = null; // Store fetched Omer data
     let testTimeParam = null; // Store test time from URL
     let isOmerPeriodAvailable = false; // Track if Omer button should be visible
@@ -4138,11 +4177,32 @@ CITY_CHECKBOXES_PLACEHOLDER
             // Update timeline (legacy - hidden but kept for compatibility)
             updateTimeline(currentTime, sunsetTime, currentDay, nextDay);
 
-            // Update minimal "today info" section
+            // Update day button group values
+            // "Now" = the currently counting day (what we're in now)
+            // "Next" = the upcoming night's count (what we'll count tonight)
+            if (isAfterTzeitWindow) {
+              // After sunset: we're counting today's day, "tonight" = same day (already counting)
+              omerCurrentDayValue = currentDay;
+              omerNextDayValue = Math.min(49, currentDay + 1); // Next day starts tomorrow night
+            } else {
+              // Before sunset: "now" = yesterday's count still active, "tonight" = tonight's new count
+              omerCurrentDayValue = Math.max(1, currentDay - 1); // What was counted last night
+              omerNextDayValue = currentDay; // What we'll count tonight
+            }
+
+            // Update button texts
+            if (omerDayNowText) {
+              omerDayNowText.textContent = `יום ${omerCurrentDayValue}`;
+            }
+            if (omerDayNextText) {
+              omerDayNextText.textContent = `יום ${omerNextDayValue}`;
+            }
+
+            // Update minimal "today info" section with time context
             if (omerTodayInfoContent) {
               omerTodayInfoContent.innerHTML = isAfterTzeitWindow
-                ? `עכשיו סופרים יום <strong>${currentDay}</strong> (אחרי צאת הכוכבים)`
-                : `עכשיו לפני צאת הכוכבים • בצאת נתחיל יום <strong>${nextDay}</strong>`;
+                ? `השעה ${currentTime} • אחרי צאה"כ (${sunsetTime})`
+                : `השעה ${currentTime} • צאה"כ ב-${sunsetTime}`;
             }
 
             // Legacy elements - keep for compatibility
@@ -4155,9 +4215,11 @@ CITY_CHECKBOXES_PLACEHOLDER
                 : `כעת לפני צאת הכוכבים • בצאת הכוכבים יתחיל יום ${nextDay}`;
             }
 
-            // Set default day
-            currentOmerDay = omerData.defaultDay || currentDay;
+            // Set default day to "tonight" (the upcoming count, most common use case)
+            // Default = omerNextDayValue since users usually prepare poster for tonight
+            currentOmerDay = omerNextDayValue;
             updateDaySelector();
+            updateDayButtonSelection();
 
             // Legacy compatibility
             omerCountText.textContent = `יום ${currentOmerDay} לעומר`;
@@ -4293,12 +4355,45 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (currentOmerDay < 49) setOmerDay(currentOmerDay + 1);
     });
 
-    // New compact day input handler
+    // New day button group handlers
+    function updateDayButtonSelection() {
+      // Update button active states based on currentOmerDay
+      if (omerDayNowBtn && omerDayNextBtn) {
+        if (currentOmerDay === omerCurrentDayValue) {
+          omerDayNowBtn.classList.add('active');
+          omerDayNextBtn.classList.remove('active');
+        } else if (currentOmerDay === omerNextDayValue) {
+          omerDayNowBtn.classList.remove('active');
+          omerDayNextBtn.classList.add('active');
+        } else {
+          // Custom day selected (neither now nor next) - show next as active by default
+          omerDayNowBtn.classList.remove('active');
+          omerDayNextBtn.classList.add('active');
+        }
+      }
+    }
+
+    if (omerDayNowBtn) {
+      omerDayNowBtn.addEventListener('click', () => {
+        setOmerDay(omerCurrentDayValue);
+        updateDayButtonSelection();
+      });
+    }
+
+    if (omerDayNextBtn) {
+      omerDayNextBtn.addEventListener('click', () => {
+        setOmerDay(omerNextDayValue);
+        updateDayButtonSelection();
+      });
+    }
+
+    // Hidden compact day input handler (kept for backward compatibility)
     if (omerDayInputCompact) {
       omerDayInputCompact.addEventListener('input', () => {
         const val = parseInt(omerDayInputCompact.value, 10);
         if (val >= 1 && val <= 49) {
           setOmerDay(val);
+          updateDayButtonSelection();
         }
       });
       omerDayInputCompact.addEventListener('blur', () => {
@@ -4308,6 +4403,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         val = Math.max(1, Math.min(49, val));
         omerDayInputCompact.value = val;
         setOmerDay(val);
+        updateDayButtonSelection();
       });
     }
 
