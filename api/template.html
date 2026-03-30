@@ -3392,7 +3392,8 @@
         <div class="omer-compact-selector" id="omerCompactSelector" style="display: none;">
           <input type="number" id="omerDayInputCompact" class="day-input" min="1" max="49" value="1" />
         </div>
-        <div class="omer-test-mode" id="omerTestMode">🧪 מצב בדיקה - זמן מדומה</div>
+        <!-- Test mode banner - only shown when ?testTime= URL param exists -->
+        <div class="omer-test-mode" id="omerTestMode" style="display: none;">🧪 מצב בדיקה - זמן מדומה</div>
         <span class="omer-count-text" id="omerCountText" style="display: none;"></span>
       </div>
     </div>
@@ -3988,6 +3989,8 @@ CITY_CHECKBOXES_PLACEHOLDER
       const urlParams = new URLSearchParams(window.location.search);
       testTimeParam = urlParams.get('testTime');
       if (testTimeParam) {
+        // Show test mode banner (override inline display:none)
+        omerTestMode.style.display = 'block';
         omerTestMode.classList.add('show');
         // Set the test time input
         if (omerTestTimeInput) {
