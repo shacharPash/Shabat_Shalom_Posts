@@ -2731,6 +2731,44 @@
       display: block;
       margin-bottom: 24px; /* Space between omer-info panel and the first step container */
     }
+    .omer-step-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .omer-step-label .num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 193, 7, 0.18);
+      border: 1px solid rgba(255, 193, 7, 0.4);
+      color: #e65100;
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .omer-step-label .text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .omer-step-help {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin: 2px 0 10px;
+      text-align: center;
+    }
+    .omer-step-action-hint {
+      margin: 8px 0 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffb74d;
+    }
     /* Current status display (legacy - hidden, replaced by today card) */
     .omer-status-display {
       display: none;
@@ -2902,6 +2940,14 @@
       padding: 8px;
       background: rgba(255, 193, 7, 0.08);
       border-radius: 6px;
+    }
+    .omer-customization-step {
+      display: none;
+      margin-top: 12px;
+      margin-bottom: 8px;
+    }
+    .omer-customization-step.show {
+      display: block;
     }
     /* Nusach selector */
     .omer-nusach-section {
@@ -3340,6 +3386,11 @@
 
       <!-- Omer content wrapper - hidden when not in period -->
       <div class="omer-content-wrapper" id="omerContentWrapper">
+        <div class="omer-step-label">
+          <span class="num">1</span>
+          <span class="text">איזה יום היום לעומר?</span>
+        </div>
+        <div class="omer-step-help">המידע כאן עוזר להבין לאיזה יום כדאי ליצור את הפוסטר</div>
         <!-- Timeline Bar -->
         <div class="omer-timeline" id="omerTimeline">
           <div class="omer-timeline-header">
@@ -3366,11 +3417,16 @@
           <span class="omer-day-label">לעומר</span>
           <button type="button" class="omer-day-btn" id="omerDayPlus" title="יום הבא">+</button>
         </div>
+        <div class="omer-step-action-hint" id="omerActionHint">צור פוסטר ליום -- לעומר</div>
 
         <!-- Sefirah Display -->
         <div class="omer-sefirah-display" id="omerSefirahDisplay">חֶסֶד שֶׁבְּחֶסֶד</div>
 
         <!-- Nusach Selector -->
+        <div class="omer-step-label">
+          <span class="num">2</span>
+          <span class="text">בחירת נוסח</span>
+        </div>
         <div class="omer-nusach-section" id="omerNusachSection">
           <div class="omer-nusach-label">נוסח</div>
           <div class="omer-nusach-group">
@@ -3399,12 +3455,12 @@
     </div>
 
     <!-- Step 1: Image -->
-    <div class="step-container">
+    <div class="step-container" id="imageStepContainer">
       <div class="step-header">
-        <div class="step-number">1</div>
+        <div class="step-number" id="imageStepNumber">1</div>
         <div class="step-info">
-          <div class="step-title">תמונת רקע</div>
-          <div class="step-subtitle">לא חובה - יש תמונת ברירת מחדל יפה</div>
+          <div class="step-title" id="imageStepTitle">תמונת רקע</div>
+          <div class="step-subtitle" id="imageStepSubtitle">לא חובה - יש תמונת ברירת מחדל יפה</div>
         </div>
       </div>
       <div class="step-content">
@@ -3528,6 +3584,12 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
+    <div class="omer-customization-step" id="omerCustomizationStep">
+      <div class="omer-step-label">
+        <span class="num">4</span>
+        <span class="text">התאמה אישית</span>
+      </div>
+    </div>
     <!-- Customization Panel (unified wrapper) -->
     <div class="customization-wrapper">
       <button type="button" id="customizationToggle" class="customization-toggle">
@@ -3929,7 +3991,12 @@ CITY_CHECKBOXES_PLACEHOLDER
     const omerContentWrapper = document.getElementById("omerContentWrapper");
     const omerGenerateBtn = document.getElementById("omerGenerateBtn");
     const omerGenerateBtnText = document.getElementById("omerGenerateBtnText");
+    const omerActionHint = document.getElementById("omerActionHint");
     const modeButtonGroup = document.querySelector('.mode-button-group');
+    const imageStepNumber = document.getElementById('imageStepNumber');
+    const imageStepTitle = document.getElementById('imageStepTitle');
+    const imageStepSubtitle = document.getElementById('imageStepSubtitle');
+    const omerCustomizationStep = document.getElementById('omerCustomizationStep');
 
     let omerPreviewUrl = null; // Store the generated preview URL
     let omerPreviewLoading = false;
@@ -4018,6 +4085,9 @@ CITY_CHECKBOXES_PLACEHOLDER
     function updateGenerateButtonText() {
       if (omerGenerateBtnText) {
         omerGenerateBtnText.textContent = `צור פוסטר ליום ${currentOmerDay} לעומר`;
+      }
+      if (omerActionHint) {
+        omerActionHint.textContent = `צור פוסטר ליום ${currentOmerDay} לעומר`;
       }
       // Also update the main generate button when in Omer mode
       const mainBtnText = document.querySelector('#generateBtn .btn-text');
@@ -4388,11 +4458,20 @@ CITY_CHECKBOXES_PLACEHOLDER
         citiesStep.style.display = omerModeEnabled ? 'none' : 'block';
       }
 
-      // Hide step numbers only in Omer mode (they should remain in Shabbat mode)
-      const stepNumbers = document.querySelectorAll('.step-number');
-      stepNumbers.forEach(stepNum => {
-        stepNum.style.display = omerModeEnabled ? 'none' : '';
-      });
+      if (imageStepNumber && imageStepTitle && imageStepSubtitle) {
+        if (omerModeEnabled) {
+          imageStepNumber.textContent = '3';
+          imageStepTitle.textContent = 'בחירת תמונה';
+          imageStepSubtitle.textContent = 'לא חובה - אפשר להישאר עם תמונת ברירת מחדל';
+        } else {
+          imageStepNumber.textContent = '1';
+          imageStepTitle.textContent = 'תמונת רקע';
+          imageStepSubtitle.textContent = 'לא חובה - יש תמונת ברירת מחדל יפה';
+        }
+      }
+      if (omerCustomizationStep) {
+        omerCustomizationStep.classList.toggle('show', omerModeEnabled);
+      }
 
       // Show final step (generate button) in both modes - only one generate button at the end
       const stepFinal = document.querySelector('.step-final');
