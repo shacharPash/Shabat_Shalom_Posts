@@ -4064,6 +4064,10 @@ CITY_CHECKBOXES_PLACEHOLDER
             const currentDay = omerData.currentDay || omerData.defaultDay;
             const nextDay = omerData.nextDay || (currentDay + 1);
             const isAfterSunset = omerData.isAfterSunset || false;
+            const currentHour = Number((currentTime.split(':')[0] || '0'));
+            // UX rule: treat 00:00-04:59 as "after tzeit" window to avoid midnight flip.
+            // From 05:00 onward, switch to "before tzeit" messaging until next tzeit.
+            const isAfterTzeitWindow = isAfterSunset || (!Number.isNaN(currentHour) && currentHour < 5);
 
             // Update timeline - note: RTL means left is lower day, right is higher day
             updateTimeline(currentTime, sunsetTime, currentDay, nextDay);
@@ -4072,7 +4076,7 @@ CITY_CHECKBOXES_PLACEHOLDER
               omerTodayText.textContent = `יום ${currentDay} לעומר`;
             }
             if (omerTodayMeta) {
-              omerTodayMeta.textContent = isAfterSunset
+              omerTodayMeta.textContent = isAfterTzeitWindow
                 ? `כעת אחרי צאת הכוכבים • היום הנספר: ${currentDay}`
                 : `כעת לפני צאת הכוכבים • בצאת הכוכבים יתחיל יום ${nextDay}`;
             }
