@@ -162,24 +162,26 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         """Handle GET request from Vercel Cron or manual test."""
-        # Verify cron secret if configured
-        if CRON_SECRET:
-            auth_header = self.headers.get("Authorization")
-            if auth_header != f"Bearer {CRON_SECRET}":
-                self.send_response(401)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(b'{"error": "Unauthorized"}')
-                return
+        # Parse query parameters first to check for test mode
+        parsed_url = urlparse(self.path)
+        query_params = parse_qs(parsed_url.query)
+
+        # Check for test_user_id parameter (for manual testing)
+        test_user_id = query_params.get("test_user_id", [None])[0]
+
+        # Skip auth for test mode, require cron secret for production requests
+        if not test_user_id:
+            # Verify cron secret if configured
+            if CRON_SECRET:
+                auth_header = self.headers.get("Authorization")
+                if auth_header != f"Bearer {CRON_SECRET}":
+                    self.send_response(401)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Unauthorized"}')
+                    return
 
         try:
-            # Parse query parameters
-            parsed_url = urlparse(self.path)
-            query_params = parse_qs(parsed_url.query)
-
-            # Check for test_user_id parameter (for manual testing)
-            test_user_id = query_params.get("test_user_id", [None])[0]
-
             if test_user_id:
                 # Manual test mode: send reminder to specific user regardless of Omer period
                 success = send_omer_reminder(test_user_id)
