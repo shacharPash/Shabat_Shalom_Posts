@@ -141,8 +141,8 @@ def _send_image_reminder(chat_id: int, prefs: dict, nusach: str) -> bool:
     if dedication:
         payload["leiluyNeshama"] = dedication
 
-    # Check if user has a saved image
-    saved_file_id = prefs.get("last_image_file_id")
+    # Check if user has a saved Omer image (fallback to general image)
+    saved_file_id = prefs.get("omer_image_file_id") or prefs.get("last_image_file_id")
     if saved_file_id:
         photo_bytes = download_photo(saved_file_id)
         if photo_bytes:

@@ -351,7 +351,7 @@ def _build_date_format_keyboard(current: str) -> List[List[Dict[str, str]]]:
     for fmt, label in DATE_FORMAT_LABELS.items():
         prefix = "✓ " if fmt == current else ""
         buttons.append({"text": f"{prefix}{label}", "callback_data": f"date:{fmt}"})
-    return [buttons, [{"text": "⬅️ חזרה", "callback_data": "settings:back"}]]
+    return [buttons, [{"text": "⬅️ חזרה", "callback_data": "shabbat:settings"}]]
 
 
 def _build_omer_settings_keyboard(
@@ -394,7 +394,8 @@ def _build_omer_settings_keyboard(
             {"text": f"{type_image_prefix}🖼️ תמונה", "callback_data": "omer:type:image"},
         ],
         [{"text": f"📖 נוסח: {nusach_display}", "callback_data": "omer:nusach"}],
-        [{"text": "⬅️ חזרה להגדרות", "callback_data": "settings:back"}],
+        [{"text": "👁️ הצג דוגמה עומר", "callback_data": "preview:omer"}],
+        [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
     ]
 
     return keyboard
@@ -493,23 +494,14 @@ def handle_start(update: Dict[str, Any]) -> None:
         "1️⃣ שלח לי תמונה\n"
         "2️⃣ אני אצור פוסטר מעוצב\n"
         "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
-        "🔔 <b>תזכורות יומיות:</b>\n"
-        "הפעל תזכורת וקבל פוסטר ספירת העומר כל יום אחרי צאת הכוכבים!\n"
-        "להפעלה: /reminder או דרך ההגדרות\n\n"
-        "<b>פקודות:</b>\n"
-        "/poster - צור פוסטר (לפי המצב הנבחר)\n"
-        "/omer - צור פוסטר ספירת העומר\n"
-        "/reminder - הפעל/כבה תזכורת יומית\n"
-        "/settings - הגדרות ובחירת מצב\n\n"
         "שלח תמונה כדי להתחיל! 📸"
     )
     keyboard = [
-        [{"text": "📸 צור פוסטר עכשיו", "callback_data": "start:poster"}],
-        [{"text": "🔢 הגדרת ספירת העומר", "callback_data": "start:omer_settings"}],
-        [
-            {"text": "⚙️ הגדרות", "callback_data": "start:settings"},
-            {"text": "🔔 תזכורות", "callback_data": "toggle:reminder"},
-        ]
+        [{"text": "📸 צור פוסטר שבת", "callback_data": "start:poster_shabbat"}],
+        [{"text": "🔢 צור פוסטר עומר", "callback_data": "start:poster_omer"}],
+        [{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}],
+        [{"text": "🔢 הגדרות עומר", "callback_data": "omer:settings"}],
+        [{"text": "📋 הגדרות כלליות", "callback_data": "general:settings"}],
     ]
     send_message_with_keyboard(chat_id, welcome_text, keyboard, parse_mode="HTML")
 
@@ -803,8 +795,254 @@ def handle_omer_settings(update: Dict[str, Any]) -> None:
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
 
 
+def handle_general_settings(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle general:settings callback - show general settings menu."""
+    prefs = get_user_prefs(user_id)
+
+    # Get blessing and dedication for display
+    blessing = prefs.get("blessing_text")
+    dedication = prefs.get("dedication_text")
+
+    settings_text = (
+        "📋 <b>הגדרות כלליות</b>\n\n"
+        f"💬 <b>ברכה:</b> {blessing[:30] + '...' if blessing and len(blessing) > 30 else blessing or 'לא הוגדרה'}\n"
+        f"🕯️ <b>לעילוי נשמת:</b> {dedication[:30] + '...' if dedication and len(dedication) > 30 else dedication or 'לא הוגדר'}\n\n"
+        "<i>💡 תמונות מוגדרות בנפרד בהגדרות שבת/עומר</i>"
+    )
+
+    keyboard = [
+        [{"text": "💬 ערוך ברכה", "callback_data": "edit:blessing"}],
+        [{"text": "🕯️ לעילוי נשמת", "callback_data": "edit:dedication"}],
+        [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
+    ]
+    edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
+
+
+def handle_general_settings_new(chat_id: int, user_id: str) -> None:
+    """Handle general:settings callback - show general settings menu (new message)."""
+    prefs = get_user_prefs(user_id)
+
+    # Get blessing and dedication for display
+    blessing = prefs.get("blessing_text")
+    dedication = prefs.get("dedication_text")
+
+    settings_text = (
+        "📋 <b>הגדרות כלליות</b>\n\n"
+        f"💬 <b>ברכה:</b> {blessing[:30] + '...' if blessing and len(blessing) > 30 else blessing or 'לא הוגדרה'}\n"
+        f"🕯️ <b>לעילוי נשמת:</b> {dedication[:30] + '...' if dedication and len(dedication) > 30 else dedication or 'לא הוגדר'}\n\n"
+        "<i>💡 תמונות מוגדרות בנפרד בהגדרות שבת/עומר</i>"
+    )
+
+    keyboard = [
+        [{"text": "💬 ערוך ברכה", "callback_data": "edit:blessing"}],
+        [{"text": "🕯️ לעילוי נשמת", "callback_data": "edit:dedication"}],
+        [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
+    ]
+    send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
+
+
+def handle_shabbat_settings(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle shabbat:settings callback - show Shabbat settings menu."""
+    prefs = get_user_prefs(user_id)
+    shabbat_reminder_enabled = prefs.get("shabbat_reminder_enabled", False)
+    has_shabbat_image = bool(prefs.get("shabbat_image_file_id"))
+
+    # Shabbat reminder toggle button
+    if shabbat_reminder_enabled:
+        reminder_button = {"text": "🔔 תזכורת שבת פעילה ✓", "callback_data": "toggle:shabbat_reminder"}
+    else:
+        reminder_button = {"text": "🔕 תזכורת שבת כבויה", "callback_data": "toggle:shabbat_reminder"}
+
+    # Image button based on whether image is saved
+    if has_shabbat_image:
+        image_buttons = [
+            {"text": "📸 תמונה שמורה ✓", "callback_data": "shabbat:show_image"},
+            {"text": "🗑️ מחק", "callback_data": "shabbat:clear_image"},
+        ]
+    else:
+        image_buttons = [{"text": "📸 הגדר תמונה לשבת", "callback_data": "shabbat:image"}]
+
+    # Date format display
+    date_format = prefs.get("date_format", "both")
+    date_format_display = DATE_FORMAT_LABELS.get(date_format, "שניהם")
+
+    # Cities display
+    cities = prefs.get("cities", [])
+    city_names = [c.get("name", "?") for c in cities] if cities else ["ברירת מחדל"]
+
+    settings_text = (
+        "⚙️ <b>הגדרות שבת</b>\n\n"
+        f"📸 <b>תמונה:</b> {'שמורה ✓' if has_shabbat_image else 'לא הוגדרה'}\n"
+        f"🏙️ <b>ערים:</b> {', '.join(city_names)}\n"
+        f"📅 <b>פורמט תאריך:</b> {date_format_display}\n"
+        f"🔔 <b>תזכורת:</b> {'פעילה' if shabbat_reminder_enabled else 'כבויה'}"
+    )
+
+    keyboard = [
+        image_buttons,
+        [{"text": "🏙️ ערוך ערים", "callback_data": "edit:cities"}],
+        [{"text": f"📅 פורמט תאריך: {date_format_display}", "callback_data": "edit:date_format"}],
+        [reminder_button],
+        [{"text": "👁️ הצג דוגמה שבת", "callback_data": "preview:shabbat"}],
+        [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
+    ]
+    edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
+
+
+def handle_shabbat_settings_new(chat_id: int, user_id: str) -> None:
+    """Handle shabbat:settings callback - show Shabbat settings menu (new message)."""
+    prefs = get_user_prefs(user_id)
+    shabbat_reminder_enabled = prefs.get("shabbat_reminder_enabled", False)
+    has_shabbat_image = bool(prefs.get("shabbat_image_file_id"))
+
+    # Shabbat reminder toggle button
+    if shabbat_reminder_enabled:
+        reminder_button = {"text": "🔔 תזכורת שבת פעילה ✓", "callback_data": "toggle:shabbat_reminder"}
+    else:
+        reminder_button = {"text": "🔕 תזכורת שבת כבויה", "callback_data": "toggle:shabbat_reminder"}
+
+    # Image button based on whether image is saved
+    if has_shabbat_image:
+        image_buttons = [
+            {"text": "📸 תמונה שמורה ✓", "callback_data": "shabbat:show_image"},
+            {"text": "🗑️ מחק", "callback_data": "shabbat:clear_image"},
+        ]
+    else:
+        image_buttons = [{"text": "📸 הגדר תמונה לשבת", "callback_data": "shabbat:image"}]
+
+    # Date format display
+    date_format = prefs.get("date_format", "both")
+    date_format_display = DATE_FORMAT_LABELS.get(date_format, "שניהם")
+
+    # Cities display
+    cities = prefs.get("cities", [])
+    city_names = [c.get("name", "?") for c in cities] if cities else ["ברירת מחדל"]
+
+    settings_text = (
+        "⚙️ <b>הגדרות שבת</b>\n\n"
+        f"📸 <b>תמונה:</b> {'שמורה ✓' if has_shabbat_image else 'לא הוגדרה'}\n"
+        f"🏙️ <b>ערים:</b> {', '.join(city_names)}\n"
+        f"📅 <b>פורמט תאריך:</b> {date_format_display}\n"
+        f"🔔 <b>תזכורת:</b> {'פעילה' if shabbat_reminder_enabled else 'כבויה'}"
+    )
+
+    keyboard = [
+        image_buttons,
+        [{"text": "🏙️ ערוך ערים", "callback_data": "edit:cities"}],
+        [{"text": f"📅 פורמט תאריך: {date_format_display}", "callback_data": "edit:date_format"}],
+        [reminder_button],
+        [{"text": "👁️ הצג דוגמה שבת", "callback_data": "preview:shabbat"}],
+        [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
+    ]
+    send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
+
+
+def handle_new_omer_settings(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle omer:settings callback - show Omer settings menu."""
+    prefs = get_user_prefs(user_id)
+    reminder_enabled = prefs.get("reminder_enabled", False)
+    reminder_type = prefs.get("reminder_type", "image")
+    nusach = prefs.get("nusach", "sefard")
+    has_omer_image = bool(prefs.get("omer_image_file_id"))
+
+    # Reminder toggle button
+    if reminder_enabled:
+        reminder_button = {"text": "🔔 תזכורת עומר פעילה ✓", "callback_data": "toggle:reminder"}
+    else:
+        reminder_button = {"text": "🔕 תזכורת עומר כבויה", "callback_data": "toggle:reminder"}
+
+    # Image button based on whether image is saved
+    if has_omer_image:
+        image_buttons = [
+            {"text": "📸 תמונה שמורה ✓", "callback_data": "omer:show_image"},
+            {"text": "🗑️ מחק", "callback_data": "omer:clear_image"},
+        ]
+    else:
+        image_buttons = [{"text": "📸 הגדר תמונה לעומר", "callback_data": "omer:image"}]
+
+    # Nusach display
+    nusach_display = {
+        "sefard": "ספרד",
+        "ashkenaz": "אשכנז",
+        "edot_hamizrach": "עדות המזרח"
+    }.get(nusach, "ספרד")
+
+    # Reminder type display
+    type_display = "טקסט" if reminder_type == "text" else "תמונה"
+
+    settings_text = (
+        "🔢 <b>הגדרות עומר</b>\n\n"
+        f"📸 <b>תמונה:</b> {'שמורה ✓' if has_omer_image else 'לא הוגדרה'}\n"
+        f"📖 <b>נוסח:</b> {nusach_display}\n"
+        f"📋 <b>סוג תזכורת:</b> {type_display}\n"
+        f"🔔 <b>תזכורת:</b> {'פעילה' if reminder_enabled else 'כבויה'}"
+    )
+
+    keyboard = [
+        image_buttons,
+        [{"text": f"📖 נוסח: {nusach_display}", "callback_data": "omer:nusach"}],
+        [{"text": f"📋 סוג תזכורת: {type_display}", "callback_data": "omer:reminder_type"}],
+        [reminder_button],
+        [{"text": "👁️ הצג דוגמה עומר", "callback_data": "preview:omer"}],
+        [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
+    ]
+    edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
+
+
+def handle_new_omer_settings_new(chat_id: int, user_id: str) -> None:
+    """Handle omer:settings callback - show Omer settings menu (new message)."""
+    prefs = get_user_prefs(user_id)
+    reminder_enabled = prefs.get("reminder_enabled", False)
+    reminder_type = prefs.get("reminder_type", "image")
+    nusach = prefs.get("nusach", "sefard")
+    has_omer_image = bool(prefs.get("omer_image_file_id"))
+
+    # Reminder toggle button
+    if reminder_enabled:
+        reminder_button = {"text": "🔔 תזכורת עומר פעילה ✓", "callback_data": "toggle:reminder"}
+    else:
+        reminder_button = {"text": "🔕 תזכורת עומר כבויה", "callback_data": "toggle:reminder"}
+
+    # Image button based on whether image is saved
+    if has_omer_image:
+        image_buttons = [
+            {"text": "📸 תמונה שמורה ✓", "callback_data": "omer:show_image"},
+            {"text": "🗑️ מחק", "callback_data": "omer:clear_image"},
+        ]
+    else:
+        image_buttons = [{"text": "📸 הגדר תמונה לעומר", "callback_data": "omer:image"}]
+
+    # Nusach display
+    nusach_display = {
+        "sefard": "ספרד",
+        "ashkenaz": "אשכנז",
+        "edot_hamizrach": "עדות המזרח"
+    }.get(nusach, "ספרד")
+
+    # Reminder type display
+    type_display = "טקסט" if reminder_type == "text" else "תמונה"
+
+    settings_text = (
+        "🔢 <b>הגדרות עומר</b>\n\n"
+        f"📸 <b>תמונה:</b> {'שמורה ✓' if has_omer_image else 'לא הוגדרה'}\n"
+        f"📖 <b>נוסח:</b> {nusach_display}\n"
+        f"📋 <b>סוג תזכורת:</b> {type_display}\n"
+        f"🔔 <b>תזכורת:</b> {'פעילה' if reminder_enabled else 'כבויה'}"
+    )
+
+    keyboard = [
+        image_buttons,
+        [{"text": f"📖 נוסח: {nusach_display}", "callback_data": "omer:nusach"}],
+        [{"text": f"📋 סוג תזכורת: {type_display}", "callback_data": "omer:reminder_type"}],
+        [reminder_button],
+        [{"text": "👁️ הצג דוגמה עומר", "callback_data": "preview:omer"}],
+        [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
+    ]
+    send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
+
+
 def handle_photo(update: Dict[str, Any]) -> None:
-    """Handle photo message - generate poster from user photo."""
+    """Handle photo message - generate poster or save image based on state."""
     chat_id = get_chat_id(update)
     user_id = get_user_id(update)
     if not chat_id or not user_id:
@@ -823,74 +1061,43 @@ def handle_photo(update: Dict[str, Any]) -> None:
         send_message(chat_id, "❌ שגיאה בקבלת התמונה. נסה שוב.")
         return
 
-    # Notify user we're working
-    send_message(chat_id, "⏳ יוצר את הפוסטר שלך...")
+    prefs = get_user_prefs(user_id)
+    user_state = _get_user_state(user_id)
 
-    try:
-        # Download the photo
-        photo_bytes = download_photo(file_id)
-        if not photo_bytes:
-            send_message(chat_id, "❌ שגיאה בהורדת התמונה. נסה שוב.")
-            return
-
-        # Get user preferences
-        prefs = get_user_prefs(user_id)
-
-        # Save the file_id for future use
-        prefs["last_image_file_id"] = file_id
+    # Handle specific image setting states
+    if user_state == "waiting_shabbat_image":
+        prefs["shabbat_image_file_id"] = file_id
+        prefs["last_image_file_id"] = file_id  # Backward compatibility
         set_user_prefs(user_id, prefs)
+        _clear_user_state(user_id)
+        send_message(chat_id, "✅ התמונה נשמרה לפוסטרי שבת!")
+        return
 
-        # Determine if omer mode should be used
-        use_omer_mode = prefs.get("poster_mode") == "omer"
+    if user_state == "waiting_omer_image":
+        prefs["omer_image_file_id"] = file_id
+        prefs["last_image_file_id"] = file_id  # Backward compatibility
+        set_user_prefs(user_id, prefs)
+        _clear_user_state(user_id)
+        send_message(chat_id, "✅ התמונה נשמרה לפוסטרי עומר!")
+        return
 
-        # Build payload for poster generation
-        payload = {
-            "imageBase64": base64.b64encode(photo_bytes).decode("utf-8"),
-            "dateFormat": prefs.get("date_format", "both"),
-        }
+    # Default behavior: Ask user where to save the image
+    prefs["pending_image_file_id"] = file_id
+    prefs["last_image_file_id"] = file_id  # Backward compatibility
+    set_user_prefs(user_id, prefs)
 
-        # Add omer mode if enabled
-        if use_omer_mode:
-            payload["omerMode"] = True
-            payload["nusach"] = prefs.get("nusach", "sefard")
-
-        # Add cities if defined
-        cities = prefs.get("cities")
-        if cities:
-            # Map city names to full city objects with coordinates
-            mapped_cities = []
-            for city in cities:
-                name = city.get("name") if isinstance(city, dict) else city
-                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
-                if name in CITY_BY_NAME:
-                    full_city = CITY_BY_NAME[name].copy()
-                    full_city["candle_offset"] = offset
-                    mapped_cities.append(full_city)
-            if mapped_cities:
-                payload["cities"] = mapped_cities
-
-        # Add blessing text if defined
-        blessing = prefs.get("blessing_text")
-        if blessing:
-            payload["message"] = blessing
-
-        # Add dedication text if defined
-        dedication = prefs.get("dedication_text")
-        if dedication:
-            payload["leiluyNeshama"] = dedication
-
-        # Generate poster
-        poster_bytes = build_poster_from_payload(payload)
-
-        # Send poster back to user with appropriate caption
-        if use_omer_mode:
-            caption = "🔢 פוסטר ספירת העומר שלך מוכן!\n📸 התמונה נשמרה לשימוש חוזר."
-        else:
-            caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!\n📸 התמונה נשמרה לשימוש חוזר."
-        send_photo(chat_id, poster_bytes, caption)
-
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+    # Ask user where to save and offer to generate poster
+    keyboard = [
+        [{"text": "🕯️ שבת", "callback_data": "photo:shabbat"}],
+        [{"text": "🔢 עומר", "callback_data": "photo:omer"}],
+        [{"text": "📸 לשניהם", "callback_data": "photo:both"}],
+    ]
+    send_message_with_keyboard(
+        chat_id,
+        "📸 קיבלתי את התמונה!\n\n"
+        "לאיזה פוסטר התמונה מיועדת?",
+        keyboard
+    )
 
 
 # --- Callback Query Handlers ---
@@ -914,7 +1121,51 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         return
 
     # Route based on callback data
-    if data == "edit:cities":
+    # --- New Menu Structure ---
+    if data == "start:poster_shabbat":
+        handle_start_poster_shabbat(chat_id, user_id)
+    elif data == "start:poster_omer":
+        handle_start_poster_omer(chat_id, user_id)
+    elif data == "general:settings":
+        handle_general_settings(chat_id, message_id, user_id)
+    elif data == "shabbat:settings":
+        handle_shabbat_settings(chat_id, message_id, user_id)
+    elif data == "omer:settings":
+        handle_new_omer_settings(chat_id, message_id, user_id)
+    elif data == "preview:shabbat":
+        handle_preview_shabbat(chat_id, user_id)
+    elif data == "preview:omer":
+        handle_preview_omer(chat_id, user_id)
+    elif data == "show:saved_image":
+        handle_show_saved_image(chat_id, user_id)
+    elif data == "edit:image":
+        handle_edit_image(chat_id, message_id, user_id)
+    elif data == "edit:date_format":
+        handle_edit_date(chat_id, message_id, user_id)
+    elif data == "omer:reminder_type":
+        handle_omer_reminder_type(chat_id, message_id, user_id)
+    # --- Image callbacks for separate Shabbat/Omer images ---
+    elif data == "shabbat:image":
+        handle_shabbat_image_prompt(chat_id, message_id, user_id)
+    elif data == "shabbat:show_image":
+        handle_shabbat_show_image(chat_id, user_id)
+    elif data == "shabbat:clear_image":
+        handle_shabbat_clear_image(chat_id, message_id, user_id)
+    elif data == "omer:image":
+        handle_omer_image_prompt(chat_id, message_id, user_id)
+    elif data == "omer:show_image":
+        handle_omer_show_image(chat_id, user_id)
+    elif data == "omer:clear_image":
+        handle_omer_clear_image(chat_id, message_id, user_id)
+    # --- Photo destination selection ---
+    elif data == "photo:shabbat":
+        handle_photo_destination(chat_id, message_id, user_id, "shabbat")
+    elif data == "photo:omer":
+        handle_photo_destination(chat_id, message_id, user_id, "omer")
+    elif data == "photo:both":
+        handle_photo_destination(chat_id, message_id, user_id, "both")
+    # --- Existing Callbacks (backward compatible) ---
+    elif data == "edit:cities":
         handle_edit_cities(chat_id, message_id, user_id)
     elif data.startswith("cities:page:"):
         page = int(data.split(":")[2])
@@ -984,6 +1235,331 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_omer_set_nusach(chat_id, message_id, user_id, nusach_value)
     elif data == "omer:back":
         handle_omer_back(chat_id, message_id, user_id)
+
+
+# --- New Menu Handlers ---
+
+
+def handle_start_poster_shabbat(chat_id: int, user_id: str) -> None:
+    """Handle start:poster_shabbat callback - generate Shabbat poster."""
+    send_message(chat_id, "⏳ יוצר פוסטר שבת...")
+
+    try:
+        prefs = get_user_prefs(user_id)
+
+        payload = {
+            "dateFormat": prefs.get("date_format", "both"),
+        }
+
+        # Check for saved Shabbat image (fallback to general last_image_file_id)
+        saved_file_id = prefs.get("shabbat_image_file_id") or prefs.get("last_image_file_id")
+        if saved_file_id:
+            photo_bytes = download_photo(saved_file_id)
+            if photo_bytes:
+                payload["imageBase64"] = base64.b64encode(photo_bytes).decode("utf-8")
+
+        # Add cities if defined
+        cities = prefs.get("cities")
+        if cities:
+            mapped_cities = []
+            for city in cities:
+                name = city.get("name") if isinstance(city, dict) else city
+                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
+                if name in CITY_BY_NAME:
+                    full_city = CITY_BY_NAME[name].copy()
+                    full_city["candle_offset"] = offset
+                    mapped_cities.append(full_city)
+            if mapped_cities:
+                payload["cities"] = mapped_cities
+
+        # Add blessing and dedication if defined
+        blessing = prefs.get("blessing_text")
+        if blessing:
+            payload["message"] = blessing
+
+        dedication = prefs.get("dedication_text")
+        if dedication:
+            payload["leiluyNeshama"] = dedication
+
+        poster_bytes = build_poster_from_payload(payload)
+        send_photo(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!")
+
+    except Exception as e:
+        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+
+
+def handle_start_poster_omer(chat_id: int, user_id: str) -> None:
+    """Handle start:poster_omer callback - generate Omer poster."""
+    send_message(chat_id, "⏳ יוצר פוסטר ספירת העומר...")
+
+    try:
+        prefs = get_user_prefs(user_id)
+
+        payload = {
+            "dateFormat": prefs.get("date_format", "both"),
+            "omerMode": True,
+            "nusach": prefs.get("nusach", "sefard"),
+        }
+
+        # Check for saved Omer image (fallback to general last_image_file_id)
+        saved_file_id = prefs.get("omer_image_file_id") or prefs.get("last_image_file_id")
+        if saved_file_id:
+            photo_bytes = download_photo(saved_file_id)
+            if photo_bytes:
+                payload["imageBase64"] = base64.b64encode(photo_bytes).decode("utf-8")
+
+        # Add blessing and dedication if defined
+        blessing = prefs.get("blessing_text")
+        if blessing:
+            payload["message"] = blessing
+
+        dedication = prefs.get("dedication_text")
+        if dedication:
+            payload["leiluyNeshama"] = dedication
+
+        poster_bytes = build_poster_from_payload(payload)
+        send_photo(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!")
+
+    except Exception as e:
+        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+
+
+def handle_preview_shabbat(chat_id: int, user_id: str) -> None:
+    """Handle preview:shabbat callback - show preview of Shabbat poster."""
+    try:
+        prefs = get_user_prefs(user_id)
+
+        payload = {
+            "dateFormat": prefs.get("date_format", "both"),
+        }
+
+        # Add cities if defined
+        cities = prefs.get("cities")
+        if cities:
+            mapped_cities = []
+            for city in cities:
+                name = city.get("name") if isinstance(city, dict) else city
+                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
+                if name in CITY_BY_NAME:
+                    full_city = CITY_BY_NAME[name].copy()
+                    full_city["candle_offset"] = offset
+                    mapped_cities.append(full_city)
+            if mapped_cities:
+                payload["cities"] = mapped_cities
+
+        # Add blessing and dedication if defined
+        blessing = prefs.get("blessing_text")
+        if blessing:
+            payload["message"] = blessing
+
+        dedication = prefs.get("dedication_text")
+        if dedication:
+            payload["leiluyNeshama"] = dedication
+
+        poster_bytes = build_poster_from_payload(payload)
+        send_photo(chat_id, poster_bytes, "👆 כך ייראה פוסטר השבת שלך עם ההגדרות הנוכחיות")
+
+    except Exception as e:
+        send_message(chat_id, f"❌ שגיאה ביצירת הדוגמה: {str(e)}")
+
+
+def handle_preview_omer(chat_id: int, user_id: str) -> None:
+    """Handle preview:omer callback - show preview of Omer poster."""
+    try:
+        prefs = get_user_prefs(user_id)
+
+        payload = {
+            "dateFormat": prefs.get("date_format", "both"),
+            "omerMode": True,
+            "nusach": prefs.get("nusach", "sefard"),
+        }
+
+        # Add cities if defined
+        cities = prefs.get("cities")
+        if cities:
+            mapped_cities = []
+            for city in cities:
+                name = city.get("name") if isinstance(city, dict) else city
+                offset = city.get("candle_offset", 20) if isinstance(city, dict) else 20
+                if name in CITY_BY_NAME:
+                    full_city = CITY_BY_NAME[name].copy()
+                    full_city["candle_offset"] = offset
+                    mapped_cities.append(full_city)
+            if mapped_cities:
+                payload["cities"] = mapped_cities
+
+        # Add blessing and dedication if defined
+        blessing = prefs.get("blessing_text")
+        if blessing:
+            payload["message"] = blessing
+
+        dedication = prefs.get("dedication_text")
+        if dedication:
+            payload["leiluyNeshama"] = dedication
+
+        poster_bytes = build_poster_from_payload(payload)
+        send_photo(chat_id, poster_bytes, "👆 כך ייראה פוסטר העומר שלך עם ההגדרות הנוכחיות")
+
+    except Exception as e:
+        send_message(chat_id, f"❌ שגיאה ביצירת הדוגמה: {str(e)}")
+
+
+def handle_show_saved_image(chat_id: int, user_id: str) -> None:
+    """Handle show:saved_image callback - show the saved image."""
+    prefs = get_user_prefs(user_id)
+    saved_file_id = prefs.get("last_image_file_id")
+
+    if saved_file_id:
+        # Send the saved image back to user
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+        keyboard = [[{"text": "🗑️ מחק תמונה", "callback_data": "clear:image"}]]
+        payload = {
+            "chat_id": chat_id,
+            "photo": saved_file_id,
+            "caption": "📸 התמונה השמורה שלך",
+            "reply_markup": {"inline_keyboard": keyboard},
+        }
+        requests.post(url, json=payload, timeout=30)
+    else:
+        send_message(chat_id, "ℹ️ אין תמונה שמורה. שלח תמונה כדי לשמור.")
+
+
+def handle_edit_image(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle edit:image callback - prompt user to send a new image."""
+    _set_user_state(user_id, "waiting_image")
+    edit_message_with_keyboard(
+        chat_id,
+        message_id,
+        "📸 שלח תמונה חדשה:\n(התמונה תישמר לפוסטרים הבאים)",
+        [[{"text": "⬅️ חזרה", "callback_data": "general:settings"}]],
+    )
+
+
+def handle_omer_reminder_type(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle omer:reminder_type callback - show reminder type selection."""
+    prefs = get_user_prefs(user_id)
+    current_type = prefs.get("reminder_type", "image")
+
+    keyboard = [
+        [
+            {"text": f"{'✓ ' if current_type == 'text' else ''}📝 טקסט", "callback_data": "omer:type:text"},
+            {"text": f"{'✓ ' if current_type == 'image' else ''}🖼️ תמונה", "callback_data": "omer:type:image"},
+        ],
+        [{"text": "⬅️ חזרה", "callback_data": "omer:settings"}],
+    ]
+    edit_message_with_keyboard(
+        chat_id, message_id,
+        "📋 <b>בחר סוג תזכורת:</b>\n\n"
+        "• <b>טקסט</b> - הודעת טקסט עם נוסח הספירה\n"
+        "• <b>תמונה</b> - פוסטר מעוצב לשיתוף",
+        keyboard, parse_mode="HTML"
+    )
+
+
+# --- Separate Image Handlers ---
+
+
+def handle_shabbat_image_prompt(chat_id: int, message_id: int, user_id: str) -> None:
+    """Prompt user to send a Shabbat image."""
+    _set_user_state(user_id, "waiting_shabbat_image")
+    edit_message_with_keyboard(
+        chat_id,
+        message_id,
+        "📸 שלח תמונה לפוסטרי שבת:\n(התמונה תישמר להגדרות שבת)",
+        [[{"text": "⬅️ חזרה", "callback_data": "shabbat:settings"}]],
+    )
+
+
+def handle_shabbat_show_image(chat_id: int, user_id: str) -> None:
+    """Show the saved Shabbat image."""
+    prefs = get_user_prefs(user_id)
+    saved_file_id = prefs.get("shabbat_image_file_id")
+
+    if saved_file_id:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+        keyboard = [[{"text": "🗑️ מחק תמונה", "callback_data": "shabbat:clear_image"}]]
+        payload = {
+            "chat_id": chat_id,
+            "photo": saved_file_id,
+            "caption": "📸 תמונת שבת שמורה",
+            "reply_markup": {"inline_keyboard": keyboard},
+        }
+        requests.post(url, json=payload, timeout=30)
+    else:
+        send_message(chat_id, "ℹ️ אין תמונת שבת שמורה.")
+
+
+def handle_shabbat_clear_image(chat_id: int, message_id: int, user_id: str) -> None:
+    """Clear the saved Shabbat image."""
+    prefs = get_user_prefs(user_id)
+    prefs["shabbat_image_file_id"] = None
+    set_user_prefs(user_id, prefs)
+    handle_shabbat_settings(chat_id, message_id, user_id)
+
+
+def handle_omer_image_prompt(chat_id: int, message_id: int, user_id: str) -> None:
+    """Prompt user to send an Omer image."""
+    _set_user_state(user_id, "waiting_omer_image")
+    edit_message_with_keyboard(
+        chat_id,
+        message_id,
+        "📸 שלח תמונה לפוסטרי עומר:\n(התמונה תישמר להגדרות עומר)",
+        [[{"text": "⬅️ חזרה", "callback_data": "omer:settings"}]],
+    )
+
+
+def handle_omer_show_image(chat_id: int, user_id: str) -> None:
+    """Show the saved Omer image."""
+    prefs = get_user_prefs(user_id)
+    saved_file_id = prefs.get("omer_image_file_id")
+
+    if saved_file_id:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+        keyboard = [[{"text": "🗑️ מחק תמונה", "callback_data": "omer:clear_image"}]]
+        payload = {
+            "chat_id": chat_id,
+            "photo": saved_file_id,
+            "caption": "📸 תמונת עומר שמורה",
+            "reply_markup": {"inline_keyboard": keyboard},
+        }
+        requests.post(url, json=payload, timeout=30)
+    else:
+        send_message(chat_id, "ℹ️ אין תמונת עומר שמורה.")
+
+
+def handle_omer_clear_image(chat_id: int, message_id: int, user_id: str) -> None:
+    """Clear the saved Omer image."""
+    prefs = get_user_prefs(user_id)
+    prefs["omer_image_file_id"] = None
+    set_user_prefs(user_id, prefs)
+    handle_new_omer_settings(chat_id, message_id, user_id)
+
+
+def handle_photo_destination(chat_id: int, message_id: int, user_id: str, destination: str) -> None:
+    """Handle photo destination selection after user sends a photo."""
+    prefs = get_user_prefs(user_id)
+    pending_file_id = prefs.get("pending_image_file_id")
+
+    if not pending_file_id:
+        send_message(chat_id, "❌ לא נמצאה תמונה. נסה שוב.")
+        return
+
+    if destination == "shabbat":
+        prefs["shabbat_image_file_id"] = pending_file_id
+        prefs["pending_image_file_id"] = None
+        set_user_prefs(user_id, prefs)
+        send_message(chat_id, "✅ התמונה נשמרה לפוסטרי שבת!")
+    elif destination == "omer":
+        prefs["omer_image_file_id"] = pending_file_id
+        prefs["pending_image_file_id"] = None
+        set_user_prefs(user_id, prefs)
+        send_message(chat_id, "✅ התמונה נשמרה לפוסטרי עומר!")
+    elif destination == "both":
+        prefs["shabbat_image_file_id"] = pending_file_id
+        prefs["omer_image_file_id"] = pending_file_id
+        prefs["pending_image_file_id"] = None
+        set_user_prefs(user_id, prefs)
+        send_message(chat_id, "✅ התמונה נשמרה לכל הפוסטרים!")
 
 
 def handle_edit_cities(chat_id: int, message_id: int, user_id: str) -> None:
@@ -1064,8 +1640,8 @@ def handle_city_toggle(
 
 
 def handle_cities_done(chat_id: int, message_id: int, user_id: str) -> None:
-    """Finish city selection and return to settings."""
-    handle_settings_back(chat_id, message_id, user_id)
+    """Finish city selection and return to Shabbat settings."""
+    handle_shabbat_settings(chat_id, message_id, user_id)
 
 
 def handle_edit_date(chat_id: int, message_id: int, user_id: str) -> None:
@@ -1145,13 +1721,8 @@ def handle_toggle_reminder(chat_id: int, message_id: int, user_id: str) -> None:
     prefs["reminder_enabled"] = new_state
     set_user_prefs(user_id, prefs)
 
-    # Refresh settings display
-    settings_text = format_settings(prefs)
-    has_saved_image = bool(prefs.get("last_image_file_id"))
-    nusach = prefs.get("nusach", "sefard")
-    shabbat_reminder_enabled = prefs.get("shabbat_reminder_enabled", False)
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, new_state, nusach, shabbat_reminder_enabled)
-    edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
+    # Refresh omer settings display
+    handle_new_omer_settings(chat_id, message_id, user_id)
 
 
 def handle_toggle_shabbat_reminder(chat_id: int, message_id: int, user_id: str) -> None:
@@ -1164,13 +1735,8 @@ def handle_toggle_shabbat_reminder(chat_id: int, message_id: int, user_id: str) 
     prefs["shabbat_reminder_enabled"] = new_state
     set_user_prefs(user_id, prefs)
 
-    # Refresh settings display
-    settings_text = format_settings(prefs)
-    has_saved_image = bool(prefs.get("last_image_file_id"))
-    reminder_enabled = prefs.get("reminder_enabled", False)
-    nusach = prefs.get("nusach", "sefard")
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach, new_state)
-    edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
+    # Refresh shabbat settings display
+    handle_shabbat_settings(chat_id, message_id, user_id)
 
 
 def handle_edit_nusach(chat_id: int, message_id: int, user_id: str) -> None:
@@ -1185,7 +1751,7 @@ def handle_edit_nusach(chat_id: int, message_id: int, user_id: str) -> None:
             {"text": f"{'✓ ' if current_nusach == 'ashkenaz' else ''}אשכנז", "callback_data": "nusach:ashkenaz"},
             {"text": f"{'✓ ' if current_nusach == 'edot_hamizrach' else ''}עדות המזרח", "callback_data": "nusach:edot_hamizrach"},
         ],
-        [{"text": "⬅️ חזרה", "callback_data": "settings:back"}],
+        [{"text": "⬅️ חזרה", "callback_data": "omer:settings"}],
     ]
     edit_message_with_keyboard(
         chat_id, message_id,
@@ -1206,13 +1772,8 @@ def handle_set_nusach(chat_id: int, message_id: int, user_id: str, nusach: str) 
     prefs["nusach"] = nusach
     set_user_prefs(user_id, prefs)
 
-    # Return to settings view
-    settings_text = format_settings(prefs)
-    has_saved_image = bool(prefs.get("last_image_file_id"))
-    reminder_enabled = prefs.get("reminder_enabled", False)
-    shabbat_reminder_enabled = prefs.get("shabbat_reminder_enabled", False)
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach, shabbat_reminder_enabled)
-    edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
+    # Return to omer settings view
+    handle_new_omer_settings(chat_id, message_id, user_id)
 
 
 # --- Omer Settings Wizard Handlers ---
@@ -1491,23 +2052,14 @@ def handle_back_to_start(chat_id: int, user_id: str) -> None:
         "1️⃣ שלח לי תמונה\n"
         "2️⃣ אני אצור פוסטר מעוצב\n"
         "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
-        "🔔 <b>תזכורות יומיות:</b>\n"
-        "הפעל תזכורת וקבל פוסטר ספירת העומר כל יום אחרי צאת הכוכבים!\n"
-        "להפעלה: /reminder או דרך ההגדרות\n\n"
-        "<b>פקודות:</b>\n"
-        "/poster - צור פוסטר (לפי המצב הנבחר)\n"
-        "/omer - צור פוסטר ספירת העומר\n"
-        "/reminder - הפעל/כבה תזכורת יומית\n"
-        "/settings - הגדרות ובחירת מצב\n\n"
         "שלח תמונה כדי להתחיל! 📸"
     )
     keyboard = [
-        [{"text": "📸 צור פוסטר עכשיו", "callback_data": "start:poster"}],
-        [{"text": "🔢 הגדרת ספירת העומר", "callback_data": "start:omer_settings"}],
-        [
-            {"text": "⚙️ הגדרות", "callback_data": "start:settings"},
-            {"text": "🔔 תזכורות", "callback_data": "toggle:reminder"},
-        ]
+        [{"text": "📸 צור פוסטר שבת", "callback_data": "start:poster_shabbat"}],
+        [{"text": "🔢 צור פוסטר עומר", "callback_data": "start:poster_omer"}],
+        [{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}],
+        [{"text": "🔢 הגדרות עומר", "callback_data": "omer:settings"}],
+        [{"text": "📋 הגדרות כלליות", "callback_data": "general:settings"}],
     ]
     send_message_with_keyboard(chat_id, welcome_text, keyboard, parse_mode="HTML")
 
