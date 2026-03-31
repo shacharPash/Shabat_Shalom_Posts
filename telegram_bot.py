@@ -806,10 +806,11 @@ def handle_omer_settings(update: Dict[str, Any]) -> None:
     reminder_enabled = prefs.get("reminder_enabled", False)
     reminder_type = prefs.get("reminder_type", "image")
     nusach = prefs.get("nusach", "sefard")
+    has_omer_image = bool(prefs.get("omer_image_file_id"))
 
     # Show Omer settings wizard
     settings_text = format_omer_settings(prefs)
-    keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach)
+    keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach, has_omer_image)
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -1863,7 +1864,8 @@ def handle_omer_toggle_reminder(chat_id: int, message_id: int, user_id: str) -> 
     settings_text = format_omer_settings(prefs)
     reminder_type = prefs.get("reminder_type", "image")
     nusach = prefs.get("nusach", "sefard")
-    keyboard = _build_omer_settings_keyboard(new_state, reminder_type, nusach)
+    has_omer_image = bool(prefs.get("omer_image_file_id"))
+    keyboard = _build_omer_settings_keyboard(new_state, reminder_type, nusach, has_omer_image)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -1880,7 +1882,8 @@ def handle_omer_set_type(chat_id: int, message_id: int, user_id: str, reminder_t
     settings_text = format_omer_settings(prefs)
     reminder_enabled = prefs.get("reminder_enabled", False)
     nusach = prefs.get("nusach", "sefard")
-    keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach)
+    has_omer_image = bool(prefs.get("omer_image_file_id"))
+    keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach, has_omer_image)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -1921,7 +1924,8 @@ def handle_omer_set_nusach(chat_id: int, message_id: int, user_id: str, nusach: 
     settings_text = format_omer_settings(prefs)
     reminder_enabled = prefs.get("reminder_enabled", False)
     reminder_type = prefs.get("reminder_type", "image")
-    keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach)
+    has_omer_image = bool(prefs.get("omer_image_file_id"))
+    keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach, has_omer_image)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
@@ -1932,7 +1936,8 @@ def handle_omer_back(chat_id: int, message_id: int, user_id: str) -> None:
     reminder_enabled = prefs.get("reminder_enabled", False)
     reminder_type = prefs.get("reminder_type", "image")
     nusach = prefs.get("nusach", "sefard")
-    keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach)
+    has_omer_image = bool(prefs.get("omer_image_file_id"))
+    keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach, has_omer_image)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
 
