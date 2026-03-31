@@ -1157,6 +1157,10 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_omer_show_image(chat_id, user_id)
     elif data == "omer:clear_image":
         handle_omer_clear_image(chat_id, message_id, user_id)
+    elif data == "shabbat:reset_image":
+        handle_shabbat_reset_image(chat_id, message_id, user_id)
+    elif data == "omer:reset_image":
+        handle_omer_reset_image(chat_id, message_id, user_id)
     # --- Photo destination selection ---
     elif data == "photo:shabbat":
         handle_photo_destination(chat_id, message_id, user_id, "shabbat")
@@ -1462,11 +1466,19 @@ def handle_omer_reminder_type(chat_id: int, message_id: int, user_id: str) -> No
 def handle_shabbat_image_prompt(chat_id: int, message_id: int, user_id: str) -> None:
     """Prompt user to send a Shabbat image."""
     _set_user_state(user_id, "waiting_shabbat_image")
+    prefs = get_user_prefs(user_id)
+    has_saved_image = bool(prefs.get("shabbat_image_file_id"))
+
+    keyboard = []
+    if has_saved_image:
+        keyboard.append([{"text": "🖼️ החזר לתמונת ברירת מחדל", "callback_data": "shabbat:reset_image"}])
+    keyboard.append([{"text": "⬅️ חזרה", "callback_data": "shabbat:settings"}])
+
     edit_message_with_keyboard(
         chat_id,
         message_id,
         "📸 שלח תמונה לפוסטרי שבת:\n(התמונה תישמר להגדרות שבת)",
-        [[{"text": "⬅️ חזרה", "callback_data": "shabbat:settings"}]],
+        keyboard,
     )
 
 
@@ -1500,11 +1512,19 @@ def handle_shabbat_clear_image(chat_id: int, message_id: int, user_id: str) -> N
 def handle_omer_image_prompt(chat_id: int, message_id: int, user_id: str) -> None:
     """Prompt user to send an Omer image."""
     _set_user_state(user_id, "waiting_omer_image")
+    prefs = get_user_prefs(user_id)
+    has_saved_image = bool(prefs.get("omer_image_file_id"))
+
+    keyboard = []
+    if has_saved_image:
+        keyboard.append([{"text": "🖼️ החזר לתמונת ברירת מחדל", "callback_data": "omer:reset_image"}])
+    keyboard.append([{"text": "⬅️ חזרה", "callback_data": "omer:settings"}])
+
     edit_message_with_keyboard(
         chat_id,
         message_id,
         "📸 שלח תמונה לפוסטרי עומר:\n(התמונה תישמר להגדרות עומר)",
-        [[{"text": "⬅️ חזרה", "callback_data": "omer:settings"}]],
+        keyboard,
     )
 
 
@@ -1532,6 +1552,24 @@ def handle_omer_clear_image(chat_id: int, message_id: int, user_id: str) -> None
     prefs = get_user_prefs(user_id)
     prefs["omer_image_file_id"] = None
     set_user_prefs(user_id, prefs)
+    handle_new_omer_settings(chat_id, message_id, user_id)
+
+
+def handle_shabbat_reset_image(chat_id: int, message_id: int, user_id: str) -> None:
+    """Reset to default Shabbat image (delete saved image)."""
+    prefs = get_user_prefs(user_id)
+    prefs["shabbat_image_file_id"] = None
+    set_user_prefs(user_id, prefs)
+    _clear_user_state(user_id)
+    handle_shabbat_settings(chat_id, message_id, user_id)
+
+
+def handle_omer_reset_image(chat_id: int, message_id: int, user_id: str) -> None:
+    """Reset to default Omer image (delete saved image)."""
+    prefs = get_user_prefs(user_id)
+    prefs["omer_image_file_id"] = None
+    set_user_prefs(user_id, prefs)
+    _clear_user_state(user_id)
     handle_new_omer_settings(chat_id, message_id, user_id)
 
 
