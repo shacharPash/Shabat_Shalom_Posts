@@ -9,6 +9,7 @@ Query Parameters:
                   Bypasses the Friday/Erev check. Example: ?test_user_id=123456789
 """
 
+import base64
 import json
 import os
 import sys
@@ -21,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from jewcal import JewCal
 from redis_client import get_users_with_shabbat_reminders_enabled, get_user_prefs
-from telegram_bot import send_photo, send_message, CITY_BY_NAME
+from telegram_bot import send_photo, send_message, download_photo, CITY_BY_NAME
 from api.poster import build_poster_from_payload
 
 # Vercel cron secret for authentication
@@ -96,6 +97,13 @@ def send_shabbat_reminder(user_id: str) -> bool:
         dedication = prefs.get("dedication_text")
         if dedication:
             payload["leiluyNeshama"] = dedication
+
+        # Check if user has a saved image
+        saved_file_id = prefs.get("last_image_file_id")
+        if saved_file_id:
+            photo_bytes = download_photo(saved_file_id)
+            if photo_bytes:
+                payload["imageBase64"] = base64.b64encode(photo_bytes).decode("utf-8")
 
         # Generate poster
         poster_bytes = build_poster_from_payload(payload)
