@@ -9,19 +9,20 @@ Query Parameters:
                   Bypasses the Omer period check. Example: ?test_user_id=123456789
 """
 
+import base64
 import json
 import os
 import sys
-from datetime import date
+from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text
-from redis_client import get_users_with_reminders_enabled, get_user_prefs
-from telegram_bot import send_photo, send_message, CITY_BY_NAME
+from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text, get_omer_info_for_time, ISRAEL_TZ
+from redis_client import get_users_with_reminders_enabled, get_user_prefs, mark_omer_sent_today, was_omer_sent_today
+from telegram_bot import send_photo, send_message, download_photo, CITY_BY_NAME
 from api.poster import build_poster_from_payload
 
 # Vercel cron secret for authentication
@@ -140,6 +141,13 @@ def _send_image_reminder(chat_id: int, prefs: dict, nusach: str) -> bool:
     if dedication:
         payload["leiluyNeshama"] = dedication
 
+    # Check if user has a saved image
+    saved_file_id = prefs.get("last_image_file_id")
+    if saved_file_id:
+        photo_bytes = download_photo(saved_file_id)
+        if photo_bytes:
+            payload["imageBase64"] = base64.b64encode(photo_bytes).decode("utf-8")
+
     # Generate poster
     poster_bytes = build_poster_from_payload(payload)
 
@@ -181,6 +189,18 @@ class handler(BaseHTTPRequestHandler):
                     "sent": 1 if success else 0,
                     "failed": 0 if success else 1,
                 }
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+                return
+
+            # Check for check_sunset parameter (sunset-based reminder mode)
+            check_sunset = query_params.get("check_sunset", [None])[0]
+
+            if check_sunset == "true":
+                # Sunset-based reminder mode: check if after tzet hakochavim
+                response = self._handle_sunset_check()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
