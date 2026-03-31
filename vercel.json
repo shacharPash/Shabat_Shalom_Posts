@@ -8,7 +8,8 @@
     { "source": "/omer-info", "destination": "/api/omer_info" }
   ],
   "crons": [
-    { "path": "/api/omer_reminder", "schedule": "0 15 * * *" }
+    { "path": "/api/omer_reminder", "schedule": "0 15 * * *" },
+    { "path": "/api/shabbat_reminder", "schedule": "0 5 * * 5" }
   ]
 }
 
