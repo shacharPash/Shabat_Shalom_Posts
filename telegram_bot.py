@@ -859,8 +859,10 @@ def handle_shabbat_settings(chat_id: int, message_id: int, user_id: str) -> None
             {"text": "📸 תמונה שמורה ✓", "callback_data": "shabbat:show_image"},
             {"text": "🗑️ מחק", "callback_data": "shabbat:clear_image"},
         ]
+        reset_button = [{"text": "🖼️ החזר לתמונת ברירת מחדל", "callback_data": "shabbat:reset_image"}]
     else:
         image_buttons = [{"text": "📸 הגדר תמונה לשבת", "callback_data": "shabbat:image"}]
+        reset_button = []
 
     # Date format display
     date_format = prefs.get("date_format", "both")
@@ -880,6 +882,7 @@ def handle_shabbat_settings(chat_id: int, message_id: int, user_id: str) -> None
 
     keyboard = [
         image_buttons,
+        *([reset_button] if reset_button else []),
         [{"text": "🏙️ ערוך ערים", "callback_data": "edit:cities"}],
         [{"text": f"📅 פורמט תאריך: {date_format_display}", "callback_data": "edit:date_format"}],
         [reminder_button],
@@ -907,8 +910,10 @@ def handle_shabbat_settings_new(chat_id: int, user_id: str) -> None:
             {"text": "📸 תמונה שמורה ✓", "callback_data": "shabbat:show_image"},
             {"text": "🗑️ מחק", "callback_data": "shabbat:clear_image"},
         ]
+        reset_button = [{"text": "🖼️ החזר לתמונת ברירת מחדל", "callback_data": "shabbat:reset_image"}]
     else:
         image_buttons = [{"text": "📸 הגדר תמונה לשבת", "callback_data": "shabbat:image"}]
+        reset_button = []
 
     # Date format display
     date_format = prefs.get("date_format", "both")
@@ -928,6 +933,7 @@ def handle_shabbat_settings_new(chat_id: int, user_id: str) -> None:
 
     keyboard = [
         image_buttons,
+        *([reset_button] if reset_button else []),
         [{"text": "🏙️ ערוך ערים", "callback_data": "edit:cities"}],
         [{"text": f"📅 פורמט תאריך: {date_format_display}", "callback_data": "edit:date_format"}],
         [reminder_button],
@@ -957,8 +963,10 @@ def handle_new_omer_settings(chat_id: int, message_id: int, user_id: str) -> Non
             {"text": "📸 תמונה שמורה ✓", "callback_data": "omer:show_image"},
             {"text": "🗑️ מחק", "callback_data": "omer:clear_image"},
         ]
+        reset_button = [{"text": "🖼️ החזר לתמונת ברירת מחדל", "callback_data": "omer:reset_image"}]
     else:
         image_buttons = [{"text": "📸 הגדר תמונה לעומר", "callback_data": "omer:image"}]
+        reset_button = []
 
     # Nusach display
     nusach_display = {
@@ -980,6 +988,7 @@ def handle_new_omer_settings(chat_id: int, message_id: int, user_id: str) -> Non
 
     keyboard = [
         image_buttons,
+        *([reset_button] if reset_button else []),
         [{"text": f"📖 נוסח: {nusach_display}", "callback_data": "omer:nusach"}],
         [{"text": f"📋 סוג תזכורת: {type_display}", "callback_data": "omer:reminder_type"}],
         [reminder_button],
@@ -1009,8 +1018,10 @@ def handle_new_omer_settings_new(chat_id: int, user_id: str) -> None:
             {"text": "📸 תמונה שמורה ✓", "callback_data": "omer:show_image"},
             {"text": "🗑️ מחק", "callback_data": "omer:clear_image"},
         ]
+        reset_button = [{"text": "🖼️ החזר לתמונת ברירת מחדל", "callback_data": "omer:reset_image"}]
     else:
         image_buttons = [{"text": "📸 הגדר תמונה לעומר", "callback_data": "omer:image"}]
+        reset_button = []
 
     # Nusach display
     nusach_display = {
@@ -1032,6 +1043,7 @@ def handle_new_omer_settings_new(chat_id: int, user_id: str) -> None:
 
     keyboard = [
         image_buttons,
+        *([reset_button] if reset_button else []),
         [{"text": f"📖 נוסח: {nusach_display}", "callback_data": "omer:nusach"}],
         [{"text": f"📋 סוג תזכורת: {type_display}", "callback_data": "omer:reminder_type"}],
         [reminder_button],
