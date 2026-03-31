@@ -26,6 +26,7 @@ DEFAULT_PREFERENCES: Dict[str, Any] = {
     "last_image_file_id": None,
     "poster_mode": "shabbat",  # "shabbat" or "omer"
     "reminder_enabled": False,  # Daily Omer reminder
+    "reminder_type": "image",  # Omer reminder type: "text" or "image"
     "nusach": "sefard"  # Omer nusach: "sefard", "ashkenaz", or "edot_hamizrach"
 }
 

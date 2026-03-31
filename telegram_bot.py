@@ -1605,6 +1605,8 @@ def process_update(update: Dict[str, Any]) -> None:
             handle_poster(update)
         elif command == "/omer":
             handle_omer(update)
+        elif command == "/omer_settings":
+            handle_omer_settings(update)
         elif command == "/settings":
             handle_settings(update)
         elif command == "/reset":
@@ -1653,6 +1655,7 @@ def set_bot_commands() -> Dict[str, Any]:
         {"command": "start", "description": "התחל מחדש"},
         {"command": "poster", "description": "📸 צור פוסטר שבת/עומר"},
         {"command": "omer", "description": "🔢 צור פוסטר ספירת העומר"},
+        {"command": "omer_settings", "description": "🔢 הגדרות ספירת העומר"},
         {"command": "reminder", "description": "🔔 תזכורת יומית לספירה"},
         {"command": "settings", "description": "⚙️ הגדרות"},
         {"command": "help", "description": "📋 עזרה"},
