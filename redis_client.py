@@ -23,7 +23,9 @@ DEFAULT_PREFERENCES: Dict[str, Any] = {
     "date_format": "both",
     "blessing_text": None,
     "dedication_text": None,
-    "last_image_file_id": None,
+    "last_image_file_id": None,  # Backward compatibility
+    "shabbat_image_file_id": None,  # Separate image for Shabbat posters
+    "omer_image_file_id": None,  # Separate image for Omer posters
     "poster_mode": "shabbat",  # "shabbat" or "omer"
     "reminder_enabled": False,  # Daily Omer reminder
     "reminder_type": "image",  # Omer reminder type: "text" or "image"
