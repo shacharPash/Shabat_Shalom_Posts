@@ -1213,6 +1213,8 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_settings_back(chat_id, message_id, user_id)
     elif data == "start:settings":
         handle_start_settings(chat_id, user_id)
+    elif data == "start:main":
+        handle_back_to_start(chat_id, user_id)
     elif data == "start:reset":
         handle_start_reset(chat_id, user_id)
     elif data == "start:poster":
@@ -1929,14 +1931,17 @@ def handle_settings_back(chat_id: int, message_id: int, user_id: str) -> None:
 
 
 def handle_start_settings(chat_id: int, user_id: str) -> None:
-    """Handle start:settings callback - send settings as new message."""
-    prefs = get_user_prefs(user_id)
-    settings_text = format_settings(prefs)
-    has_saved_image = bool(prefs.get("last_image_file_id"))
-    reminder_enabled = prefs.get("reminder_enabled", False)
-    nusach = prefs.get("nusach", "sefard")
-    shabbat_reminder_enabled = prefs.get("shabbat_reminder_enabled", False)
-    keyboard = _build_settings_keyboard(prefs.get("poster_mode", "shabbat"), has_saved_image, reminder_enabled, nusach, shabbat_reminder_enabled)
+    """Handle start:settings callback - show settings category menu."""
+    settings_text = (
+        "⚙️ <b>הגדרות</b>\n\n"
+        "בחר קטגוריית הגדרות:"
+    )
+    keyboard = [
+        [{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}],
+        [{"text": "🔢 הגדרות עומר", "callback_data": "omer:settings"}],
+        [{"text": "📋 הגדרות כלליות", "callback_data": "general:settings"}],
+        [{"text": "🔙 חזרה", "callback_data": "start:main"}],
+    ]
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
 
 
