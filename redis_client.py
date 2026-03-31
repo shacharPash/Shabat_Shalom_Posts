@@ -27,7 +27,8 @@ DEFAULT_PREFERENCES: Dict[str, Any] = {
     "poster_mode": "shabbat",  # "shabbat" or "omer"
     "reminder_enabled": False,  # Daily Omer reminder
     "reminder_type": "image",  # Omer reminder type: "text" or "image"
-    "nusach": "sefard"  # Omer nusach: "sefard", "ashkenaz", or "edot_hamizrach"
+    "nusach": "sefard",  # Omer nusach: "sefard", "ashkenaz", or "edot_hamizrach"
+    "shabbat_reminder_enabled": False  # Shabbat/Holiday Eve reminder
 }
 
 # Cached Redis client
@@ -132,4 +133,72 @@ def get_users_with_reminders_enabled() -> list:
             break
 
     return users_with_reminders
+
+
+def get_users_with_shabbat_reminders_enabled() -> list:
+    """
+    Get all user IDs that have shabbat_reminder_enabled=True.
+
+    Uses Redis SCAN to iterate over all user keys efficiently.
+
+    Returns:
+        list: List of user IDs (as strings) with Shabbat/Holiday reminders enabled
+    """
+    client = get_redis_client()
+    pattern = f"{USER_PREFS_KEY_PREFIX}*"
+    users_with_reminders = []
+
+    # Use SCAN for efficient iteration
+    cursor = 0
+    while True:
+        cursor, keys = client.scan(cursor, match=pattern, count=100)
+        for key in keys:
+            data = client.get(key)
+            if data:
+                try:
+                    prefs = json.loads(data)
+                    if prefs.get("shabbat_reminder_enabled", False):
+                        # Extract user_id from key
+                        user_id = key.replace(USER_PREFS_KEY_PREFIX, "")
+                        users_with_reminders.append(user_id)
+                except json.JSONDecodeError:
+                    continue
+        if cursor == 0:
+            break
+
+    return users_with_reminders
+
+
+# Key pattern for Omer sent tracking (prevents duplicate reminders per day)
+OMER_SENT_KEY_PREFIX = "zmunah:omer_sent:"
+
+
+def mark_omer_sent_today(user_id: str, date_str: str) -> None:
+    """
+    Mark that Omer reminder was sent to a user for a specific date.
+
+    Args:
+        user_id: The Telegram user ID
+        date_str: The date string in YYYY-MM-DD format
+    """
+    client = get_redis_client()
+    key = f"{OMER_SENT_KEY_PREFIX}{date_str}:{user_id}"
+    # Set with 48-hour expiration to auto-cleanup old keys
+    client.setex(key, 48 * 60 * 60, "1")
+
+
+def was_omer_sent_today(user_id: str, date_str: str) -> bool:
+    """
+    Check if Omer reminder was already sent to a user for a specific date.
+
+    Args:
+        user_id: The Telegram user ID
+        date_str: The date string in YYYY-MM-DD format
+
+    Returns:
+        bool: True if reminder was already sent, False otherwise
+    """
+    client = get_redis_client()
+    key = f"{OMER_SENT_KEY_PREFIX}{date_str}:{user_id}"
+    return client.exists(key) == 1
 

@@ -1,0 +1,21 @@
+name: Omer Reminder
+
+on:
+  schedule:
+    # Run every 15 minutes during evening hours (15:00-22:00 UTC = 18:00-01:00 Israel time)
+    - cron: '*/15 * * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  send-omer-reminder:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Omer Reminder Check
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/omer_reminder?check_sunset=true" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body \
+            --max-time 60
+
