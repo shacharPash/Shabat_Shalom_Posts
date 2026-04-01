@@ -127,6 +127,8 @@ def get_users_with_reminders_enabled() -> list:
                     prefs = json.loads(data)
                     if prefs.get("reminder_enabled", False):
                         # Extract user_id from key
+                        if isinstance(key, bytes):
+                            key = key.decode('utf-8')
                         user_id = key.replace(USER_PREFS_KEY_PREFIX, "")
                         users_with_reminders.append(user_id)
                 except json.JSONDecodeError:
@@ -161,6 +163,8 @@ def get_users_with_shabbat_reminders_enabled() -> list:
                     prefs = json.loads(data)
                     if prefs.get("shabbat_reminder_enabled", False):
                         # Extract user_id from key
+                        if isinstance(key, bytes):
+                            key = key.decode('utf-8')
                         user_id = key.replace(USER_PREFS_KEY_PREFIX, "")
                         users_with_reminders.append(user_id)
                 except json.JSONDecodeError:
