@@ -15,7 +15,13 @@ jobs:
     steps:
       - name: Trigger Shabbat Reminder Check
         run: |
-          curl -X GET "${{ secrets.VERCEL_URL }}/api/shabbat_reminder" \
+          # When triggered manually (workflow_dispatch), pass force=true to bypass the Friday/Erev Yom Tov check
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            EXTRA_PARAMS="?force=true"
+          else
+            EXTRA_PARAMS=""
+          fi
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/shabbat_reminder${EXTRA_PARAMS}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             --fail-with-body \

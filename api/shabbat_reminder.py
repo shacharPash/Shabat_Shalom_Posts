@@ -158,8 +158,11 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
                 return
 
-            # Normal cron mode: check if it's Friday or Erev Yom Tov
-            if not is_friday_or_erev_yomtov():
+            # Check for force parameter (used by manual workflow_dispatch trigger)
+            force = query_params.get("force", [None])[0] == "true"
+
+            # Normal cron mode: check if it's Friday or Erev Yom Tov (skipped when force=true)
+            if not force and not is_friday_or_erev_yomtov():
                 response = {
                     "status": "skipped",
                     "reason": "Not Friday or Erev Yom Tov",
