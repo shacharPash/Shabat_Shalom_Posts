@@ -876,7 +876,7 @@ def generate_poster(
             effective_omer_day = omer_day
         else:
             # Calculate from date
-            effective_omer_date = omer_date if omer_date else date.today()
+            effective_omer_date = omer_date if omer_date else datetime.now(pytz.timezone(TZID))
 
             # Check if we're after midnight (00:00-06:00) - count for next day
             current_hour = datetime.now(pytz.timezone(TZID)).hour
