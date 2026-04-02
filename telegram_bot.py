@@ -735,8 +735,11 @@ def handle_poster(update: Dict[str, Any], force_omer: bool = False) -> None:
             payload["omerMode"] = True
             payload["nusach"] = prefs.get("nusach", "sefard")
 
-        # Check if user has a saved image
-        saved_file_id = prefs.get("last_image_file_id")
+        # Check if user has a saved image based on mode
+        if use_omer_mode:
+            saved_file_id = prefs.get("omer_image_file_id")
+        else:
+            saved_file_id = prefs.get("shabbat_image_file_id") or prefs.get("last_image_file_id")
         used_saved_image = False
         if saved_file_id:
             # Download the saved image from Telegram
@@ -1338,8 +1341,8 @@ def handle_start_poster_omer(chat_id: int, user_id: str) -> None:
             "nusach": prefs.get("nusach", "sefard"),
         }
 
-        # Check for saved Omer image (fallback to general last_image_file_id)
-        saved_file_id = prefs.get("omer_image_file_id") or prefs.get("last_image_file_id")
+        # Check for saved Omer image (no fallback to last_image_file_id)
+        saved_file_id = prefs.get("omer_image_file_id")
         if saved_file_id:
             photo_bytes = download_photo(saved_file_id)
             if photo_bytes:
