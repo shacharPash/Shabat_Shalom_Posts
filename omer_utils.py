@@ -14,7 +14,7 @@ The counting follows the formula:
 
 from datetime import date, datetime, timedelta
 from functools import lru_cache
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import pytz
 from jewcal import JewCal
@@ -87,38 +87,122 @@ def _find_omer_start_for_year(year: int) -> Optional[date]:
     return None
 
 
-def get_omer_day(target_date: date, after_midnight: bool = False) -> Optional[int]:
+def _get_jerusalem_tzet_datetime(target_date: date) -> Optional[datetime]:
     """
-    Calculate which day of the Omer (1-49) corresponds to a given date.
-    
-    The Omer is counted for 49 days starting from 16 Nisan (second day of Pesach).
-    The counting is done at night (after sunset), so:
-    - If after_midnight=False: returns the Omer day for the current evening
-    - If after_midnight=True: returns the Omer day for the next evening
-      (since after midnight we're still in the same halachic "day")
-    
+    Get the tzet hakochavim (nightfall) time for Jerusalem as a datetime object.
+
+    This is an internal helper for comparing times.
+
     Args:
-        target_date: The Gregorian date to check
-        after_midnight: If True, count for the next day (00:00+ is still "today" halachically)
-        
+        target_date: The Gregorian date to get tzet for
+
+    Returns:
+        Tzet hakochavim as a timezone-aware datetime in Israel timezone, or None if unable to calculate
+    """
+    try:
+        location = Location(
+            latitude=JERUSALEM_LAT,
+            longitude=JERUSALEM_LON,
+            use_tzeis_hakochavim=True,
+            hadlokas_haneiros_minutes=40,
+            tzeis_minutes=42
+        )
+
+        jewcal_obj = JewCal(gregorian_date=target_date, diaspora=False, location=location)
+
+        if jewcal_obj.zmanim:
+            zmanim_dict = jewcal_obj.zmanim.to_dict()
+            tzeis = zmanim_dict.get('tzeis_hakochavim')
+            if tzeis:
+                # Convert to Israel timezone
+                if isinstance(tzeis, str):
+                    tzeis_datetime = datetime.fromisoformat(tzeis)
+                    tzeis_israel = tzeis_datetime.astimezone(ISRAEL_TZ)
+                elif hasattr(tzeis, 'astimezone'):
+                    tzeis_israel = tzeis.astimezone(ISRAEL_TZ)
+                else:
+                    return None
+
+                # Create a datetime with the correct local date and the time from tzeis
+                # This is needed because jewcal returns UTC times which may have a different date
+                return ISRAEL_TZ.localize(datetime(
+                    target_date.year,
+                    target_date.month,
+                    target_date.day,
+                    tzeis_israel.hour,
+                    tzeis_israel.minute,
+                    tzeis_israel.second,
+                    tzeis_israel.microsecond
+                ))
+        return None
+    except Exception:
+        return None
+
+
+def get_omer_day(target: Union[date, datetime], after_midnight: bool = False) -> Optional[int]:
+    """
+    Calculate which day of the Omer (1-49) corresponds to a given date or datetime.
+
+    The Omer is counted for 49 days starting from 16 Nisan (second day of Pesach).
+    The counting is done at night (after tzet hakochavim - nightfall).
+
+    If a datetime is provided (with time), the function checks if the time is after
+    tzet hakochavim for Jerusalem. If so, it returns the Omer day for the next
+    halachic day (which starts at nightfall).
+
+    If only a date is provided, the function returns the Omer day for that calendar date.
+
+    Args:
+        target: The Gregorian date or datetime to check. If datetime, the time
+                is used to determine if we're after nightfall.
+        after_midnight: If True and target is a date, count for the next day
+                       (00:00+ is still "today" halachically). Ignored if target
+                       is a datetime with time.
+
     Returns:
         The Omer day (1-49), or None if not in the Omer period
     """
-    # If after midnight, we're counting for the next calendar day's evening
-    effective_date = target_date + timedelta(days=1) if after_midnight else target_date
-    
+    # Determine the effective date based on input type and time
+    if isinstance(target, datetime) and not (target.hour == 0 and target.minute == 0 and target.second == 0):
+        # We have a datetime with actual time information
+        target_date = target.date()
+
+        # Make the datetime timezone-aware for comparison
+        if target.tzinfo is None:
+            # Assume Israel timezone if not specified
+            target_aware = ISRAEL_TZ.localize(target)
+        else:
+            target_aware = target.astimezone(ISRAEL_TZ)
+
+        # Get tzet hakochavim for today
+        tzet_datetime = _get_jerusalem_tzet_datetime(target_date)
+
+        if tzet_datetime and target_aware >= tzet_datetime:
+            # After nightfall - use tomorrow's date for the calculation
+            effective_date = target_date + timedelta(days=1)
+        else:
+            # Before nightfall - use today's date
+            effective_date = target_date
+    else:
+        # It's a date object, or datetime at midnight - use original logic
+        if isinstance(target, datetime):
+            target_date = target.date()
+        else:
+            target_date = target
+        effective_date = target_date + timedelta(days=1) if after_midnight else target_date
+
     # Find the start of Omer for this year
     omer_start = _find_omer_start_for_year(effective_date.year)
     if not omer_start:
         return None
-    
+
     # Calculate the Omer day
     # Day 1 is the evening of 16 Nisan (so 16 Nisan date = day 1)
     delta = (effective_date - omer_start).days + 1
-    
+
     if delta < 1 or delta > 49:
         return None
-    
+
     return delta
 
 
