@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Trigger Omer Reminder Check
         run: |
-          curl -X GET "${{ secrets.VERCEL_URL }}/api/omer_reminder?check_sunset=true" \
+          curl -L -X GET "${{ secrets.VERCEL_URL }}/api/omer_reminder?check_sunset=true" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             --fail-with-body \
