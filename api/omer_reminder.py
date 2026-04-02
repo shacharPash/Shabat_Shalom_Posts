@@ -31,8 +31,8 @@ CRON_SECRET = os.environ.get("CRON_SECRET")
 
 def is_omer_period() -> bool:
     """Check if we're currently in the Omer period."""
-    today = date.today()
-    omer_day = get_omer_day(today)
+    now_israel = datetime.now(ISRAEL_TZ)
+    omer_day = get_omer_day(now_israel)
     return omer_day is not None and 1 <= omer_day <= 49
 
 
