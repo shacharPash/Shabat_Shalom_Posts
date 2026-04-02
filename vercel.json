@@ -8,8 +8,7 @@
     { "source": "/omer-info", "destination": "/api/omer_info" }
   ],
   "crons": [
-    { "path": "/api/omer_reminder?check_sunset=true", "schedule": "*/15 17-19 * * *" },
-    { "path": "/api/shabbat_reminder", "schedule": "0 5 * * 5" }
+    { "path": "/api/shabbat_reminder", "schedule": "0 5 * * *" }
   ]
 }
 
