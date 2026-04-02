@@ -4580,8 +4580,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         el.style.display = omerModeEnabled ? 'none' : '';
       });
 
-      // Show/hide omer info section
-      omerInfo.classList.toggle('show', omerModeEnabled);
+      // Note: omerInfo 'show' class removed - the container was showing as empty rectangle
+      // because all children have their own show/hide logic (test banner, disabled message, etc.)
 
       // Show/hide omer step containers
       document.querySelectorAll('.omer-step').forEach(step => {
