@@ -3997,6 +3997,10 @@ CITY_CHECKBOXES_PLACEHOLDER
           // Convert ISO format to datetime-local format
           omerTestTimeInput.value = testTimeParam.slice(0, 16);
         }
+      } else {
+        // Hide test mode banner when no testTime param
+        omerTestMode.style.display = 'none';
+        omerTestMode.classList.remove('show');
       }
     }
 
