@@ -357,7 +357,22 @@ def compose_poster(
     event_type = event_info.get("event_type", "shabbos")
     event_name = event_info.get("event_name", "")
 
-    if event_type == "yomtov":
+    # Check if this is Shabbat Chol HaMoed (Shabbat during intermediate days of a holiday)
+    # Detect by checking if the sequence ends on Saturday AND there's no parsha
+    # (Chol HaMoed has no Torah portion reading like regular Shabbat)
+    seq_start = week_info.get("seq_start")
+    seq_end = week_info.get("seq_end")
+    parsha = week_info.get("parsha")
+    is_shabbat_chol_hamoed = (
+        event_type == "yomtov" and
+        seq_end and seq_end.weekday() == 5 and  # Saturday
+        not parsha  # No parsha during Chol HaMoed
+    )
+
+    if is_shabbat_chol_hamoed:
+        # Shabbat Chol HaMoed - use Shabbat greeting
+        title = "שבת שלום"
+    elif event_type == "yomtov":
         # For Yom Tov, use the event name or a generic greeting
         if "Rosh Hashana" in event_name:
             title = "שנה טובה"
@@ -383,9 +398,7 @@ def compose_poster(
     draw_text_with_stroke(draw, (W//2, 40), title, fitted_title_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
     # Create subtitle with parsha and date range
-    parsha_txt = week_info.get("parsha") or ""
-    seq_start = week_info.get("seq_start")
-    seq_end = week_info.get("seq_end")
+    parsha_txt = parsha or ""  # Use parsha already retrieved above
 
     # Build date string based on date_format parameter
     date_str = ""
@@ -424,16 +437,30 @@ def compose_poster(
             else:
                 date_str = heb_str
 
-    # Add event name for Yom Tov
-    if event_type == "yomtov" and event_name:
-        # Translate common Yom Tov names to Hebrew
+    # Build subtitle based on event type
+    if is_shabbat_chol_hamoed and event_name:
+        # Shabbat Chol HaMoed - show "שבת חול המועד [holiday name]"
+        # Determine the holiday name in Hebrew
+        if "Pesach" in event_name:
+            holiday_name = "פסח"
+        elif "Sukkos" in event_name or "Sukkot" in event_name:
+            holiday_name = "סוכות"
+        else:
+            holiday_name = YOMTOV_TRANSLATIONS.get(event_name, event_name)
+        sub_line = f"שבת חול המועד {holiday_name} | {date_str}"
+    elif event_type == "yomtov" and event_name:
+        # Regular Yom Tov - translate event name to Hebrew
         hebrew_event = YOMTOV_TRANSLATIONS.get(event_name, event_name)
         if parsha_txt:
-            sub_line = f"{hebrew_event} | {parsha_txt} | {date_str}"
+            sub_line = f"פרשת {parsha_txt} | {hebrew_event} | {date_str}"
         else:
             sub_line = f"{hebrew_event} | {date_str}"
     else:
-        sub_line = f"{parsha_txt} | {date_str}" if parsha_txt else date_str
+        # Regular Shabbat
+        if parsha_txt:
+            sub_line = f"פרשת {parsha_txt} | {date_str}"
+        else:
+            sub_line = date_str
 
     # Apply subtitle override if provided (replaces entire subtitle line)
     if week_info.get("subtitle_override"):
