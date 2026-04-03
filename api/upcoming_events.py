@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from make_shabbat_posts import find_next_sequence
 from hebcal_api import get_parsha_from_hebcal
-from translations import YOMTOV_TRANSLATIONS
+from translations import translate_yomtov
 
 
 def get_upcoming_events():
@@ -36,16 +36,8 @@ def get_upcoming_events():
         if event_type == "shabbos":
             display_name = parsha if parsha else "שבת"
         else:
-            # Try exact match first, then try partial match
-            display_name = YOMTOV_TRANSLATIONS.get(event_name)
-            if not display_name:
-                # Try matching prefix (for "Pesach I", "Sukkot II", etc.)
-                for eng, heb in YOMTOV_TRANSLATIONS.items():
-                    if event_name.startswith(eng):
-                        display_name = heb
-                        break
-                else:
-                    display_name = event_name
+            # Use centralized translation function
+            display_name = translate_yomtov(event_name)
 
             # For Chol HaMoed on Shabbat (Saturday), show "שבת חול המועד"
             is_shabbat = seq_end.weekday() == 5  # Saturday

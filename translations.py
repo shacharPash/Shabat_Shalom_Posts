@@ -96,6 +96,84 @@ def translate_yomtov(event_name: str) -> str:
     return display_name
 
 
+def get_main_title(event_name: str, event_type: str, is_shabbat: bool, has_parsha: bool) -> str:
+    """
+    Determine the main title/greeting for the poster based on event and Shabbat collision rules.
+
+    Title rules:
+    - Rosh Hashana (even on Shabbat): "שנה טובה"
+    - Yom Kippur (even on Shabbat): "גמר חתימה טובה"
+    - Holiday on Shabbat (Sukkot/Simchat Torah/Shavuot): "שבת שלום וחג שמח"
+    - Pesach on Shabbat: "שבת שלום וחג כשר ושמח"
+    - Holiday not on Shabbat: "חג שמח" or "חג כשר ושמח" (Pesach)
+    - Shabbat Chol HaMoed: "שבת שלום"
+    - Regular Shabbat: "שבת שלום"
+
+    Ignored events (not full Yom Tov):
+    - Hoshana Rabba
+    - Erev holidays (unless it's Shabbat - then treat as regular Shabbat)
+
+    Args:
+        event_name: English name of the event (e.g., "Sukkot", "Pesach I")
+        event_type: Type of event - "yomtov" or "shabbos"
+        is_shabbat: Whether the event falls on Shabbat (Saturday)
+        has_parsha: Whether there's a Torah portion (indicates regular Shabbat vs Chol HaMoed)
+
+    Returns:
+        Hebrew greeting string for the poster title
+    """
+    # Default to regular Shabbat greeting
+    if event_type != "yomtov":
+        return "שבת שלום"
+
+    # Check for ignored events that aren't full Yom Tov
+    if "Hoshana Rabba" in event_name:
+        # Hoshana Rabba is not a full Yom Tov - treat as regular Shabbat if on Shabbat
+        return "שבת שלום" if is_shabbat else "שבת שלום"
+
+    if event_name.startswith("Erev"):
+        # Erev holidays are not Yom Tov - treat as regular Shabbat if on Shabbat
+        return "שבת שלום"
+
+    # Check for Shabbat Chol HaMoed (Shabbat during intermediate days)
+    # Detected by: Yom Tov event type + on Shabbat + no parsha reading
+    if is_shabbat and not has_parsha and "Chol HaMoed" in event_name:
+        return "שבת שלום"
+
+    # Rosh Hashana - always "שנה טובה" (even on Shabbat)
+    if "Rosh Hashana" in event_name or "Rosh Hashanah" in event_name:
+        return "שנה טובה"
+
+    # Yom Kippur - always "גמר חתימה טובה" (even on Shabbat)
+    if "Yom Kippur" in event_name:
+        return "גמר חתימה טובה"
+
+    # Check for specific holidays
+    is_pesach = "Pesach" in event_name or "Passover" in event_name
+    is_sukkot = "Sukkos" in event_name or "Sukkot" in event_name
+    is_shavuot = "Shavuos" in event_name or "Shavut" in event_name or "Shavuot" in event_name
+    is_shmini_atzeret = "Shmini Atzeret" in event_name or "Shmini Atzeres" in event_name or "Shemini Atzeret" in event_name
+    is_simchat_torah = "Simchat Torah" in event_name or "Simchas Torah" in event_name or "Simchat Tora" in event_name or "Simchas Tora" in event_name
+
+    # Holiday on Shabbat
+    if is_shabbat:
+        if is_pesach:
+            return "שבת שלום וחג כשר ושמח"
+        if is_sukkot or is_shmini_atzeret or is_simchat_torah or is_shavuot:
+            return "שבת שלום וחג שמח"
+        # Other Yom Tov on Shabbat - generic
+        return "שבת שלום וחג שמח"
+
+    # Holiday not on Shabbat
+    if is_pesach:
+        return "חג כשר ושמח"
+    if is_sukkot or is_shmini_atzeret or is_simchat_torah or is_shavuot:
+        return "חג שמח"
+
+    # Generic Yom Tov greeting
+    return "חג שמח"
+
+
 # ========= FULL PARASHA TRANSLATION =========
 PARASHA_TRANSLATION: Dict[str, str] = {
     # ספר בראשית
