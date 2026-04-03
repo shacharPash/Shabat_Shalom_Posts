@@ -95,9 +95,12 @@ def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     jewcal_obj = JewCal(gregorian_date=target_date, diaspora=False)
     if jewcal_obj.has_events() and jewcal_obj.events.yomtov:
         event_name = jewcal_obj.events.yomtov
-        # Simchat Torah, Hoshana Rabba, and Chol HaMoed Sukkot read "Vezot Haberakhah"
-        if any(s in event_name for s in ("Simchat Tora", "Hoshana Rabba", "Chol HaMoed")):
+        # Simchat Torah and Hoshana Rabba read "Vezot Haberakhah"
+        if any(s in event_name for s in ("Simchat Tora", "Hoshana Rabba")):
             return "פרשת וזאת הברכה"
+        # Shabbat Chol HaMoed (Pesach or Sukkot) has no regular parsha
+        if "Chol HaMoed" in event_name:
+            return None
 
     # Find the Saturday of the week containing target_date
     saturday = _get_saturday_for_date(target_date)
