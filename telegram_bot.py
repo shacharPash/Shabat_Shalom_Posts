@@ -510,7 +510,8 @@ def handle_start(update: Dict[str, Any]) -> None:
         "2️⃣ אני אצור פוסטר מעוצב\n"
         "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
         "שלח תמונה כדי להתחיל! 📸\n\n"
-        "💡 טיפ: אפשר להפעיל תזכורות אוטומטיות!\n"
+        "💡 <b>טיפ:</b> אפשר להפעיל תזכורות אוטומטיות!\n"
+        "לחץ על ⚙️ הגדרות עומר או ⚙️ הגדרות שבת למטה.\n"
         "• ספירת העומר - כל יום בצאת הכוכבים\n"
         "• שבתות וחגים - בוקר יום שישי / ערב חג"
     )
@@ -1541,6 +1542,7 @@ def handle_shabbat_clear_image(chat_id: int, message_id: int, user_id: str) -> N
     """Clear the saved Shabbat image."""
     prefs = get_user_prefs(user_id)
     prefs["shabbat_image_file_id"] = None
+    prefs["last_image_file_id"] = None
     set_user_prefs(user_id, prefs)
     handle_shabbat_settings(chat_id, message_id, user_id)
 
@@ -1587,6 +1589,7 @@ def handle_omer_clear_image(chat_id: int, message_id: int, user_id: str) -> None
     """Clear the saved Omer image."""
     prefs = get_user_prefs(user_id)
     prefs["omer_image_file_id"] = None
+    prefs["last_image_file_id"] = None
     set_user_prefs(user_id, prefs)
     handle_new_omer_settings(chat_id, message_id, user_id)
 
@@ -1595,6 +1598,7 @@ def handle_shabbat_reset_image(chat_id: int, message_id: int, user_id: str) -> N
     """Reset to default Shabbat image (delete saved image)."""
     prefs = get_user_prefs(user_id)
     prefs["shabbat_image_file_id"] = None
+    prefs["last_image_file_id"] = None
     set_user_prefs(user_id, prefs)
     _clear_user_state(user_id)
     handle_shabbat_settings(chat_id, message_id, user_id)
@@ -1604,6 +1608,7 @@ def handle_omer_reset_image(chat_id: int, message_id: int, user_id: str) -> None
     """Reset to default Omer image (delete saved image)."""
     prefs = get_user_prefs(user_id)
     prefs["omer_image_file_id"] = None
+    prefs["last_image_file_id"] = None
     set_user_prefs(user_id, prefs)
     _clear_user_state(user_id)
     handle_new_omer_settings(chat_id, message_id, user_id)
@@ -2133,7 +2138,11 @@ def handle_back_to_start(chat_id: int, user_id: str) -> None:
         "1️⃣ שלח לי תמונה\n"
         "2️⃣ אני אצור פוסטר מעוצב\n"
         "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
-        "שלח תמונה כדי להתחיל! 📸"
+        "שלח תמונה כדי להתחיל! 📸\n\n"
+        "💡 <b>טיפ:</b> אפשר להפעיל תזכורות אוטומטיות!\n"
+        "לחץ על ⚙️ הגדרות עומר או ⚙️ הגדרות שבת למטה.\n"
+        "• ספירת העומר - כל יום בצאת הכוכבים\n"
+        "• שבתות וחגים - בוקר יום שישי / ערב חג"
     )
     keyboard = [
         [{"text": "📸 צור פוסטר שבת", "callback_data": "start:poster_shabbat"}],
