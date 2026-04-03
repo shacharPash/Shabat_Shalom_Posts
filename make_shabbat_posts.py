@@ -32,6 +32,8 @@ from translations import (
     _PARASHA_NORMALIZED_LOOKUP,
     _normalize_parsha_key,
     translate_parsha,
+    get_main_title,
+    translate_yomtov,
 )
 
 # Import calendar utility functions
@@ -357,37 +359,21 @@ def compose_poster(
     event_type = event_info.get("event_type", "shabbos")
     event_name = event_info.get("event_name", "")
 
-    # Check if this is Shabbat Chol HaMoed (Shabbat during intermediate days of a holiday)
-    # Detect by checking if the sequence ends on Saturday AND there's no parsha
-    # (Chol HaMoed has no Torah portion reading like regular Shabbat)
+    # Get sequence dates and parsha for determining Shabbat collision
     seq_start = week_info.get("seq_start")
     seq_end = week_info.get("seq_end")
     parsha = week_info.get("parsha")
-    is_shabbat_chol_hamoed = (
-        event_type == "yomtov" and
-        seq_end and seq_end.weekday() == 5 and  # Saturday
-        not parsha  # No parsha during Chol HaMoed
-    )
 
-    if is_shabbat_chol_hamoed:
-        # Shabbat Chol HaMoed - use Shabbat greeting
-        title = "שבת שלום"
-    elif event_type == "yomtov":
-        # For Yom Tov, use the event name or a generic greeting
-        if "Rosh Hashana" in event_name:
-            title = "שנה טובה"
-        elif "Yom Kippur" in event_name:
-            title = "גמר חתימה טובה"
-        elif "Sukkos" in event_name or "Sukkot" in event_name:
-            title = "חג שמח"
-        elif "Pesach" in event_name:
-            title = "חג כשר ושמח"
-        elif "Shavuos" in event_name or "Shavut" in event_name:
-            title = "חג שמח"
-        else:
-            title = "חג שמח"  # Generic holiday greeting
-    else:
-        title = "שבת שלום"  # Shabbat greeting
+    # Determine if this is on Shabbat (Saturday = weekday 5)
+    is_shabbat = seq_end and seq_end.weekday() == 5
+
+    # Use the centralized get_main_title function for title logic
+    title = get_main_title(
+        event_name=event_name,
+        event_type=event_type,
+        is_shabbat=is_shabbat,
+        has_parsha=bool(parsha)
+    )
 
     # Apply main title override if provided
     if week_info.get("main_title_override"):
@@ -437,6 +423,14 @@ def compose_poster(
             else:
                 date_str = heb_str
 
+    # Check if this is Shabbat Chol HaMoed (for subtitle purposes)
+    is_shabbat_chol_hamoed = (
+        event_type == "yomtov" and
+        is_shabbat and
+        not parsha and
+        "Chol HaMoed" in event_name
+    )
+
     # Build subtitle based on event type
     if is_shabbat_chol_hamoed and event_name:
         # Shabbat Chol HaMoed - show "שבת חול המועד [holiday name]"
@@ -446,11 +440,11 @@ def compose_poster(
         elif "Sukkos" in event_name or "Sukkot" in event_name:
             holiday_name = "סוכות"
         else:
-            holiday_name = YOMTOV_TRANSLATIONS.get(event_name, event_name)
+            holiday_name = translate_yomtov(event_name)
         sub_line = f"שבת חול המועד {holiday_name} | {date_str}"
     elif event_type == "yomtov" and event_name:
         # Regular Yom Tov - translate event name to Hebrew
-        hebrew_event = YOMTOV_TRANSLATIONS.get(event_name, event_name)
+        hebrew_event = translate_yomtov(event_name)
         if parsha_txt:
             sub_line = f"פרשת {parsha_txt} | {hebrew_event} | {date_str}"
         else:

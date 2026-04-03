@@ -6,6 +6,7 @@ Tests cover:
 - Partial/prefix match translations (e.g., "Pesach I" → "פסח")
 - Unknown event names (should return original)
 - Special case: Chol HaMoed on Shabbat
+- get_main_title() for holiday/Shabbat collision logic
 """
 
 import os
@@ -17,7 +18,7 @@ from datetime import date
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the canonical translation dictionary from the shared module
-from translations import YOMTOV_TRANSLATIONS
+from translations import YOMTOV_TRANSLATIONS, get_main_title
 
 
 def translate_yomtov(event_name):
@@ -242,6 +243,135 @@ class TestTranslationConsistency(unittest.TestCase):
         self.assertEqual(translate_yomtov("Pesach"), "פסח")
         # Lowercase should not match (returns original)
         self.assertEqual(translate_yomtov("pesach"), "pesach")
+
+
+class TestGetMainTitle(unittest.TestCase):
+    """Tests for get_main_title() - holiday/Shabbat collision logic."""
+
+    # === Regular Shabbat ===
+    def test_regular_shabbat(self):
+        """Regular Shabbat should return 'שבת שלום'."""
+        result = get_main_title("", "shabbos", is_shabbat=True, has_parsha=True)
+        self.assertEqual(result, "שבת שלום")
+
+    # === Rosh Hashana (always same greeting) ===
+    def test_rosh_hashana_on_shabbat(self):
+        """Rosh Hashana on Shabbat should return 'שנה טובה'."""
+        result = get_main_title("Rosh Hashana", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שנה טובה")
+
+    def test_rosh_hashana_not_on_shabbat(self):
+        """Rosh Hashana not on Shabbat should return 'שנה טובה'."""
+        result = get_main_title("Rosh Hashana", "yomtov", is_shabbat=False, has_parsha=False)
+        self.assertEqual(result, "שנה טובה")
+
+    def test_rosh_hashanah_variant(self):
+        """Rosh Hashanah (alternate spelling) should return 'שנה טובה'."""
+        result = get_main_title("Rosh Hashanah", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שנה טובה")
+
+    # === Yom Kippur (always same greeting) ===
+    def test_yom_kippur_on_shabbat(self):
+        """Yom Kippur on Shabbat should return 'גמר חתימה טובה'."""
+        result = get_main_title("Yom Kippur", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "גמר חתימה טובה")
+
+    def test_yom_kippur_not_on_shabbat(self):
+        """Yom Kippur not on Shabbat should return 'גמר חתימה טובה'."""
+        result = get_main_title("Yom Kippur", "yomtov", is_shabbat=False, has_parsha=False)
+        self.assertEqual(result, "גמר חתימה טובה")
+
+    # === Sukkot on Shabbat ===
+    def test_sukkot_on_shabbat(self):
+        """Sukkot on Shabbat should return 'שבת שלום וחג שמח'."""
+        result = get_main_title("Sukkot", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום וחג שמח")
+
+    def test_sukkot_not_on_shabbat(self):
+        """Sukkot not on Shabbat should return 'חג שמח'."""
+        result = get_main_title("Sukkot", "yomtov", is_shabbat=False, has_parsha=False)
+        self.assertEqual(result, "חג שמח")
+
+    def test_sukkos_variant_on_shabbat(self):
+        """Sukkos (Ashkenaz spelling) on Shabbat should return 'שבת שלום וחג שמח'."""
+        result = get_main_title("Sukkos", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום וחג שמח")
+
+    # === Pesach on Shabbat ===
+    def test_pesach_on_shabbat(self):
+        """Pesach on Shabbat should return 'שבת שלום וחג כשר ושמח'."""
+        result = get_main_title("Pesach", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום וחג כשר ושמח")
+
+    def test_pesach_not_on_shabbat(self):
+        """Pesach not on Shabbat should return 'חג כשר ושמח'."""
+        result = get_main_title("Pesach", "yomtov", is_shabbat=False, has_parsha=False)
+        self.assertEqual(result, "חג כשר ושמח")
+
+    def test_pesach_day_number_on_shabbat(self):
+        """Pesach I on Shabbat should return 'שבת שלום וחג כשר ושמח'."""
+        result = get_main_title("Pesach I", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום וחג כשר ושמח")
+
+    # === Shavuot on Shabbat ===
+    def test_shavuot_on_shabbat(self):
+        """Shavuot on Shabbat should return 'שבת שלום וחג שמח'."""
+        result = get_main_title("Shavuot", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום וחג שמח")
+
+    def test_shavuot_not_on_shabbat(self):
+        """Shavuot not on Shabbat should return 'חג שמח'."""
+        result = get_main_title("Shavuot", "yomtov", is_shabbat=False, has_parsha=False)
+        self.assertEqual(result, "חג שמח")
+
+    def test_shavuos_variant_not_on_shabbat(self):
+        """Shavuos (Ashkenaz spelling) not on Shabbat should return 'חג שמח'."""
+        result = get_main_title("Shavuos", "yomtov", is_shabbat=False, has_parsha=False)
+        self.assertEqual(result, "חג שמח")
+
+    # === Shmini Atzeret / Simchat Torah ===
+    def test_shmini_atzeret_on_shabbat(self):
+        """Shmini Atzeret on Shabbat should return 'שבת שלום וחג שמח'."""
+        result = get_main_title("Shmini Atzeret", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום וחג שמח")
+
+    def test_simchat_torah_not_on_shabbat(self):
+        """Simchat Torah not on Shabbat should return 'חג שמח'."""
+        result = get_main_title("Simchat Torah", "yomtov", is_shabbat=False, has_parsha=False)
+        self.assertEqual(result, "חג שמח")
+
+    # === Shabbat Chol HaMoed ===
+    def test_shabbat_chol_hamoed_sukkot(self):
+        """Shabbat Chol HaMoed Sukkot should return 'שבת שלום'."""
+        result = get_main_title("Chol HaMoed Sukkot", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום")
+
+    def test_shabbat_chol_hamoed_pesach(self):
+        """Shabbat Chol HaMoed Pesach should return 'שבת שלום'."""
+        result = get_main_title("Chol HaMoed Pesach", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום")
+
+    # === Ignored events ===
+    def test_hoshana_rabba_on_shabbat(self):
+        """Hoshana Rabba on Shabbat should return 'שבת שלום'."""
+        result = get_main_title("Hoshana Rabba", "yomtov", is_shabbat=True, has_parsha=False)
+        self.assertEqual(result, "שבת שלום")
+
+    def test_hoshana_rabba_not_on_shabbat(self):
+        """Hoshana Rabba not on Shabbat is not displayed (returns shabbat greeting as fallback)."""
+        result = get_main_title("Hoshana Rabba", "yomtov", is_shabbat=False, has_parsha=False)
+        # This is a design decision - Hoshana Rabba alone doesn't generate a poster
+        self.assertEqual(result, "שבת שלום")
+
+    def test_erev_sukkot_on_shabbat(self):
+        """Erev Sukkot on Shabbat should return 'שבת שלום'."""
+        result = get_main_title("Erev Sukkos", "yomtov", is_shabbat=True, has_parsha=True)
+        self.assertEqual(result, "שבת שלום")
+
+    def test_erev_pesach_not_on_shabbat(self):
+        """Erev Pesach not on Shabbat should return regular Shabbat greeting."""
+        result = get_main_title("Erev Pesach", "yomtov", is_shabbat=False, has_parsha=True)
+        self.assertEqual(result, "שבת שלום")
 
 
 if __name__ == "__main__":
