@@ -293,24 +293,29 @@ def get_omer_count_text(day: int, nusach: str = "sefard") -> str:
     if day == 2:
         return f"הַיּוֹם שְׁנֵי יָמִים {omer_suffix}"
 
-    # Days 3-6: "היום X ימים לעומר/בעומר"
-    if day < 7:
-        return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+    # Days 3-10: "היום X ימים לעומר/בעומר" (plural - יָמִים)
+    if day <= 10:
+        if day < 7:
+            return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+        elif day == 7:
+            # Day 7: "היום שבעה ימים שהם שבוע אחד לעומר/בעומר"
+            return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד {omer_suffix}"
+        else:
+            # Days 8-10: Include weeks (plural - יָמִים)
+            week_text = _hebrew_week_text(weeks)
+            remaining_text = _hebrew_day_text(remaining_days)
+            return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם {week_text} וְ{remaining_text} {omer_suffix}"
 
-    # Day 7: "היום שבעה ימים שהם שבוע אחד לעומר/בעומר"
-    if day == 7:
-        return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד {omer_suffix}"
-
-    # Days 8-49: Include weeks (use יָמִים plural)
+    # Days 11-49: Use singular יוֹם (according to Siddur grammar)
     if remaining_days == 0:
         # Exact weeks
         week_text = _hebrew_week_text(weeks)
-        return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם {week_text} {omer_suffix}"
+        return f"הַיּוֹם {day_text} יוֹם שֶׁהֵם {week_text} {omer_suffix}"
     else:
         # Weeks and days
         week_text = _hebrew_week_text(weeks)
         remaining_text = _hebrew_day_text(remaining_days)
-        return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם {week_text} וְ{remaining_text} {omer_suffix}"
+        return f"הַיּוֹם {day_text} יוֹם שֶׁהֵם {week_text} וְ{remaining_text} {omer_suffix}"
 
 
 def _build_edot_hamizrach_text(day: int, day_text: str, weeks: int, remaining_days: int) -> str:
@@ -329,24 +334,29 @@ def _build_edot_hamizrach_text(day: int, day_text: str, weeks: int, remaining_da
     if day == 2:
         return f"הַיּוֹם שְׁנֵי יָמִים {omer_suffix}"
 
-    # Days 3-6: "היום X ימים לעומר" (same as sefard, no week breakdown)
-    if day < 7:
-        return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+    # Days 3-10: "היום X ימים לעומר" (plural - יָמִים)
+    if day <= 10:
+        if day < 7:
+            return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+        elif day == 7:
+            # Day 7: "היום שבעה ימים לעומר שהם שבוע אחד"
+            return f"הַיּוֹם {day_text} יָמִים {omer_suffix} שֶׁהֵם שָׁבוּעַ אֶחָד"
+        else:
+            # Days 8-10: Include weeks (plural - יָמִים)
+            week_text = _hebrew_week_text(weeks)
+            remaining_text = _hebrew_day_text(remaining_days)
+            return f"הַיּוֹם {day_text} יָמִים {omer_suffix} שֶׁהֵם {week_text} וְ{remaining_text}"
 
-    # Day 7: "היום שבעה ימים לעומר שהם שבוע אחד"
-    if day == 7:
-        return f"הַיּוֹם {day_text} יָמִים {omer_suffix} שֶׁהֵם שָׁבוּעַ אֶחָד"
-
-    # Days 8-49: "לעומר" comes after day count, before week breakdown (use יָמִים plural)
+    # Days 11-49: Use singular יוֹם (according to Siddur grammar)
     if remaining_days == 0:
         # Exact weeks
         week_text = _hebrew_week_text(weeks)
-        return f"הַיּוֹם {day_text} יָמִים {omer_suffix} שֶׁהֵם {week_text}"
+        return f"הַיּוֹם {day_text} יוֹם {omer_suffix} שֶׁהֵם {week_text}"
     else:
         # Weeks and days
         week_text = _hebrew_week_text(weeks)
         remaining_text = _hebrew_day_text(remaining_days)
-        return f"הַיּוֹם {day_text} יָמִים {omer_suffix} שֶׁהֵם {week_text} וְ{remaining_text}"
+        return f"הַיּוֹם {day_text} יוֹם {omer_suffix} שֶׁהֵם {week_text} וְ{remaining_text}"
 
 
 def _hebrew_week_text(weeks: int) -> str:
