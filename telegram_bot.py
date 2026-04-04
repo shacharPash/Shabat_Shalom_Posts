@@ -836,6 +836,7 @@ def handle_general_settings(chat_id: int, message_id: int, user_id: str) -> None
     keyboard = [
         [{"text": "💬 ערוך ברכה", "callback_data": "edit:blessing"}],
         [{"text": "🕯️ לעילוי נשמת", "callback_data": "edit:dedication"}],
+        [{"text": "🔄 אפס להגדרות ברירת מחדל", "callback_data": "general:reset_confirm"}],
         [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
     ]
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
@@ -862,6 +863,30 @@ def handle_general_settings_new(chat_id: int, user_id: str) -> None:
         [{"text": "⬅️ חזרה", "callback_data": "back:start"}],
     ]
     send_message_with_keyboard(chat_id, settings_text, keyboard, parse_mode="HTML")
+
+
+def handle_reset_confirm(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle general:reset_confirm callback - show confirmation for resetting all settings."""
+    confirm_text = "⚠️ האם אתה בטוח שברצונך לאפס את כל ההגדרות?"
+    keyboard = [
+        [{"text": "✅ כן, אפס הכל", "callback_data": "general:reset_all"}],
+        [{"text": "❌ ביטול", "callback_data": "general:settings"}],
+    ]
+    edit_message_with_keyboard(chat_id, message_id, confirm_text, keyboard)
+
+
+def handle_reset_all_settings(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle general:reset_all callback - reset all settings to defaults."""
+    # Reset all preferences to defaults
+    set_user_prefs(user_id, DEFAULT_PREFERENCES.copy())
+
+    # Show success message
+    edit_message_with_keyboard(
+        chat_id,
+        message_id,
+        "✅ כל ההגדרות אופסו לברירת מחדל!",
+        [[{"text": "⬅️ חזרה לתפריט", "callback_data": "back:start"}]]
+    )
 
 
 def handle_shabbat_settings(chat_id: int, message_id: int, user_id: str) -> None:
@@ -1163,6 +1188,10 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_start_poster_omer(chat_id, user_id)
     elif data == "general:settings":
         handle_general_settings(chat_id, message_id, user_id)
+    elif data == "general:reset_confirm":
+        handle_reset_confirm(chat_id, message_id, user_id)
+    elif data == "general:reset_all":
+        handle_reset_all_settings(chat_id, message_id, user_id)
     elif data == "shabbat:settings":
         handle_shabbat_settings(chat_id, message_id, user_id)
     elif data == "omer:settings":

@@ -41,7 +41,12 @@ SEFIROT = [
 # Hebrew number words for the Omer count
 HEBREW_ONES = ["", "אֶחָד", "שְׁנַיִם", "שְׁלֹשָׁה", "אַרְבָּעָה", "חֲמִשָּׁה",
                "שִׁשָּׁה", "שִׁבְעָה", "שְׁמוֹנָה", "תִּשְׁעָה"]
-HEBREW_TENS = ["", "עֲשָׂרָה", "עֶשְׂרִים", "שְׁלוֹשִׁים", "אַרְבָּעִים"]
+HEBREW_TENS = ["", "עֲשָׂרָה", "עֶשְׂרִים", "שְׁלשִׁים", "אַרְבָּעִים"]
+# Vav prefix for tens (ו' החיבור)
+# וְ before עֶשְׂרִים (shva before consonant cluster)
+# וּ before שְׁלשִׁים (shuruk before shva)
+# וְ before אַרְבָּעִים (shva before aleph with patach)
+HEBREW_TENS_WITH_VAV = ["", "", "וְעֶשְׂרִים", "וּשְׁלשִׁים", "וְאַרְבָּעִים"]
 
 # Special numbers
 HEBREW_SPECIAL = {
@@ -248,7 +253,8 @@ def _hebrew_number(n: int) -> str:
     if ones == 0:
         return HEBREW_TENS[tens]
 
-    return f"{HEBREW_ONES[ones]} וְ{HEBREW_TENS[tens]}"
+    # Use the pre-defined vav prefix for tens (proper ו' החיבור)
+    return f"{HEBREW_ONES[ones]} {HEBREW_TENS_WITH_VAV[tens]}"
 
 
 def get_omer_count_text(day: int, nusach: str = "sefard") -> str:
@@ -289,15 +295,24 @@ def get_omer_count_text(day: int, nusach: str = "sefard") -> str:
     if day == 1:
         return f"הַיּוֹם יוֹם {day_text} {omer_suffix}"
 
-    # Days 2-6: "היום X ימים לעומר/בעומר"
-    if day < 7:
-        return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+    # Day 2: special case - use "שְׁנֵי" (construct state) instead of "שְׁנַיִם"
+    if day == 2:
+        return f"הַיּוֹם שְׁנֵי יָמִים {omer_suffix}"
 
-    # Day 7: "היום שבעה ימים שהם שבוע אחד לעומר/בעומר"
-    if day == 7:
-        return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד {omer_suffix}"
+    # Days 3-10: "היום X ימים לעומר/בעומר" (plural - יָמִים)
+    if day <= 10:
+        if day < 7:
+            return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+        elif day == 7:
+            # Day 7: "היום שבעה ימים שהם שבוע אחד לעומר/בעומר"
+            return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד {omer_suffix}"
+        else:
+            # Days 8-10: Include weeks (plural - יָמִים)
+            week_text = _hebrew_week_text(weeks)
+            remaining_text = _hebrew_day_text(remaining_days, with_vav=True)
+            return f"הַיּוֹם {day_text} יָמִים שֶׁהֵם {week_text} {remaining_text} {omer_suffix}"
 
-    # Days 8-49: Include weeks
+    # Days 11-49: Use singular יוֹם (according to Siddur grammar)
     if remaining_days == 0:
         # Exact weeks
         week_text = _hebrew_week_text(weeks)
@@ -305,8 +320,8 @@ def get_omer_count_text(day: int, nusach: str = "sefard") -> str:
     else:
         # Weeks and days
         week_text = _hebrew_week_text(weeks)
-        remaining_text = _hebrew_day_text(remaining_days)
-        return f"הַיּוֹם {day_text} יוֹם שֶׁהֵם {week_text} וְ{remaining_text} {omer_suffix}"
+        remaining_text = _hebrew_day_text(remaining_days, with_vav=True)
+        return f"הַיּוֹם {day_text} יוֹם שֶׁהֵם {week_text} {remaining_text} {omer_suffix}"
 
 
 def _build_edot_hamizrach_text(day: int, day_text: str, weeks: int, remaining_days: int) -> str:
@@ -321,24 +336,33 @@ def _build_edot_hamizrach_text(day: int, day_text: str, weeks: int, remaining_da
     if day == 1:
         return f"הַיּוֹם יוֹם {day_text} {omer_suffix}"
 
-    # Days 2-6: "היום X ימים לעומר" (same as sefard, no week breakdown)
-    if day < 7:
-        return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+    # Day 2: special case - use "שְׁנֵי" (construct state) instead of "שְׁנַיִם"
+    if day == 2:
+        return f"הַיּוֹם שְׁנֵי יָמִים {omer_suffix}"
 
-    # Day 7: "היום שבעה ימים לעומר שהם שבוע אחד"
-    if day == 7:
-        return f"הַיּוֹם {day_text} יָמִים {omer_suffix} שֶׁהֵם שָׁבוּעַ אֶחָד"
+    # Days 3-10: "היום X ימים לעומר" (plural - יָמִים)
+    if day <= 10:
+        if day < 7:
+            return f"הַיּוֹם {day_text} יָמִים {omer_suffix}"
+        elif day == 7:
+            # Day 7: "היום שבעה ימים לעומר, שהם שבוע אחד"
+            return f"הַיּוֹם {day_text} יָמִים {omer_suffix}, שֶׁהֵם שָׁבוּעַ אֶחָד"
+        else:
+            # Days 8-10: Include weeks (plural - יָמִים)
+            week_text = _hebrew_week_text(weeks)
+            remaining_text = _hebrew_day_text(remaining_days, with_vav=True)
+            return f"הַיּוֹם {day_text} יָמִים {omer_suffix}, שֶׁהֵם {week_text} {remaining_text}"
 
-    # Days 8-49: "לעומר" comes after day count, before week breakdown
+    # Days 11-49: Use singular יוֹם (according to Siddur grammar)
     if remaining_days == 0:
         # Exact weeks
         week_text = _hebrew_week_text(weeks)
-        return f"הַיּוֹם {day_text} יוֹם {omer_suffix} שֶׁהֵם {week_text}"
+        return f"הַיּוֹם {day_text} יוֹם {omer_suffix}, שֶׁהֵם {week_text}"
     else:
         # Weeks and days
         week_text = _hebrew_week_text(weeks)
-        remaining_text = _hebrew_day_text(remaining_days)
-        return f"הַיּוֹם {day_text} יוֹם {omer_suffix} שֶׁהֵם {week_text} וְ{remaining_text}"
+        remaining_text = _hebrew_day_text(remaining_days, with_vav=True)
+        return f"הַיּוֹם {day_text} יוֹם {omer_suffix}, שֶׁהֵם {week_text} {remaining_text}"
 
 
 def _hebrew_week_text(weeks: int) -> str:
@@ -360,20 +384,29 @@ def _hebrew_week_text(weeks: int) -> str:
     return ""
 
 
-def _hebrew_day_text(days: int) -> str:
-    """Get Hebrew text for number of days (1-6)."""
+def _hebrew_day_text(days: int, with_vav: bool = False) -> str:
+    """Get Hebrew text for number of days (1-6).
+
+    Args:
+        days: Number of days (1-6)
+        with_vav: If True, prefix with the appropriate vav (ו' החיבור)
+                  according to Hebrew grammar rules:
+                  - וּ (shuruk) before shva (שְׁנֵי, שְׁלֹשָׁה)
+                  - וַ (patach) before chataf patach (חֲמִשָּׁה)
+                  - וְ (shva) for others
+    """
     if days == 1:
-        return "יוֹם אֶחָד"
+        return "וְיוֹם אֶחָד" if with_vav else "יוֹם אֶחָד"
     if days == 2:
-        return "שְׁנֵי יָמִים"
+        return "וּשְׁנֵי יָמִים" if with_vav else "שְׁנֵי יָמִים"
     if days == 3:
-        return "שְׁלֹשָׁה יָמִים"
+        return "וּשְׁלֹשָׁה יָמִים" if with_vav else "שְׁלֹשָׁה יָמִים"
     if days == 4:
-        return "אַרְבָּעָה יָמִים"
+        return "וְאַרְבָּעָה יָמִים" if with_vav else "אַרְבָּעָה יָמִים"
     if days == 5:
-        return "חֲמִשָּׁה יָמִים"
+        return "וַחֲמִשָּׁה יָמִים" if with_vav else "חֲמִשָּׁה יָמִים"
     if days == 6:
-        return "שִׁשָּׁה יָמִים"
+        return "וְשִׁשָּׁה יָמִים" if with_vav else "שִׁשָּׁה יָמִים"
     return ""
 
 
