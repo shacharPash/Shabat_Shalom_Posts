@@ -211,6 +211,26 @@ def get_omer_day(target: Union[date, datetime], after_midnight: bool = False) ->
     return delta
 
 
+def is_omer_period(target: Union[date, datetime, None] = None) -> bool:
+    """
+    Check if a given date (or today) is within the Omer counting period.
+
+    Uses get_omer_day() internally to determine if the date falls within
+    the 49 days of counting from 16 Nisan to Shavuot.
+
+    Args:
+        target: The date to check. If None, uses today's date.
+
+    Returns:
+        True if the date is within the Omer period (days 1-49), False otherwise.
+    """
+    if target is None:
+        target = date.today()
+
+    omer_day = get_omer_day(target)
+    return omer_day is not None
+
+
 def get_sefirah_text(day: int) -> str:
     """
     Get the Sefirah text for a given Omer day.
