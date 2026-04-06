@@ -16,6 +16,7 @@ import requests
 from redis_client import get_redis_client, get_user_prefs, set_user_prefs, DEFAULT_PREFERENCES
 from api.poster import build_poster_from_payload
 from cities import build_city_lookup, get_cities_list, SPECIAL_OFFSET_CITIES, DEFAULT_CANDLE_OFFSET
+from omer_utils import is_omer_period
 
 # Load city lookup and list once at module level
 AVAILABLE_CITIES = get_cities_list()
@@ -496,32 +497,70 @@ def format_settings(prefs: Dict[str, Any]) -> str:
 def handle_start(update: Dict[str, Any]) -> None:
     """Handle /start command."""
     chat_id = get_chat_id(update)
+    user_id = get_user_id(update)
     if not chat_id:
         return
 
-    welcome_text = (
-        "🕯️ <b>שלום וברוכים הבאים!</b>\n\n"
-        "אני בוט שיעזור לך ליצור פוסטרים יפים לשבת ולספירת העומר.\n\n"
-        "<b>🎨 שני מצבים:</b>\n"
-        "• <b>שבת</b> - פוסטר עם זמני שבת ופרשת השבוע\n"
-        "• <b>ספירת העומר</b> - פוסטר עם ספירת העומר והברכה\n\n"
-        "<b>איך להשתמש:</b>\n"
-        "1️⃣ שלח לי תמונה\n"
-        "2️⃣ אני אצור פוסטר מעוצב\n"
-        "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
-        "שלח תמונה כדי להתחיל! 📸\n\n"
-        "💡 <b>טיפ:</b> אפשר להפעיל תזכורות אוטומטיות!\n"
-        "לחץ על ⚙️ הגדרות עומר או ⚙️ הגדרות שבת למטה.\n"
-        "• ספירת העומר - כל יום בצאת הכוכבים\n"
-        "• שבתות וחגים - בוקר יום שישי / ערב חג"
-    )
+    # Check if we're in Omer period for smart button display
+    in_omer_period = is_omer_period()
+
+    # Get user preferences for reminder status
+    prefs = get_user_prefs(user_id) if user_id else {}
+    reminder_enabled = prefs.get("reminder_enabled", False)
+
+    # Build welcome text - adjust based on Omer period
+    if in_omer_period:
+        welcome_text = (
+            "🕯️ <b>שלום וברוכים הבאים!</b>\n\n"
+            "אני בוט שיעזור לך ליצור פוסטרים יפים לשבת ולספירת העומר.\n\n"
+            "<b>🎨 שני מצבים:</b>\n"
+            "• <b>שבת</b> - פוסטר עם זמני שבת ופרשת השבוע\n"
+            "• <b>ספירת העומר</b> - פוסטר עם ספירת העומר והברכה\n\n"
+            "<b>איך להשתמש:</b>\n"
+            "1️⃣ שלח לי תמונה\n"
+            "2️⃣ אני אצור פוסטר מעוצב\n"
+            "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
+            "שלח תמונה כדי להתחיל! 📸\n\n"
+            "💡 <b>טיפ:</b> אפשר להפעיל תזכורות אוטומטיות!\n"
+            "לחץ על ⚙️ הגדרות עומר או ⚙️ הגדרות שבת למטה.\n"
+            "• ספירת העומר - כל יום בצאת הכוכבים\n"
+            "• שבתות וחגים - בוקר יום שישי / ערב חג"
+        )
+    else:
+        welcome_text = (
+            "🕯️ <b>שלום וברוכים הבאים!</b>\n\n"
+            "אני בוט שיעזור לך ליצור פוסטרים יפים לשבת.\n\n"
+            "<b>איך להשתמש:</b>\n"
+            "1️⃣ שלח לי תמונה\n"
+            "2️⃣ אני אצור פוסטר מעוצב\n"
+            "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
+            "שלח תמונה כדי להתחיל! 📸\n\n"
+            "💡 <b>טיפ:</b> אפשר להפעיל תזכורות שבת אוטומטיות!\n"
+            "לחץ על ⚙️ הגדרות שבת למטה."
+        )
+
+    # Build keyboard based on Omer period
     keyboard = [
         [{"text": "📸 צור פוסטר שבת", "callback_data": "start:poster_shabbat"}],
-        [{"text": "🔢 צור פוסטר עומר", "callback_data": "start:poster_omer"}],
-        [{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}],
-        [{"text": "🔢 הגדרות עומר", "callback_data": "omer:settings"}],
-        [{"text": "📋 הגדרות כלליות", "callback_data": "general:settings"}],
     ]
+
+    if in_omer_period:
+        # Show Omer buttons with 🆕 marker during Omer period
+        keyboard.append([{"text": "🆕 🔢 צור פוסטר עומר", "callback_data": "start:poster_omer"}])
+
+        # Add Omer reminder toggle button
+        if reminder_enabled:
+            keyboard.append([{"text": "🔔 תזכורת ספירת העומר ✓", "callback_data": "toggle:omer_reminder_main"}])
+        else:
+            keyboard.append([{"text": "🔕 תזכורת ספירת העומר", "callback_data": "toggle:omer_reminder_main"}])
+
+    keyboard.append([{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}])
+
+    if in_omer_period:
+        keyboard.append([{"text": "🆕 🔢 הגדרות עומר", "callback_data": "omer:settings"}])
+
+    keyboard.append([{"text": "📋 הגדרות כלליות", "callback_data": "general:settings"}])
+
     send_message_with_keyboard(chat_id, welcome_text, keyboard, parse_mode="HTML")
 
 
@@ -1285,6 +1324,8 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_toggle_mode(chat_id, message_id, user_id)
     elif data == "toggle:reminder":
         handle_toggle_reminder(chat_id, message_id, user_id)
+    elif data == "toggle:omer_reminder_main":
+        handle_toggle_omer_reminder_main(chat_id, user_id)
     elif data == "toggle:shabbat_reminder":
         handle_toggle_shabbat_reminder(chat_id, message_id, user_id)
     elif data == "edit:nusach":
@@ -1833,6 +1874,20 @@ def handle_toggle_reminder(chat_id: int, message_id: int, user_id: str) -> None:
     handle_new_omer_settings(chat_id, message_id, user_id)
 
 
+def handle_toggle_omer_reminder_main(chat_id: int, user_id: str) -> None:
+    """Handle toggle:omer_reminder_main callback - toggle Omer reminder from main menu."""
+    prefs = get_user_prefs(user_id)
+
+    # Toggle the reminder
+    current_state = prefs.get("reminder_enabled", False)
+    new_state = not current_state
+    prefs["reminder_enabled"] = new_state
+    set_user_prefs(user_id, prefs)
+
+    # Refresh main menu (not omer settings)
+    handle_back_to_start(chat_id, user_id)
+
+
 def handle_toggle_shabbat_reminder(chat_id: int, message_id: int, user_id: str) -> None:
     """Handle toggle:shabbat_reminder callback - toggle Shabbat/Holiday reminder on/off."""
     prefs = get_user_prefs(user_id)
@@ -2157,29 +2212,66 @@ def handle_start_omer_poster(chat_id: int, user_id: str) -> None:
 
 def handle_back_to_start(chat_id: int, user_id: str) -> None:
     """Handle back:start callback - show start menu again."""
-    welcome_text = (
-        "🕯️ <b>שלום וברוכים הבאים!</b>\n\n"
-        "אני בוט שיעזור לך ליצור פוסטרים יפים לשבת ולספירת העומר.\n\n"
-        "<b>🎨 שני מצבים:</b>\n"
-        "• <b>שבת</b> - פוסטר עם זמני שבת ופרשת השבוע\n"
-        "• <b>ספירת העומר</b> - פוסטר עם ספירת העומר והברכה\n\n"
-        "<b>איך להשתמש:</b>\n"
-        "1️⃣ שלח לי תמונה\n"
-        "2️⃣ אני אצור פוסטר מעוצב\n"
-        "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
-        "שלח תמונה כדי להתחיל! 📸\n\n"
-        "💡 <b>טיפ:</b> אפשר להפעיל תזכורות אוטומטיות!\n"
-        "לחץ על ⚙️ הגדרות עומר או ⚙️ הגדרות שבת למטה.\n"
-        "• ספירת העומר - כל יום בצאת הכוכבים\n"
-        "• שבתות וחגים - בוקר יום שישי / ערב חג"
-    )
+    # Check if we're in Omer period for smart button display
+    in_omer_period = is_omer_period()
+
+    # Get user preferences for reminder status
+    prefs = get_user_prefs(user_id) if user_id else {}
+    reminder_enabled = prefs.get("reminder_enabled", False)
+
+    # Build welcome text - adjust based on Omer period
+    if in_omer_period:
+        welcome_text = (
+            "🕯️ <b>שלום וברוכים הבאים!</b>\n\n"
+            "אני בוט שיעזור לך ליצור פוסטרים יפים לשבת ולספירת העומר.\n\n"
+            "<b>🎨 שני מצבים:</b>\n"
+            "• <b>שבת</b> - פוסטר עם זמני שבת ופרשת השבוע\n"
+            "• <b>ספירת העומר</b> - פוסטר עם ספירת העומר והברכה\n\n"
+            "<b>איך להשתמש:</b>\n"
+            "1️⃣ שלח לי תמונה\n"
+            "2️⃣ אני אצור פוסטר מעוצב\n"
+            "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
+            "שלח תמונה כדי להתחיל! 📸\n\n"
+            "💡 <b>טיפ:</b> אפשר להפעיל תזכורות אוטומטיות!\n"
+            "לחץ על ⚙️ הגדרות עומר או ⚙️ הגדרות שבת למטה.\n"
+            "• ספירת העומר - כל יום בצאת הכוכבים\n"
+            "• שבתות וחגים - בוקר יום שישי / ערב חג"
+        )
+    else:
+        welcome_text = (
+            "🕯️ <b>שלום וברוכים הבאים!</b>\n\n"
+            "אני בוט שיעזור לך ליצור פוסטרים יפים לשבת.\n\n"
+            "<b>איך להשתמש:</b>\n"
+            "1️⃣ שלח לי תמונה\n"
+            "2️⃣ אני אצור פוסטר מעוצב\n"
+            "3️⃣ קבל פוסטר מוכן לשיתוף!\n\n"
+            "שלח תמונה כדי להתחיל! 📸\n\n"
+            "💡 <b>טיפ:</b> אפשר להפעיל תזכורות שבת אוטומטיות!\n"
+            "לחץ על ⚙️ הגדרות שבת למטה."
+        )
+
+    # Build keyboard based on Omer period
     keyboard = [
         [{"text": "📸 צור פוסטר שבת", "callback_data": "start:poster_shabbat"}],
-        [{"text": "🔢 צור פוסטר עומר", "callback_data": "start:poster_omer"}],
-        [{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}],
-        [{"text": "🔢 הגדרות עומר", "callback_data": "omer:settings"}],
-        [{"text": "📋 הגדרות כלליות", "callback_data": "general:settings"}],
     ]
+
+    if in_omer_period:
+        # Show Omer buttons with 🆕 marker during Omer period
+        keyboard.append([{"text": "🆕 🔢 צור פוסטר עומר", "callback_data": "start:poster_omer"}])
+
+        # Add Omer reminder toggle button
+        if reminder_enabled:
+            keyboard.append([{"text": "🔔 תזכורת ספירת העומר ✓", "callback_data": "toggle:omer_reminder_main"}])
+        else:
+            keyboard.append([{"text": "🔕 תזכורת ספירת העומר", "callback_data": "toggle:omer_reminder_main"}])
+
+    keyboard.append([{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}])
+
+    if in_omer_period:
+        keyboard.append([{"text": "🆕 🔢 הגדרות עומר", "callback_data": "omer:settings"}])
+
+    keyboard.append([{"text": "📋 הגדרות כלליות", "callback_data": "general:settings"}])
+
     send_message_with_keyboard(chat_id, welcome_text, keyboard, parse_mode="HTML")
 
 
