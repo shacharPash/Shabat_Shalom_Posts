@@ -211,6 +211,30 @@ class TestJewcalTimesForSequence(unittest.TestCase):
         # Should prefer Shabbat over Chol HaMoed
         self.assertEqual(result["event_type"], "shabbos")
 
+    def test_shmini_atzeret_preferred_over_hoshana_rabba(self):
+        """Shmini Atzeret should be preferred over Hoshana Rabba.
+
+        Hoshana Rabba (Sukkot 7) is a regular day without melacha prohibition,
+        so the end event (Shmini Atzeret) should be preferred.
+        """
+        city = CITIES[0]  # Jerusalem
+        # October 2, 2026 = Hoshana Rabba (Sukkot 7) - Friday
+        # October 3, 2026 = Shmini Atzeret (Sukkot 8) - Saturday
+        start_date = date(2026, 10, 2)
+        end_date = date(2026, 10, 3)
+
+        result = jewcal_times_for_sequence(
+            city["lat"], city["lon"], start_date, end_date, city["candle_offset"]
+        )
+
+        # Should prefer Shmini Atzeret (Yom Tov) over Hoshana Rabba
+        self.assertEqual(result["event_type"], "yomtov")
+        # Event name should contain Shmini Atzeret (various spellings) or Simchat Torah
+        self.assertTrue(
+            "Shmini" in result["event_name"] or "Simchat" in result["event_name"],
+            f"Expected Shmini Atzeret/Simchat Torah, got: {result['event_name']}"
+        )
+
 
 class TestIsEndOfHolidaySequence(unittest.TestCase):
     """Tests for is_end_of_holiday_sequence function."""

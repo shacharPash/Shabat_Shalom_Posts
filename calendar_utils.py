@@ -353,9 +353,14 @@ def jewcal_times_for_sequence(
             end_event_type = "shabbos"
             end_event_name = end_jewcal.events.shabbos
 
-    # Step 1: Ignore Chol HaMoed as a start event (it's like a weekday)
-    effective_start_event = None if (start_event_name and "Chol HaMoed" in start_event_name) else start_event_name
-    effective_start_type = None if (start_event_name and "Chol HaMoed" in start_event_name) else start_event_type
+    # Step 1: Ignore "regular day" events as start event
+    # These are days without melacha prohibition: Chol HaMoed and Hoshana Rabba
+    is_regular_day_start = start_event_name and (
+        "Chol HaMoed" in start_event_name or
+        "Hoshana Rabba" in start_event_name
+    )
+    effective_start_event = None if is_regular_day_start else start_event_name
+    effective_start_type = None if is_regular_day_start else start_event_type
 
     # Step 2: Prefer Yom Tov over Shabbat
     # Priority: Yom Tov > Shabbat > nothing
