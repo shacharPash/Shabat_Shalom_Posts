@@ -148,7 +148,14 @@ class TestYomTovPrefixMatches(unittest.TestCase):
         self.assertEqual(translate_yomtov("Pesach I"), "פסח")
         self.assertEqual(translate_yomtov("Pesach II"), "פסח")
         self.assertEqual(translate_yomtov("Pesach 1"), "פסח")
-        self.assertEqual(translate_yomtov("Pesach 7"), "פסח")
+
+    def test_pesach_7_translation(self):
+        """Pesach 7 (שביעי של פסח - 21 Nisan) should translate to 'שביעי של פסח'."""
+        self.assertEqual(translate_yomtov("Pesach 7"), "שביעי של פסח")
+
+    def test_pesach_1_still_works(self):
+        """Pesach 1 should still translate to 'פסח' via prefix match."""
+        self.assertEqual(translate_yomtov("Pesach 1"), "פסח")
 
     def test_sukkot_with_day_number(self):
         """Sukkot with day numbers should match prefix."""

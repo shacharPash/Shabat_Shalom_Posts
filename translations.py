@@ -41,6 +41,7 @@ YOMTOV_TRANSLATIONS: Dict[str, str] = {
 
     # Pesach
     "Erev Pesach": "ערב פסח",
+    "Pesach 7": "שביעי של פסח",
     "Pesach": "פסח",
     "Passover": "פסח",
 
