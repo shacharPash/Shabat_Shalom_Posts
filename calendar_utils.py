@@ -353,9 +353,13 @@ def jewcal_times_for_sequence(
             end_event_type = "shabbos"
             end_event_name = end_jewcal.events.shabbos
 
-    # Prefer end event if it's a major holiday (Simchat Torah, Shmini Atzeret, etc.)
-    # Otherwise use start event
-    if end_event_name and ("Simchat Tora" in end_event_name or "Shmini Atzeret" in end_event_name):
+    # Prefer end event if it's:
+    # 1. A major holiday ending (Simchat Torah, Shmini Atzeret)
+    # 2. A full Yom Tov (not Chol HaMoed) - like Pesach 7, Sukkot 1
+    is_end_full_yomtov = end_event_name and end_event_type == "yomtov" and "Chol HaMoed" not in end_event_name
+    is_end_major = end_event_name and ("Simchat Tora" in end_event_name or "Shmini Atzeret" in end_event_name)
+
+    if is_end_major or is_end_full_yomtov:
         event_type = end_event_type
         event_name = end_event_name
     else:

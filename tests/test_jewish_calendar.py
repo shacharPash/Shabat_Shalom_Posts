@@ -154,6 +154,27 @@ class TestJewcalTimesForSequence(unittest.TestCase):
         self.assertEqual(result["start_date"], start_date)
         self.assertEqual(result["end_date"], end_date)
 
+    def test_pesach_7_prefers_end_yomtov_over_chol_hamoed(self):
+        """Pesach 7 should be preferred over Chol HaMoed when it's the end event.
+
+        Bug fix: When sequence is Chol HaMoed 5 (start) to Pesach 7 (end),
+        the event_name should be "Pesach 7", not "Chol HaMoed 5 (Pesach 6)".
+        """
+        city = CITIES[0]  # Jerusalem
+        # April 7, 2026 = Chol HaMoed 5 (Pesach 6)
+        # April 8, 2026 = Pesach 7 (Shvii shel Pesach)
+        start_date = date(2026, 4, 7)
+        end_date = date(2026, 4, 8)
+
+        result = jewcal_times_for_sequence(
+            city["lat"], city["lon"], start_date, end_date, city["candle_offset"]
+        )
+
+        # Should prefer Pesach 7 (the full Yom Tov) over Chol HaMoed
+        self.assertEqual(result["event_type"], "yomtov")
+        self.assertIn("Pesach", result["event_name"])
+        self.assertNotIn("Chol HaMoed", result["event_name"])
+
 
 class TestIsEndOfHolidaySequence(unittest.TestCase):
     """Tests for is_end_of_holiday_sequence function."""
