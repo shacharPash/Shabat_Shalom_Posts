@@ -175,6 +175,42 @@ class TestJewcalTimesForSequence(unittest.TestCase):
         self.assertIn("Pesach", result["event_name"])
         self.assertNotIn("Chol HaMoed", result["event_name"])
 
+    def test_yomtov_start_preferred_over_shabbat_end(self):
+        """Yom Tov at start should be preferred over Shabbat at end.
+
+        Example: Rosh Hashana 1 (start) + Shabbat (end) -> Rosh Hashana 1
+        """
+        city = CITIES[0]  # Jerusalem
+        # September 12, 2026 = Rosh Hashana 1 (Saturday)
+        # September 13, 2026 = Rosh Hashana 2 (Sunday - but it's yomtov)
+        start_date = date(2026, 9, 11)  # Friday - erev Rosh Hashana
+        end_date = date(2026, 9, 13)  # Rosh Hashana 2
+
+        result = jewcal_times_for_sequence(
+            city["lat"], city["lon"], start_date, end_date, city["candle_offset"]
+        )
+
+        # Yom Tov should be preferred
+        self.assertEqual(result["event_type"], "yomtov")
+
+    def test_shabbat_preferred_over_chol_hamoed(self):
+        """Shabbat should be preferred over Chol HaMoed.
+
+        When Chol HaMoed is at start and Shabbat is at end, prefer Shabbat.
+        """
+        city = CITIES[0]  # Jerusalem
+        # October 9, 2026 = Chol HaMoed Sukkot (Friday)
+        # October 10, 2026 = Shabbat Chol HaMoed Sukkot
+        start_date = date(2026, 10, 9)
+        end_date = date(2026, 10, 10)
+
+        result = jewcal_times_for_sequence(
+            city["lat"], city["lon"], start_date, end_date, city["candle_offset"]
+        )
+
+        # Should prefer Shabbat over Chol HaMoed
+        self.assertEqual(result["event_type"], "shabbos")
+
 
 class TestIsEndOfHolidaySequence(unittest.TestCase):
     """Tests for is_end_of_holiday_sequence function."""

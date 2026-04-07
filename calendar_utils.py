@@ -353,18 +353,27 @@ def jewcal_times_for_sequence(
             end_event_type = "shabbos"
             end_event_name = end_jewcal.events.shabbos
 
-    # Prefer end event if it's:
-    # 1. A major holiday ending (Simchat Torah, Shmini Atzeret)
-    # 2. A full Yom Tov (not Chol HaMoed) - like Pesach 7, Sukkot 1
-    is_end_full_yomtov = end_event_name and end_event_type == "yomtov" and "Chol HaMoed" not in end_event_name
-    is_end_major = end_event_name and ("Simchat Tora" in end_event_name or "Shmini Atzeret" in end_event_name)
+    # Step 1: Ignore Chol HaMoed as a start event (it's like a weekday)
+    effective_start_event = None if (start_event_name and "Chol HaMoed" in start_event_name) else start_event_name
+    effective_start_type = None if (start_event_name and "Chol HaMoed" in start_event_name) else start_event_type
 
-    if is_end_major or is_end_full_yomtov:
+    # Step 2: Prefer Yom Tov over Shabbat
+    # Priority: Yom Tov > Shabbat > nothing
+    if effective_start_type == "yomtov":
+        event_type = effective_start_type
+        event_name = effective_start_event
+    elif end_event_type == "yomtov":
+        event_type = end_event_type
+        event_name = end_event_name
+    elif effective_start_type == "shabbos":
+        event_type = effective_start_type
+        event_name = effective_start_event
+    elif end_event_type == "shabbos":
         event_type = end_event_type
         event_name = end_event_name
     else:
-        event_type = start_event_type
-        event_name = start_event_name
+        event_type = effective_start_type
+        event_name = effective_start_event
 
     # Get parsha information only if sequence involves Shabbat
     parsha = None
