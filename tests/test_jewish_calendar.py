@@ -13,8 +13,10 @@ Tests cover:
 import os
 import sys
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from unittest.mock import patch, MagicMock
+
+import pytz
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,6 +25,7 @@ from make_shabbat_posts import (
     find_next_sequence,
     find_event_sequence,
     find_next_event_date,
+    get_effective_start_date,
     jewcal_times_for_date,
     jewcal_times_for_sequence,
     is_end_of_holiday_sequence,
@@ -332,6 +335,51 @@ class TestGetParshaFromHebcal(unittest.TestCase):
         # Should return parsha from local data even when API returns empty
         self.assertIsNotNone(result)
         self.assertIn("פרשת", result)  # Should have Hebrew parsha prefix
+
+
+class TestGetEffectiveStartDate(unittest.TestCase):
+    """Tests for get_effective_start_date function."""
+
+    def test_weekday_returns_same_day(self):
+        """On a weekday without events, should return the same day."""
+        israel_tz = pytz.timezone("Asia/Jerusalem")
+        # Wednesday, April 9, 2025 at noon
+        now = israel_tz.localize(datetime(2025, 4, 9, 12, 0, 0))
+        result = get_effective_start_date(now)
+        self.assertEqual(result, date(2025, 4, 9))
+
+    def test_shabbat_before_havdalah_returns_same_day(self):
+        """On Saturday before havdalah, should return same day."""
+        israel_tz = pytz.timezone("Asia/Jerusalem")
+        # Saturday, April 12, 2025 at 14:00 (before havdalah ~19:30)
+        now = israel_tz.localize(datetime(2025, 4, 12, 14, 0, 0))
+        result = get_effective_start_date(now)
+        self.assertEqual(result, date(2025, 4, 12))
+
+    def test_shabbat_after_havdalah_returns_tomorrow(self):
+        """On Saturday after havdalah, should return next day."""
+        israel_tz = pytz.timezone("Asia/Jerusalem")
+        # Saturday, January 4, 2025 at 21:00 (after havdalah ~17:30)
+        # This is a regular Shabbat with Havdalah action
+        now = israel_tz.localize(datetime(2025, 1, 4, 21, 0, 0))
+        result = get_effective_start_date(now)
+        self.assertEqual(result, date(2025, 1, 5))
+
+    def test_yomtov_end_after_havdalah_returns_tomorrow(self):
+        """After havdalah at end of Yom Tov, should return next day."""
+        israel_tz = pytz.timezone("Asia/Jerusalem")
+        # Pesach 7 ends April 19, 2025 - at 21:00 (after havdalah)
+        now = israel_tz.localize(datetime(2025, 4, 19, 21, 0, 0))
+        result = get_effective_start_date(now)
+        self.assertEqual(result, date(2025, 4, 20))
+
+    def test_friday_afternoon_returns_friday(self):
+        """On Friday afternoon (before candle lighting), should return Friday."""
+        israel_tz = pytz.timezone("Asia/Jerusalem")
+        # Friday, April 11, 2025 at 14:00 (before candle lighting)
+        now = israel_tz.localize(datetime(2025, 4, 11, 14, 0, 0))
+        result = get_effective_start_date(now)
+        self.assertEqual(result, date(2025, 4, 11))
 
 
 if __name__ == "__main__":
