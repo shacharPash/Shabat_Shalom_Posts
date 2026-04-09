@@ -41,6 +41,7 @@ from calendar_utils import (
     find_event_sequence,
     find_next_event_date,
     find_next_sequence,
+    get_effective_start_date,
     is_end_of_holiday_sequence,
     jewcal_times_for_date,
     jewcal_times_for_sequence,
@@ -870,8 +871,11 @@ def generate_poster(
         PNG image bytes ready to be saved or transmitted
     """
     # Use defaults if not provided
+    # If start_date is not specified, use get_effective_start_date() which
+    # automatically returns tomorrow if we're past havdalah on a Shabbat/Yom Tov day.
+    # This ensures we show the NEXT event instead of the one that just ended.
     if start_date is None:
-        start_date = date.today()
+        start_date = get_effective_start_date()
     if cities is None:
         cities = DEFAULT_CITIES  # Use neutral default cities
 

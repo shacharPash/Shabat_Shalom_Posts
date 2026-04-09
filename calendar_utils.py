@@ -105,6 +105,85 @@ def is_end_of_holiday_sequence(target_date: date) -> bool:
     return True
 
 
+def get_effective_start_date(now: Optional[datetime] = None) -> date:
+    """
+    Get the effective start date for finding the next event sequence.
+
+    If we're past havdalah time on a day that ends a sequence (Shabbat/Yom Tov),
+    we should start searching from tomorrow to find the NEXT event.
+
+    This prevents showing an event that has already ended when creating
+    a poster after havdalah.
+
+    Args:
+        now: Current datetime (timezone-aware). If None, uses current time in Israel.
+
+    Returns:
+        date: Today's date if before havdalah or no event today,
+              tomorrow's date if after havdalah on an event day.
+    """
+    import pytz
+
+    # Israel timezone for calculations
+    israel_tz = pytz.timezone("Asia/Jerusalem")
+
+    # Get current time in Israel
+    if now is None:
+        now = datetime.now(israel_tz)
+    elif now.tzinfo is None:
+        now = israel_tz.localize(now)
+    else:
+        now = now.astimezone(israel_tz)
+
+    today = now.date()
+
+    # Check if today has a havdalah event (end of sequence)
+    today_jewcal = _get_jewcal_cached(today, False)
+    if not today_jewcal.has_events():
+        return today
+
+    # Check if today's action is Havdalah (meaning today is the end of a sequence)
+    if today_jewcal.events.action != "Havdalah":
+        return today
+
+    # Get havdalah time for today using Jerusalem coordinates
+    # Jerusalem is the reference point for Israel-based times
+    jerusalem_lat = 31.7683
+    jerusalem_lon = 35.2137
+
+    today_with_location = _get_jewcal_with_location_cached(
+        today, False, jerusalem_lat, jerusalem_lon, 40
+    )
+
+    if not today_with_location.zmanim:
+        return today
+
+    zmanim_dict = today_with_location.zmanim.to_dict()
+    tzeis = zmanim_dict.get('tzeis_hakochavim')
+
+    if not tzeis:
+        return today
+
+    # Parse tzeis time and convert to Israel timezone
+    try:
+        if isinstance(tzeis, str):
+            tzeis_datetime = datetime.fromisoformat(tzeis)
+            tzeis_israel = tzeis_datetime.astimezone(israel_tz)
+        elif hasattr(tzeis, 'astimezone'):
+            tzeis_israel = tzeis.astimezone(israel_tz)
+        else:
+            return today
+
+        # If current time is past havdalah, start from tomorrow
+        if now >= tzeis_israel:
+            return today + timedelta(days=1)
+
+    except Exception:
+        pass
+
+    return today
+
+
 def find_event_sequence(start_date: date) -> tuple[date, date, str, str]:
     """Find a complete event sequence (Shabbat or holiday sequence).
     Returns: (start_date, end_date, event_type, event_name)
