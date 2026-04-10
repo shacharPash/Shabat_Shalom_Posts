@@ -447,13 +447,13 @@ def compose_poster(
         # Regular Yom Tov - translate event name to Hebrew
         hebrew_event = translate_yomtov(event_name)
         if parsha_txt:
-            sub_line = f"פרשת {parsha_txt} | {hebrew_event} | {date_str}"
+            sub_line = f"{parsha_txt} | {hebrew_event} | {date_str}"
         else:
             sub_line = f"{hebrew_event} | {date_str}"
     else:
         # Regular Shabbat
         if parsha_txt:
-            sub_line = f"פרשת {parsha_txt} | {date_str}"
+            sub_line = f"{parsha_txt} | {date_str}"
         else:
             sub_line = date_str
 
