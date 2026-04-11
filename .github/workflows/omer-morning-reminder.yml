@@ -1,0 +1,21 @@
+name: Omer Morning Reminder
+
+on:
+  schedule:
+    # Run at 6:00 UTC (9:00 Israel summer time)
+    - cron: '0 6 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  send-morning-reminder:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Morning Reminder Check
+        run: |
+          curl -L -X GET "${{ secrets.VERCEL_URL }}/api/omer_morning_reminder" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body \
+            --max-time 60
+
