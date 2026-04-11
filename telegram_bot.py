@@ -2462,6 +2462,9 @@ def handle_back_to_start(chat_id: int, user_id: str) -> None:
         else:
             keyboard.append([{"text": "🔕 תזכורת ספירת העומר", "callback_data": "toggle:omer_reminder_main"}])
 
+        # Add "Did I count?" status check button
+        keyboard.append([{"text": "❓ האם ספרתי?", "callback_data": "omer:check_status"}])
+
     keyboard.append([{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}])
 
     if in_omer_period:
