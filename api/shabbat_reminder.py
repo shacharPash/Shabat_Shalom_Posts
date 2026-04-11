@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from jewcal import JewCal
 from redis_client import get_users_with_shabbat_reminders_enabled, get_user_prefs
-from telegram_bot import send_photo, send_message, download_photo, CITY_BY_NAME
+from telegram_bot import send_photo_with_keyboard, send_message, download_photo, CITY_BY_NAME, _build_shabbat_poster_keyboard
 from api.poster import build_poster_from_payload
 
 # Vercel cron secret for authentication
@@ -108,8 +108,9 @@ def send_shabbat_reminder(user_id: str) -> bool:
         # Generate poster
         poster_bytes = build_poster_from_payload(payload)
 
-        # Send to user
-        result = send_photo(chat_id, poster_bytes, "🕯️ שבת שלום! הנה הפוסטר שלך לשבת/חג")
+        # Send to user with main menu keyboard
+        keyboard = _build_shabbat_poster_keyboard()
+        result = send_photo_with_keyboard(chat_id, poster_bytes, "🕯️ שבת שלום! הנה הפוסטר שלך לשבת/חג", keyboard)
 
         return result.get("ok", False)
 
