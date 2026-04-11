@@ -9,14 +9,15 @@ import base64
 import io
 import os
 import re
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import requests
 
-from redis_client import get_redis_client, get_user_prefs, set_user_prefs, DEFAULT_PREFERENCES
+from redis_client import get_redis_client, get_user_prefs, set_user_prefs, DEFAULT_PREFERENCES, mark_omer_counted, was_omer_counted
 from api.poster import build_poster_from_payload
 from cities import build_city_lookup, get_cities_list, SPECIAL_OFFSET_CITIES, DEFAULT_CANDLE_OFFSET
-from omer_utils import is_omer_period
+from omer_utils import is_omer_period, get_omer_day, get_omer_info_for_time, ISRAEL_TZ
 
 # Load city lookup and list once at module level
 AVAILABLE_CITIES = get_cities_list()
@@ -76,6 +77,22 @@ def send_photo(chat_id: int, photo_bytes: bytes, caption: str = "") -> Dict[str,
     data = {"chat_id": chat_id}
     if caption:
         data["caption"] = caption
+    response = requests.post(url, data=data, files=files, timeout=60)
+    return response.json()
+
+
+def send_photo_with_keyboard(
+    chat_id: int, photo_bytes: bytes, caption: str, keyboard: List[List[Dict[str, str]]]
+) -> Dict[str, Any]:
+    """Send a photo with inline keyboard to a Telegram chat."""
+    import json
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+    files = {"photo": ("poster.png", photo_bytes, "image/png")}
+    data = {
+        "chat_id": chat_id,
+        "caption": caption,
+        "reply_markup": json.dumps({"inline_keyboard": keyboard}),
+    }
     response = requests.post(url, data=data, files=files, timeout=60)
     return response.json()
 
@@ -355,6 +372,16 @@ def _build_date_format_keyboard(current: str) -> List[List[Dict[str, str]]]:
     return [buttons, [{"text": "⬅️ חזרה", "callback_data": "shabbat:settings"}]]
 
 
+def _build_omer_poster_keyboard() -> List[List[Dict[str, str]]]:
+    """Build keyboard for Omer poster with 'ספרתי' button."""
+    return [
+        [
+            {"text": "ספרתי ✓", "callback_data": "omer:mark_counted"},
+            {"text": "🏠 תפריט ראשי", "callback_data": "start:main"},
+        ],
+    ]
+
+
 def _build_omer_settings_keyboard(
     reminder_enabled: bool = False,
     reminder_type: str = "image",
@@ -443,6 +470,82 @@ def format_omer_settings(prefs: Dict[str, Any]) -> str:
         "• <b>טקסט</b> - הודעת טקסט עם נוסח הספירה\n"
         "• <b>תמונה</b> - פוסטר מעוצב לשיתוף"
     )
+
+
+def get_omer_counting_status(user_id: str) -> dict:
+    """
+    Determine the user's Omer counting status based on current time and counting history.
+
+    Returns:
+        dict with keys:
+        - status: "counted_tonight", "counted_last_night", "not_counted", "waiting_for_new_day"
+        - omer_day: the relevant day number
+        - message: Hebrew message to display
+    """
+    # Get current time in Israel
+    now = datetime.now(ISRAEL_TZ)
+    today = now.date()
+
+    # Get Omer timing info
+    omer_info = get_omer_info_for_time(today, now.hour, now.minute)
+
+    if not omer_info.get("isOmerPeriod"):
+        return {
+            "status": "not_in_omer_period",
+            "omer_day": None,
+            "message": "אנחנו לא בתקופת ספירת העומר כרגע."
+        }
+
+    is_after_tzet = omer_info.get("isAfterSunset", False)
+
+    if is_after_tzet:
+        # Evening/Night: After tzet hakochavim
+        # The day we're counting tonight is the posterDay from omer_info
+        current_day = omer_info.get("posterDay") or omer_info.get("todayOmerDay")
+        if current_day is None:
+            return {
+                "status": "not_in_omer_period",
+                "omer_day": None,
+                "message": "אנחנו לא בתקופת ספירת העומר כרגע."
+            }
+
+        # Check if user marked this day as counted
+        if was_omer_counted(user_id, current_day):
+            return {
+                "status": "counted_tonight",
+                "omer_day": current_day,
+                "message": f"✅ ספרת היום יום {current_day} לעומר"
+            }
+        else:
+            return {
+                "status": "waiting_for_new_day",
+                "omer_day": current_day,
+                "message": f"⏳ היום יום {current_day} לעומר\n\nלחץ 'ספרתי' אחרי שתספור"
+            }
+    else:
+        # Morning/Afternoon: Before tzet hakochavim
+        # "Today" is what was counted last night (todayOmerDay)
+        yesterday_day = omer_info.get("todayOmerDay") or omer_info.get("currentDay")
+        if yesterday_day is None:
+            return {
+                "status": "not_in_omer_period",
+                "omer_day": None,
+                "message": "אנחנו לא בתקופת ספירת העומר כרגע."
+            }
+
+        # Check if user marked yesterday's day as counted
+        if was_omer_counted(user_id, yesterday_day):
+            return {
+                "status": "counted_last_night",
+                "omer_day": yesterday_day,
+                "message": f"✅ ספרת אתמול בערב יום {yesterday_day} לעומר"
+            }
+        else:
+            return {
+                "status": "not_counted",
+                "omer_day": yesterday_day,
+                "message": f"❌ לא סימנת שספרת יום {yesterday_day}.\n\nאפשר לספור בלי ברכה."
+            }
 
 
 def format_settings(prefs: Dict[str, Any]) -> str:
@@ -553,6 +656,9 @@ def handle_start(update: Dict[str, Any]) -> None:
             keyboard.append([{"text": "🔔 תזכורת ספירת העומר ✓", "callback_data": "toggle:omer_reminder_main"}])
         else:
             keyboard.append([{"text": "🔕 תזכורת ספירת העומר", "callback_data": "toggle:omer_reminder_main"}])
+
+        # Add "Did I count?" status check button
+        keyboard.append([{"text": "❓ האם ספרתי?", "callback_data": "omer:check_status"}])
 
     keyboard.append([{"text": "⚙️ הגדרות שבת", "callback_data": "shabbat:settings"}])
 
@@ -820,12 +926,15 @@ def handle_poster(update: Dict[str, Any], force_omer: bool = False) -> None:
             caption = "🔢 פוסטר ספירת העומר שלך מוכן!"
             if used_saved_image:
                 caption += "\n📸 נוצר עם התמונה השמורה שלך."
+            # Send with "ספרתי" keyboard
+            keyboard = _build_omer_poster_keyboard()
+            send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
         else:
             if used_saved_image:
                 caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!\n📸 נוצר עם התמונה השמורה שלך."
             else:
                 caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!"
-        send_photo(chat_id, poster_bytes, caption)
+            send_photo(chat_id, poster_bytes, caption)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
@@ -1346,6 +1455,75 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
         handle_omer_set_nusach(chat_id, message_id, user_id, nusach_value)
     elif data == "omer:back":
         handle_omer_back(chat_id, message_id, user_id)
+    # Omer counting status check
+    elif data == "omer:check_status":
+        handle_omer_check_status(chat_id, message_id, user_id)
+    elif data == "omer:mark_counted":
+        # Simple callback without day - calculate day automatically
+        handle_omer_mark_counted_auto(chat_id, user_id)
+    elif data.startswith("omer:mark_counted:"):
+        omer_day = int(data.split(":")[2])
+        handle_omer_mark_counted(chat_id, message_id, user_id, omer_day)
+
+
+def handle_omer_mark_counted_auto(chat_id: int, user_id: str) -> None:
+    """Handle omer:mark_counted callback (without day) - auto-detect omer day and mark counted."""
+    # Get current Omer day using current time in Israel timezone
+    now = datetime.now(ISRAEL_TZ)
+    omer_day = get_omer_day(now)
+
+    if not omer_day or omer_day < 1 or omer_day > 49:
+        send_message(chat_id, "ℹ️ לא בתקופת ספירת העומר כרגע.")
+        return
+
+    # Check if already marked
+    if was_omer_counted(user_id, omer_day):
+        send_message(chat_id, f"כבר סימנת שספרת יום {omer_day} ✅")
+        return
+
+    # Mark as counted
+    mark_omer_counted(user_id, omer_day)
+    send_message(chat_id, f"נרשם! ספרת יום {omer_day} לעומר ✅")
+
+
+def handle_omer_check_status(chat_id: int, message_id: int, user_id: str) -> None:
+    """Handle omer:check_status callback - show user's Omer counting status."""
+    # Get the counting status
+    status_info = get_omer_counting_status(user_id)
+
+    message_text = status_info["message"]
+
+    # Add context based on status
+    if status_info["status"] == "waiting_for_new_day":
+        message_text += "\n\n💡 אחרי שתספור, לחץ על הכפתור למטה לסימון."
+    elif status_info["status"] == "not_counted":
+        message_text += "\n\n💡 אפשר לספור גם ביום, אבל בלי ברכה."
+
+    # Build keyboard with back button (and optional "I counted" button)
+    keyboard = []
+
+    if status_info["status"] == "waiting_for_new_day":
+        # Show "I counted" button when user hasn't marked yet
+        omer_day = status_info.get("omer_day")
+        if omer_day:
+            keyboard.append([{"text": "✅ ספרתי!", "callback_data": f"omer:mark_counted:{omer_day}"}])
+
+    keyboard.append([{"text": "⬅️ חזרה", "callback_data": "back:start"}])
+
+    edit_message_with_keyboard(chat_id, message_id, message_text, keyboard, parse_mode="HTML")
+
+
+def handle_omer_mark_counted(chat_id: int, message_id: int, user_id: str, omer_day: int) -> None:
+    """Handle omer:mark_counted callback - mark that user has counted for a specific day."""
+    # Mark the day as counted
+    mark_omer_counted(user_id, omer_day)
+
+    # Show confirmation message
+    confirmation_text = f"✅ מעולה! סימנת שספרת יום {omer_day} לעומר."
+
+    keyboard = [[{"text": "⬅️ חזרה", "callback_data": "back:start"}]]
+
+    edit_message_with_keyboard(chat_id, message_id, confirmation_text, keyboard, parse_mode="HTML")
 
 
 # --- New Menu Handlers ---
@@ -1429,7 +1607,9 @@ def handle_start_poster_omer(chat_id: int, user_id: str) -> None:
             payload["leiluyNeshama"] = dedication
 
         poster_bytes = build_poster_from_payload(payload)
-        send_photo(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!")
+        # Send with "ספרתי" keyboard
+        keyboard = _build_omer_poster_keyboard()
+        send_photo_with_keyboard(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!", keyboard)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
@@ -2032,7 +2212,6 @@ def handle_omer_back(chat_id: int, message_id: int, user_id: str) -> None:
     keyboard = _build_omer_settings_keyboard(reminder_enabled, reminder_type, nusach, has_omer_image)
     edit_message_with_keyboard(chat_id, message_id, settings_text, keyboard, parse_mode="HTML")
 
-
 def handle_settings_back(chat_id: int, message_id: int, user_id: str) -> None:
     """Return to main settings view."""
     prefs = get_user_prefs(user_id)
@@ -2118,9 +2297,12 @@ def handle_start_poster(chat_id: int, user_id: str) -> None:
         # Send poster back to user with appropriate caption
         if use_omer_mode:
             caption = "🔢 פוסטר ספירת העומר שלך מוכן!"
+            # Send with "ספרתי" keyboard
+            keyboard = _build_omer_poster_keyboard()
+            send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
         else:
             caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!"
-        send_photo(chat_id, poster_bytes, caption)
+            send_photo(chat_id, poster_bytes, caption)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
@@ -2204,7 +2386,9 @@ def handle_start_omer_poster(chat_id: int, user_id: str) -> None:
 
         # Generate Omer poster
         poster_bytes = build_poster_from_payload(payload)
-        send_photo(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!")
+        # Send with "ספרתי" keyboard
+        keyboard = _build_omer_poster_keyboard()
+        send_photo_with_keyboard(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!", keyboard)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")

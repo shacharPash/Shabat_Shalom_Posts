@@ -208,3 +208,37 @@ def was_omer_sent_today(user_id: str, date_str: str) -> bool:
     key = f"{OMER_SENT_KEY_PREFIX}{date_str}:{user_id}"
     return client.exists(key) == 1
 
+
+# Key pattern for Omer counted tracking
+OMER_COUNTED_KEY_PREFIX = "zmunah:omer_counted:"
+
+
+def mark_omer_counted(user_id: str, omer_day: int) -> None:
+    """
+    Mark that a user has counted the Omer for a specific day.
+
+    Args:
+        user_id: The Telegram user ID
+        omer_day: The Omer day (1-49)
+    """
+    client = get_redis_client()
+    key = f"{OMER_COUNTED_KEY_PREFIX}{user_id}:{omer_day}"
+    # Set with 48-hour expiration to auto-cleanup old keys
+    client.setex(key, 48 * 60 * 60, "1")
+
+
+def was_omer_counted(user_id: str, omer_day: int) -> bool:
+    """
+    Check if a user has already marked the Omer as counted for a specific day.
+
+    Args:
+        user_id: The Telegram user ID
+        omer_day: The Omer day (1-49)
+
+    Returns:
+        bool: True if already marked as counted, False otherwise
+    """
+    client = get_redis_client()
+    key = f"{OMER_COUNTED_KEY_PREFIX}{user_id}:{omer_day}"
+    return client.exists(key) == 1
+

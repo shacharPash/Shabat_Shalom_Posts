@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text, get_omer_info_for_time, ISRAEL_TZ
 from redis_client import get_users_with_reminders_enabled, get_user_prefs, mark_omer_sent_today, was_omer_sent_today
-from telegram_bot import send_photo, send_message, download_photo, CITY_BY_NAME
+from telegram_bot import send_photo, send_photo_with_keyboard, send_message, download_photo, CITY_BY_NAME, _build_omer_poster_keyboard
 from api.poster import build_poster_from_payload
 
 # Vercel cron secret for authentication
@@ -151,8 +151,9 @@ def _send_image_reminder(chat_id: int, prefs: dict, nusach: str) -> bool:
     # Generate poster
     poster_bytes = build_poster_from_payload(payload)
 
-    # Send to user
-    result = send_photo(chat_id, poster_bytes, "🔢 תזכורת יומית לספירת העומר!")
+    # Send to user with "ספרתי" keyboard
+    keyboard = _build_omer_poster_keyboard()
+    result = send_photo_with_keyboard(chat_id, poster_bytes, "🔢 תזכורת יומית לספירת העומר!", keyboard)
 
     return result.get("ok", False)
 
