@@ -382,6 +382,13 @@ def _build_omer_poster_keyboard() -> List[List[Dict[str, str]]]:
     ]
 
 
+def _build_shabbat_poster_keyboard() -> List[List[Dict[str, str]]]:
+    """Build keyboard for Shabbat poster with main menu button."""
+    return [
+        [{"text": "🏠 תפריט ראשי", "callback_data": "start:main"}],
+    ]
+
+
 def _build_omer_settings_keyboard(
     reminder_enabled: bool = False,
     reminder_type: str = "image",
@@ -934,7 +941,9 @@ def handle_poster(update: Dict[str, Any], force_omer: bool = False) -> None:
                 caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!\n📸 נוצר עם התמונה השמורה שלך."
             else:
                 caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!"
-            send_photo(chat_id, poster_bytes, caption)
+            # Send with main menu keyboard
+            keyboard = _build_shabbat_poster_keyboard()
+            send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
@@ -1571,7 +1580,9 @@ def handle_start_poster_shabbat(chat_id: int, user_id: str) -> None:
             payload["leiluyNeshama"] = dedication
 
         poster_bytes = build_poster_from_payload(payload)
-        send_photo(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!")
+        # Send with main menu keyboard
+        keyboard = _build_shabbat_poster_keyboard()
+        send_photo_with_keyboard(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!", keyboard)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
@@ -2302,7 +2313,9 @@ def handle_start_poster(chat_id: int, user_id: str) -> None:
             send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
         else:
             caption = "🕯️ הפוסטר שלך מוכן! שבת שלום!"
-            send_photo(chat_id, poster_bytes, caption)
+            # Send with main menu keyboard
+            keyboard = _build_shabbat_poster_keyboard()
+            send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
 
     except Exception as e:
         send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
