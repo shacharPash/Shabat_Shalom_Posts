@@ -3131,6 +3131,19 @@
       border-radius: 8px;
       width: fit-content;
     }
+    .omer-preview-text .omer-bracha {
+      font-size: 10px;
+      color: rgba(255,255,255,0.85);
+      margin-top: 6px;
+      line-height: 1.3;
+    }
+    .omer-preview-text .omer-count-full-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: #ffc107;
+      margin-top: 4px;
+      line-height: 1.3;
+    }
     .omer-preview-text .omer-loading-hint {
       font-size: 11px;
       color: rgba(255,255,255,0.85);
@@ -4477,6 +4490,70 @@ CITY_CHECKBOXES_PLACEHOLDER
       return `${sefirot[lowerIndex]} שֶׁבְּ${sefirot[upperIndex]}`;
     }
 
+    // Get full Omer count text for a day and nusach (local calculation)
+    function getOmerCountText(day, nusach) {
+      const hebrewOnes = ['', 'אֶחָד', 'שְׁנַיִם', 'שְׁלֹשָׁה', 'אַרְבָּעָה', 'חֲמִשָּׁה', 'שִׁשָּׁה', 'שִׁבְעָה', 'שְׁמוֹנָה', 'תִּשְׁעָה'];
+      const hebrewSpecial = {
+        10: 'עֲשָׂרָה', 11: 'אַחַד עָשָׂר', 12: 'שְׁנֵים עָשָׂר', 13: 'שְׁלֹשָׁה עָשָׂר',
+        14: 'אַרְבָּעָה עָשָׂר', 15: 'חֲמִשָּׁה עָשָׂר', 16: 'שִׁשָּׁה עָשָׂר', 17: 'שִׁבְעָה עָשָׂר',
+        18: 'שְׁמוֹנָה עָשָׂר', 19: 'תִּשְׁעָה עָשָׂר'
+      };
+      const hebrewTens = ['', 'עֲשָׂרָה', 'עֶשְׂרִים', 'שְׁלשִׁים', 'אַרְבָּעִים'];
+      const hebrewTensWithVav = ['', '', 'וְעֶשְׂרִים', 'וּשְׁלשִׁים', 'וְאַרְבָּעִים'];
+
+      function hebrewNumber(n) {
+        if (hebrewSpecial[n]) return hebrewSpecial[n];
+        if (n < 10) return hebrewOnes[n];
+        const tens = Math.floor(n / 10);
+        const ones = n % 10;
+        if (ones === 0) return hebrewTens[tens];
+        return `${hebrewOnes[ones]} ${hebrewTensWithVav[tens]}`;
+      }
+
+      function hebrewWeekText(weeks) {
+        const weekTexts = ['', 'שָׁבוּעַ אֶחָד', 'שְׁנֵי שָׁבוּעוֹת', 'שְׁלֹשָׁה שָׁבוּעוֹת',
+          'אַרְבָּעָה שָׁבוּעוֹת', 'חֲמִשָּׁה שָׁבוּעוֹת', 'שִׁשָּׁה שָׁבוּעוֹת', 'שִׁבְעָה שָׁבוּעוֹת'];
+        return weekTexts[weeks] || '';
+      }
+
+      function hebrewDayText(days, withVav) {
+        const dayTexts = {
+          1: withVav ? 'וְיוֹם אֶחָד' : 'יוֹם אֶחָד',
+          2: withVav ? 'וּשְׁנֵי יָמִים' : 'שְׁנֵי יָמִים',
+          3: withVav ? 'וּשְׁלֹשָׁה יָמִים' : 'שְׁלֹשָׁה יָמִים',
+          4: withVav ? 'וְאַרְבָּעָה יָמִים' : 'אַרְבָּעָה יָמִים',
+          5: withVav ? 'וַחֲמִשָּׁה יָמִים' : 'חֲמִשָּׁה יָמִים',
+          6: withVav ? 'וְשִׁשָּׁה יָמִים' : 'שִׁשָּׁה יָמִים'
+        };
+        return dayTexts[days] || '';
+      }
+
+      const omerSuffix = nusach === 'ashkenaz' ? 'בָּעֹמֶר' : 'לָעֹמֶר';
+      const weeks = Math.floor(day / 7);
+      const remainingDays = day % 7;
+      const dayText = hebrewNumber(day);
+
+      // Edot HaMizrach has different structure
+      if (nusach === 'edot_hamizrach') {
+        if (day === 1) return `הַיּוֹם יוֹם ${dayText} לָעֹמֶר`;
+        if (day === 2) return `הַיּוֹם שְׁנֵי יָמִים לָעֹמֶר`;
+        if (day < 7) return `הַיּוֹם ${dayText} יָמִים לָעֹמֶר`;
+        if (day === 7) return `הַיּוֹם ${dayText} יָמִים לָעֹמֶר, שֶׁהֵם שָׁבוּעַ אֶחָד`;
+        if (day <= 10) return `הַיּוֹם ${dayText} יָמִים לָעֹמֶר, שֶׁהֵם ${hebrewWeekText(weeks)} ${hebrewDayText(remainingDays, true)}`;
+        if (remainingDays === 0) return `הַיּוֹם ${dayText} יוֹם לָעֹמֶר, שֶׁהֵם ${hebrewWeekText(weeks)}`;
+        return `הַיּוֹם ${dayText} יוֹם לָעֹמֶר, שֶׁהֵם ${hebrewWeekText(weeks)} ${hebrewDayText(remainingDays, true)}`;
+      }
+
+      // Sefard and Ashkenaz
+      if (day === 1) return `הַיּוֹם יוֹם ${dayText} ${omerSuffix}`;
+      if (day === 2) return `הַיּוֹם שְׁנֵי יָמִים ${omerSuffix}`;
+      if (day < 7) return `הַיּוֹם ${dayText} יָמִים ${omerSuffix}`;
+      if (day === 7) return `הַיּוֹם ${dayText} יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד ${omerSuffix}`;
+      if (day <= 10) return `הַיּוֹם ${dayText} יָמִים שֶׁהֵם ${hebrewWeekText(weeks)} ${hebrewDayText(remainingDays, true)} ${omerSuffix}`;
+      if (remainingDays === 0) return `הַיּוֹם ${dayText} יוֹם שֶׁהֵם ${hebrewWeekText(weeks)} ${omerSuffix}`;
+      return `הַיּוֹם ${dayText} יוֹם שֶׁהֵם ${hebrewWeekText(weeks)} ${hebrewDayText(remainingDays, true)} ${omerSuffix}`;
+    }
+
     // Update the preview display for Omer mode
     function updateOmerPreviewDisplay() {
       const previewContent = document.querySelector('.floating-preview-content');
@@ -4504,6 +4581,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         const day = currentOmerDay || 1;
         const dayText = `היום ${day} ימים לעומר`;
         const sefirah = getSefirahForDay(day);
+        const fullCountText = getOmerCountText(day, currentNusach);
+        const brachahText = 'בָּרוּךְ אַתָּה ה\' אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם אֲשֶׁר קִדְּשָׁנוּ בְּמִצְוֹתָיו וְצִוָּנוּ עַל סְפִירַת הָעֹמֶר';
 
         // Helper to render the omer preview HTML with a background
         const renderOmerPreview = (bgStyle) => {
@@ -4515,6 +4594,8 @@ CITY_CHECKBOXES_PLACEHOLDER
               <div class="omer-preview-top">
                 <div class="omer-title">ספירת העומר</div>
                 <div class="omer-day-label">${dayText}</div>
+                <div class="omer-bracha">${brachahText}</div>
+                <div class="omer-count-full-text">${fullCountText}</div>
               </div>
               <div class="omer-preview-bottom">
                 <div class="omer-sefirah">${sefirah}</div>
