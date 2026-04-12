@@ -4608,10 +4608,18 @@ CITY_CHECKBOXES_PLACEHOLDER
         if (uploadedImageDataUrl) {
           renderOmerPreview(`url(${uploadedImageDataUrl})`);
         } else if (livePreviewBg && livePreviewBg.style.backgroundImage && livePreviewBg.style.backgroundImage !== 'none') {
-          renderOmerPreview(livePreviewBg.style.backgroundImage);
+          // Fix Bug 1: Replace double quotes with single quotes to avoid breaking HTML attributes
+          renderOmerPreview(livePreviewBg.style.backgroundImage.replace(/"/g, "'"));
         } else {
           // No image - use mode-specific default
           renderOmerPreview(`url('${getDefaultBackgroundUrl()}')`);
+        }
+
+        // Fix Bug 2: Setup drag events for Omer preview element
+        const omerBgElement = omerPreviewContainer.querySelector('.omer-preview-text');
+        if (omerBgElement) {
+          omerBgElement.addEventListener('mousedown', startOmerPreviewDrag);
+          omerBgElement.addEventListener('touchstart', startOmerPreviewDrag, { passive: false });
         }
       }
     }
@@ -5403,6 +5411,116 @@ CITY_CHECKBOXES_PLACEHOLDER
         previewResetCropBtn.style.display = 'none';
       });
     }
+
+    // ===== Omer Preview Image Drag (separate from regular preview) =====
+    let omerDragState = {
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      bgPosX: 50,
+      bgPosY: 50
+    };
+
+    function startOmerPreviewDrag(e) {
+      const omerBgElement = document.querySelector('.omer-preview-text');
+      if (!omerBgElement) return;
+
+      // Only drag if there's a background image
+      if (!omerBgElement.style.backgroundImage) return;
+
+      e.preventDefault();
+      omerDragState.isDragging = true;
+      omerBgElement.classList.add('dragging');
+
+      const point = e.touches ? e.touches[0] : e;
+      omerDragState.startX = point.clientX;
+      omerDragState.startY = point.clientY;
+
+      // Get current position from background-position
+      const bgPos = omerBgElement.style.backgroundPosition;
+      if (bgPos) {
+        const parts = bgPos.split(' ');
+        if (parts.length >= 2) {
+          omerDragState.bgPosX = parseFloat(parts[0]) || 50;
+          omerDragState.bgPosY = parseFloat(parts[1]) || 50;
+        }
+      }
+    }
+
+    function moveOmerPreviewDrag(e) {
+      if (!omerDragState.isDragging) return;
+
+      const omerBgElement = document.querySelector('.omer-preview-text');
+      if (!omerBgElement) return;
+
+      e.preventDefault();
+
+      const point = e.touches ? e.touches[0] : e;
+      const deltaX = point.clientX - omerDragState.startX;
+      const deltaY = point.clientY - omerDragState.startY;
+
+      // Convert pixel delta to percentage
+      const previewSize = omerBgElement.offsetWidth || 280;
+      const sensitivity = 100 / previewSize;
+
+      let newX = omerDragState.bgPosX - (deltaX * sensitivity);
+      let newY = omerDragState.bgPosY - (deltaY * sensitivity);
+
+      // Clamp to 0-100 range
+      newX = Math.max(0, Math.min(100, newX));
+      newY = Math.max(0, Math.min(100, newY));
+
+      omerBgElement.style.backgroundPosition = `${newX}% ${newY}%`;
+
+      // Update state for next move
+      omerDragState.startX = point.clientX;
+      omerDragState.startY = point.clientY;
+      omerDragState.bgPosX = newX;
+      omerDragState.bgPosY = newY;
+    }
+
+    function endOmerPreviewDrag() {
+      if (!omerDragState.isDragging) return;
+
+      const omerBgElement = document.querySelector('.omer-preview-text');
+      if (omerBgElement) {
+        omerBgElement.classList.remove('dragging');
+      }
+
+      omerDragState.isDragging = false;
+
+      // Hide the external drag hint after first drag
+      document.getElementById('floatingPreviewPanel')?.classList.add('user-has-dragged');
+
+      // Save the position to imageCropPositions for poster generation
+      const index = currentCropIndex || 0;
+      if (uploadedFiles.length > 0) {
+        const posX = omerDragState.bgPosX / 100;
+        const posY = omerDragState.bgPosY / 100;
+        imageCropPositions[index] = { x: posX, y: posY };
+
+        // Update main crop preview if visible
+        updateMainCropPosition(posX, posY);
+
+        // Also sync the regular preview drag state
+        previewDragState.bgPosX = omerDragState.bgPosX;
+        previewDragState.bgPosY = omerDragState.bgPosY;
+        if (livePreviewBg) {
+          livePreviewBg.style.backgroundPosition = `${omerDragState.bgPosX}% ${omerDragState.bgPosY}%`;
+        }
+
+        // Show reset button since position was changed
+        if (previewResetCropBtn) {
+          previewResetCropBtn.style.display = 'block';
+        }
+      }
+    }
+
+    // Setup global move/end handlers for Omer drag (these need to be on document)
+    document.addEventListener('mousemove', moveOmerPreviewDrag);
+    document.addEventListener('mouseup', endOmerPreviewDrag);
+    document.addEventListener('touchmove', moveOmerPreviewDrag, { passive: false });
+    document.addEventListener('touchend', endOmerPreviewDrag);
 
     function updateMainCropPosition(posX, posY) {
       // Update the main crop preview if it exists
