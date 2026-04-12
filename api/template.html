@@ -3900,6 +3900,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     let imageCropPositions = []; // Array of { x: 0.5, y: 0.5 } for each image
     let currentCropIndex = 0; // Which image is currently being cropped
     let uploadedFiles = []; // Store references to uploaded files for navigation
+    let uploadedImageDataUrl = null; // Cache for uploaded image DataURL (instant Omer preview)
 
     // Ordered list of selected cities (maintains user-defined order)
     let orderedSelectedCities = []; // Array of city names in user's preferred order
@@ -4522,22 +4523,14 @@ CITY_CHECKBOXES_PLACEHOLDER
           `;
         };
 
-        // Check if livePreviewBg already has the image (set by updateLivePreviewBackground)
-        if (livePreviewBg && livePreviewBg.style.backgroundImage && livePreviewBg.style.backgroundImage !== 'none') {
+        // Use cached DataURL if available (instant, no async delay)
+        if (uploadedImageDataUrl) {
+          renderOmerPreview(`url(${uploadedImageDataUrl})`);
+        } else if (livePreviewBg && livePreviewBg.style.backgroundImage && livePreviewBg.style.backgroundImage !== 'none') {
           renderOmerPreview(livePreviewBg.style.backgroundImage);
-        } else if (uploadedFiles.length > 0) {
-          // Read directly from uploaded file for instant preview (like Shabbat mode does)
-          const file = uploadedFiles[0];
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            renderOmerPreview(`url(${e.target.result})`);
-          };
-          reader.readAsDataURL(file);
-          // Show default omer background immediately while file loads (brief moment)
-          renderOmerPreview("url('/static/backgrounds/omer_default.png')");
         } else {
-          // No image - show default omer background (instant, no gradient)
-          renderOmerPreview("url('/static/backgrounds/omer_default.png')");
+          // No image - show gradient as default (works on Vercel, no server call)
+          renderOmerPreview("linear-gradient(135deg, #1a237e 0%, #3949ab 100%)");
         }
       }
     }
@@ -6253,6 +6246,19 @@ CITY_CHECKBOXES_PLACEHOLDER
         // Pre-load the first image for crop preview
         preloadCropPreview(fileInput.files[0], 0);
 
+        // Cache the first image as DataURL for instant Omer preview
+        const firstFile = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedImageDataUrl = e.target.result;
+          // Update Omer preview immediately if panel is open
+          if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
+            omerPreviewUrl = null;
+            updateOmerPreviewDisplay();
+          }
+        };
+        reader.readAsDataURL(firstFile);
+
         // Update live preview background immediately
         updateLivePreviewBackground();
 
@@ -6275,6 +6281,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       cropImageNav.style.display = 'none';
       imageCropPositions = [];
       uploadedFiles = [];
+      uploadedImageDataUrl = null; // Clear cached DataURL
       updateLivePreviewBackground();
       // Reset aspect ratio to square when image is cleared
       originalImageAspectRatio = 1;
@@ -6325,6 +6332,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         cropImageNav.style.display = 'none';
         imageCropPositions = [];
         uploadedFiles = [];
+        uploadedImageDataUrl = null; // Clear cached DataURL
         weeksAhead.value = 1;
         updateSelectedDates();
         updateLivePreviewBackground();
