@@ -607,10 +607,12 @@ def get_omer_info_for_time(
     if can_count_with_blessing:
         # During blessing time: poster is for current night's day
         if is_before_alos:
-            # Early morning (before dawn) - still counting "yesterday evening's" day
-            # which is based on yesterday's date
-            today_omer_day = yesterday_omer_day
-            poster_day = today_omer_day  # Same as what we're counting
+            # Early morning (before dawn) - still in last night's halachic day
+            # We counted base_omer_day yesterday evening after tzet
+            # (base_omer_day = the omer day for TODAY's calendar date,
+            #  which is what was counted when the night started)
+            today_omer_day = base_omer_day
+            poster_day = base_omer_day
         else:
             # After tzet - we're counting tonight's day
             today_omer_day = base_omer_day  # What we counted last night
