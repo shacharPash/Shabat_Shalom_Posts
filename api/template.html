@@ -4756,6 +4756,11 @@ CITY_CHECKBOXES_PLACEHOLDER
       } else {
         restoreRegularPreview();
       }
+
+      // Update default background when switching modes (if no user image uploaded)
+      if (uploadedFiles.length === 0) {
+        updateLivePreviewBackground();
+      }
     }
 
     // Button click handlers
@@ -5047,6 +5052,11 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
     }
 
+    // Get mode-specific default background URL
+    function getDefaultBackgroundUrl() {
+      return omerModeEnabled ? '/backgrounds/omer_default.png' : '/backgrounds/shabat_default.png';
+    }
+
     // Update preview background when image is uploaded
     function updateLivePreviewBackground() {
       if (!livePreviewBg) return;
@@ -5112,8 +5122,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         };
         reader.readAsDataURL(file);
       } else {
-        // Show default background image when no image is uploaded
-        livePreviewBg.style.backgroundImage = "url('/backgrounds/default.png')";
+        // Show mode-specific default background image when no image is uploaded
+        livePreviewBg.style.backgroundImage = `url('${getDefaultBackgroundUrl()}')`;
         livePreviewBg.style.backgroundSize = 'cover';
         livePreviewBg.style.backgroundPosition = 'center';
         livePreviewBg.classList.remove('has-image');
