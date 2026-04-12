@@ -4407,7 +4407,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     }
 
-    // Regenerate preview with debounce
+    // Regenerate preview with debounce - only updates UI, no server call
     let omerPreviewDebounce = null;
     function regenerateOmerPreview() {
       if (omerPreviewDebounce) clearTimeout(omerPreviewDebounce);
@@ -4415,7 +4415,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         if (floatingPreviewPanel.classList.contains('show')) {
           omerPreviewUrl = null;
           updateOmerPreviewDisplay();
-          generateOmerPreview();
+          // No server call - preview is instant using CSS/HTML layout
         }
       }, 300);
     }
@@ -4533,11 +4533,11 @@ CITY_CHECKBOXES_PLACEHOLDER
             renderOmerPreview(`url(${e.target.result})`);
           };
           reader.readAsDataURL(file);
-          // Show gradient immediately while file loads (brief moment)
-          renderOmerPreview('linear-gradient(135deg, #1a237e 0%, #3949ab 100%)');
+          // Show default omer background immediately while file loads (brief moment)
+          renderOmerPreview("url('/static/backgrounds/omer_default.png')");
         } else {
-          // No image - show gradient
-          renderOmerPreview('linear-gradient(135deg, #1a237e 0%, #3949ab 100%)');
+          // No image - show default omer background (instant, no gradient)
+          renderOmerPreview("url('/static/backgrounds/omer_default.png')");
         }
       }
     }
@@ -4674,10 +4674,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       if (omerModeEnabled) {
         checkTestTimeParam();
         updateOmerDisplay();
-        // Generate preview if panel is open
+        // Update preview if panel is open - instant, no server call
         if (floatingPreviewPanel.classList.contains('show')) {
+          omerPreviewUrl = null;
           updateOmerPreviewDisplay();
-          generateOmerPreview();
         }
       } else {
         restoreRegularPreview();
@@ -4712,11 +4712,10 @@ CITY_CHECKBOXES_PLACEHOLDER
         localStorage.setItem('nusach', nusach);
       }
 
-      // Regenerate preview if open
+      // Update preview if open - instant, no server call
       if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
         omerPreviewUrl = null;
         updateOmerPreviewDisplay();
-        generateOmerPreview();
       }
     }
 
@@ -5111,10 +5110,9 @@ CITY_CHECKBOXES_PLACEHOLDER
       floatingPreviewPanel.classList.add('show');
       previewOverlay.classList.add('show');
 
-      // Handle Omer mode preview
+      // Handle Omer mode preview - instant, no server call
       if (omerModeEnabled) {
         updateOmerPreviewDisplay();
-        generateOmerPreview();
       } else {
         restoreRegularPreview();
         updateLivePreview(); // Refresh preview when opened
@@ -5185,11 +5183,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       aspectRatioSelector.querySelectorAll('.aspect-ratio-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           updatePreviewAspectRatio(btn.dataset.ratio);
-          // Regenerate Omer preview with new aspect ratio
+          // Update Omer preview with new aspect ratio - instant, no server call
           if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
             omerPreviewUrl = null;
             updateOmerPreviewDisplay();
-            generateOmerPreview();
           }
         });
       });
@@ -6259,11 +6256,10 @@ CITY_CHECKBOXES_PLACEHOLDER
         // Update live preview background immediately
         updateLivePreviewBackground();
 
-        // Regenerate Omer preview if in Omer mode and preview is open
+        // Update Omer preview if in Omer mode and preview is open - instant, no server call
         if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
           omerPreviewUrl = null;
           updateOmerPreviewDisplay();
-          generateOmerPreview();
         }
       }
     });
@@ -6284,11 +6280,10 @@ CITY_CHECKBOXES_PLACEHOLDER
       originalImageAspectRatio = 1;
       updatePreviewAspectRatio('square');
 
-      // Regenerate Omer preview without image if in Omer mode
+      // Update Omer preview without image if in Omer mode - instant, no server call
       if (omerModeEnabled && floatingPreviewPanel.classList.contains('show')) {
         omerPreviewUrl = null;
         updateOmerPreviewDisplay();
-        generateOmerPreview();
       }
     });
 
