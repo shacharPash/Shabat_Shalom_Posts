@@ -4610,8 +4610,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         } else if (livePreviewBg && livePreviewBg.style.backgroundImage && livePreviewBg.style.backgroundImage !== 'none') {
           renderOmerPreview(livePreviewBg.style.backgroundImage);
         } else {
-          // No image - show gradient as default (works on Vercel, no server call)
-          renderOmerPreview("linear-gradient(135deg, #1a237e 0%, #3949ab 100%)");
+          // No image - use mode-specific default
+          renderOmerPreview(`url('${getDefaultBackgroundUrl()}')`);
         }
       }
     }
