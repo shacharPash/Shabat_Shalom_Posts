@@ -1,7 +1,7 @@
 """
 Vercel Cron endpoint for daily Omer reminders.
 
-Runs at 15:00 UTC (18:00 Israel summer time / 17:00 winter time) - after tzet hakochavim.
+Runs at 17:00 UTC (20:00 Israel summer time / 19:00 winter time).
 Sends Omer poster to all users with reminder_enabled=True.
 
 Query Parameters:
@@ -20,7 +20,7 @@ from urllib.parse import urlparse, parse_qs
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text, get_omer_info_for_time, ISRAEL_TZ
+from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text, ISRAEL_TZ
 from redis_client import get_users_with_reminders_enabled, get_user_prefs, mark_omer_sent_today, was_omer_sent_today
 from telegram_bot import send_photo, send_photo_with_keyboard, send_message, download_photo, CITY_BY_NAME, _build_omer_poster_keyboard
 from api.poster import build_poster_from_payload
@@ -198,19 +198,7 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
                 return
 
-            # Check for check_sunset parameter (sunset-based reminder mode)
-            check_sunset = query_params.get("check_sunset", [None])[0]
-
-            if check_sunset == "true":
-                # Sunset-based reminder mode: check if after tzet hakochavim
-                response = self._handle_sunset_check()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
-                return
-
-            # Normal cron mode: check if we're in the Omer period
+            # Check if we're in the Omer period
             if not is_omer_period():
                 response = {
                     "status": "skipped",
@@ -224,14 +212,26 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
                 return
 
+            # Get today's date for duplicate prevention
+            now_israel = datetime.now(ISRAEL_TZ)
+            today_str = now_israel.date().isoformat()
+
             # Get all users with reminders enabled
             users = get_users_with_reminders_enabled()
 
             sent_count = 0
             failed_count = 0
+            skipped_count = 0
 
             for user_id in users:
+                # Check if already sent today (duplicate prevention)
+                if was_omer_sent_today(user_id, today_str):
+                    skipped_count += 1
+                    continue
+
                 if send_omer_reminder(user_id):
+                    # Mark as sent to prevent duplicates
+                    mark_omer_sent_today(user_id, today_str)
                     sent_count += 1
                 else:
                     failed_count += 1
@@ -240,6 +240,7 @@ class handler(BaseHTTPRequestHandler):
                 "status": "completed",
                 "sent": sent_count,
                 "failed": failed_count,
+                "skipped": skipped_count,
                 "total_users": len(users),
             }
 
@@ -255,84 +256,6 @@ class handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
             self.wfile.write(json.dumps(error_response, ensure_ascii=False).encode("utf-8"))
-
-    def _handle_sunset_check(self) -> dict:
-        """
-        Handle sunset-based reminder check.
-
-        Only sends reminders if:
-        1. Currently after tzet hakochavim (sunset)
-        2. We're in the Omer period
-        3. Reminder hasn't been sent today for this user
-
-        Returns:
-            dict: Response with status and counts
-        """
-        # Get current time in Israel timezone
-        now_israel = datetime.now(ISRAEL_TZ)
-        today = now_israel.date()
-        current_hour = now_israel.hour
-        current_minute = now_israel.minute
-        today_str = today.isoformat()
-
-        # Get Omer info for current time
-        omer_info = get_omer_info_for_time(today, current_hour, current_minute)
-
-        # Check if we're in Omer period
-        if not omer_info.get("isOmerPeriod", False):
-            return {
-                "status": "skipped",
-                "reason": "Not in Omer period",
-                "sent": 0,
-                "failed": 0,
-                "skipped": 0,
-            }
-
-        # Check if after sunset (tzet hakochavim)
-        is_after_sunset = omer_info.get("isAfterSunset", False)
-        if not is_after_sunset:
-            return {
-                "status": "skipped",
-                "reason": "Before tzet hakochavim",
-                "current_time": f"{current_hour:02d}:{current_minute:02d}",
-                "tzet_time": omer_info.get("tzetTime"),
-                "sent": 0,
-                "failed": 0,
-                "skipped": 0,
-            }
-
-        # Get all users with reminders enabled
-        users = get_users_with_reminders_enabled()
-
-        sent_count = 0
-        failed_count = 0
-        skipped_count = 0
-
-        for user_id in users:
-            # Check if already sent today
-            if was_omer_sent_today(user_id, today_str):
-                skipped_count += 1
-                continue
-
-            # Send reminder
-            if send_omer_reminder(user_id):
-                # Mark as sent to prevent duplicates
-                mark_omer_sent_today(user_id, today_str)
-                sent_count += 1
-            else:
-                failed_count += 1
-
-        return {
-            "status": "completed",
-            "mode": "sunset_check",
-            "current_time": f"{current_hour:02d}:{current_minute:02d}",
-            "tzet_time": omer_info.get("tzetTime"),
-            "omer_day": omer_info.get("posterDay"),
-            "sent": sent_count,
-            "failed": failed_count,
-            "skipped": skipped_count,
-            "total_users": len(users),
-        }
 
     def log_message(self, format, *args):
         """Suppress default logging."""
