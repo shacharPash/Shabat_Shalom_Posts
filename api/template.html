@@ -3088,7 +3088,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      aspect-ratio: 1 / 1;
+      /* aspect-ratio is set dynamically via JS based on selectedAspectRatio */
       background: #1a237e;
       background-size: cover;
       background-position: center;
@@ -4589,8 +4589,15 @@ CITY_CHECKBOXES_PLACEHOLDER
           const index = currentCropIndex || 0;
           const cropPos = imageCropPositions[index] || { x: 0.5, y: 0.5 };
           const bgPosStyle = `background-position: ${cropPos.x * 100}% ${cropPos.y * 100}%;`;
+          // Calculate aspect ratio based on selectedAspectRatio
+          let aspectValue = '1 / 1';
+          if (selectedAspectRatio === 'portrait') {
+            aspectValue = '4 / 5';
+          } else if (selectedAspectRatio === 'original' && originalImageAspectRatio && uploadedFiles.length > 0) {
+            aspectValue = `${originalImageAspectRatio}`;
+          }
           omerPreviewContainer.innerHTML = `
-            <div class="omer-preview-text" style="background-image: ${bgStyle}; background-size: cover; ${bgPosStyle}">
+            <div class="omer-preview-text" style="background-image: ${bgStyle}; background-size: cover; ${bgPosStyle} aspect-ratio: ${aspectValue};">
               <div class="omer-preview-top">
                 <div class="omer-title">ספירת העומר</div>
                 <div class="omer-day-label">${dayText}</div>
@@ -4607,11 +4614,9 @@ CITY_CHECKBOXES_PLACEHOLDER
         // Use cached DataURL if available (instant, no async delay)
         if (uploadedImageDataUrl) {
           renderOmerPreview(`url(${uploadedImageDataUrl})`);
-        } else if (livePreviewBg && livePreviewBg.style.backgroundImage && livePreviewBg.style.backgroundImage !== 'none') {
-          // Fix Bug 1: Replace double quotes with single quotes to avoid breaking HTML attributes
-          renderOmerPreview(livePreviewBg.style.backgroundImage.replace(/"/g, "'"));
         } else {
-          // No image - use mode-specific default
+          // In Omer mode without uploaded image, always use Omer default image directly
+          // (don't inherit from livePreviewBg which may have Shabbat image)
           renderOmerPreview(`url('${getDefaultBackgroundUrl()}')`);
         }
 
@@ -5314,8 +5319,8 @@ CITY_CHECKBOXES_PLACEHOLDER
     }
 
     function startPreviewDrag(e) {
-      // Only drag if there's an image
-      if (!uploadedFiles.length || !livePreviewBg.style.backgroundImage) return;
+      // Only drag if there's a background image (uploaded or default)
+      if (!livePreviewBg.style.backgroundImage || livePreviewBg.style.backgroundImage === 'none') return;
 
       e.preventDefault();
       previewDragState.isDragging = true;
