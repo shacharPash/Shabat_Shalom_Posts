@@ -4503,20 +4503,42 @@ CITY_CHECKBOXES_PLACEHOLDER
         const day = currentOmerDay || 1;
         const dayText = `היום ${day} ימים לעומר`;
         const sefirah = getSefirahForDay(day);
-        const previewBg = (livePreviewBg && livePreviewBg.style.backgroundImage)
-          ? livePreviewBg.style.backgroundImage
-          : 'linear-gradient(135deg, #1a237e 0%, #3949ab 100%)';
-        omerPreviewContainer.innerHTML = `
-          <div class="omer-preview-text" style="background-image: ${previewBg};">
-            <div class="omer-preview-top">
-              <div class="omer-title">ספירת העומר</div>
-              <div class="omer-day-label">${dayText}</div>
+
+        // Helper to render the omer preview HTML with a background
+        const renderOmerPreview = (bgStyle) => {
+          const index = currentCropIndex || 0;
+          const cropPos = imageCropPositions[index] || { x: 0.5, y: 0.5 };
+          const bgPosStyle = `background-position: ${cropPos.x * 100}% ${cropPos.y * 100}%;`;
+          omerPreviewContainer.innerHTML = `
+            <div class="omer-preview-text" style="background-image: ${bgStyle}; background-size: cover; ${bgPosStyle}">
+              <div class="omer-preview-top">
+                <div class="omer-title">ספירת העומר</div>
+                <div class="omer-day-label">${dayText}</div>
+              </div>
+              <div class="omer-preview-bottom">
+                <div class="omer-sefirah">${sefirah}</div>
+              </div>
             </div>
-            <div class="omer-preview-bottom">
-              <div class="omer-sefirah">${sefirah}</div>
-            </div>
-          </div>
-        `;
+          `;
+        };
+
+        // Check if livePreviewBg already has the image (set by updateLivePreviewBackground)
+        if (livePreviewBg && livePreviewBg.style.backgroundImage && livePreviewBg.style.backgroundImage !== 'none') {
+          renderOmerPreview(livePreviewBg.style.backgroundImage);
+        } else if (uploadedFiles.length > 0) {
+          // Read directly from uploaded file for instant preview (like Shabbat mode does)
+          const file = uploadedFiles[0];
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            renderOmerPreview(`url(${e.target.result})`);
+          };
+          reader.readAsDataURL(file);
+          // Show gradient immediately while file loads (brief moment)
+          renderOmerPreview('linear-gradient(135deg, #1a237e 0%, #3949ab 100%)');
+        } else {
+          // No image - show gradient
+          renderOmerPreview('linear-gradient(135deg, #1a237e 0%, #3949ab 100%)');
+        }
       }
     }
 
