@@ -82,10 +82,10 @@ def _find_watermark_path():
         # Vercel serverless - watermark in api folder (highest priority)
         os.path.join(os.path.dirname(__file__), "api", "watermark.png"),
         # Local development - public folder
-        os.path.join(os.path.dirname(__file__), "public", "static", "watermark.png"),
+        os.path.join(os.path.dirname(__file__), "public", "watermark.png"),
         # Relative paths
         "api/watermark.png",
-        "public/static/watermark.png",
+        "public/watermark.png",
     ]
     for path in possible_paths:
         if os.path.isfile(path):
