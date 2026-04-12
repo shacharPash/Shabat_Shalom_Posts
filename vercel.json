@@ -1,15 +1,4 @@
 {
-  "builds": [
-    { "src": "api/**/*.py", "use": "@vercel/python" },
-    { "src": "public/**", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/backgrounds/(.*)", "dest": "/public/backgrounds/$1" },
-    { "src": "/favicon.ico", "dest": "/public/favicon.ico" },
-    { "src": "/apple-touch-icon.png", "dest": "/public/apple-touch-icon.png" },
-    { "src": "/watermark.png", "dest": "/public/watermark.png" },
-    { "src": "/favicon-(.*).png", "dest": "/public/favicon-$1.png" }
-  ],
   "rewrites": [
     { "source": "/", "destination": "/api/index" },
     { "source": "/poster", "destination": "/api/poster" },
