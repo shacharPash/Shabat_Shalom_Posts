@@ -2,8 +2,8 @@ name: Omer Reminder
 
 on:
   schedule:
-    # Run at 17:00 UTC = 20:00 Israel summer time (19:00 Israel winter time)
-    - cron: '0 17 * * *'
+    # Run at 16:00 UTC (GitHub usually runs ~17:XX due to delay) = ~20:00 Israel summer time
+    - cron: '0 16 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
