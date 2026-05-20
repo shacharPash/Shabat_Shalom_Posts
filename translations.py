@@ -48,6 +48,7 @@ YOMTOV_TRANSLATIONS: Dict[str, str] = {
     # Shavuos
     "Erev Shavuos": "ערב שבועות",
     "Erev Shavut": "ערב שבועות",
+    "Erev Shavuot": "ערב שבועות",
     "Shavuos": "שבועות",
     "Shavut": "שבועות",
     "Shavuot": "שבועות",
@@ -133,7 +134,10 @@ def get_main_title(event_name: str, event_type: str, is_shabbat: bool, has_parsh
         return "שבת שלום" if is_shabbat else "שבת שלום"
 
     if event_name.startswith("Erev"):
-        # Erev holidays are not Yom Tov - treat as regular Shabbat if on Shabbat
+        # Erev on Shabbat: strip "Erev " and apply holiday-on-Shabbat logic
+        if is_shabbat:
+            return get_main_title(event_name[len("Erev "):], event_type, is_shabbat, has_parsha)
+        # Erev not on Shabbat - treat as regular Shabbat
         return "שבת שלום"
 
     # Check for Shabbat Chol HaMoed (Shabbat during intermediate days)

@@ -371,9 +371,9 @@ class TestGetMainTitle(unittest.TestCase):
         self.assertEqual(result, "שבת שלום")
 
     def test_erev_sukkot_on_shabbat(self):
-        """Erev Sukkot on Shabbat should return 'שבת שלום'."""
+        """Erev Sukkot on Shabbat should apply holiday-on-Shabbat logic."""
         result = get_main_title("Erev Sukkos", "yomtov", is_shabbat=True, has_parsha=True)
-        self.assertEqual(result, "שבת שלום")
+        self.assertEqual(result, "שבת שלום וחג שמח")
 
     def test_erev_pesach_not_on_shabbat(self):
         """Erev Pesach not on Shabbat should return regular Shabbat greeting."""
