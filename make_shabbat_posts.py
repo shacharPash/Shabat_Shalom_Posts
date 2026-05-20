@@ -368,9 +368,25 @@ def compose_poster(
     # Determine if this is on Shabbat (Saturday = weekday 5)
     is_shabbat = seq_end and seq_end.weekday() == 5
 
+    # Detect "Yom Tov connecting to Shabbat" — Erev Yom Tov whose sequence
+    # spans into Shabbat (e.g., Shavuot 2026: Thu Erev → Fri Yom Tov → Sat Shabbat).
+    is_yomtov_to_shabbat = (
+        event_type == "yomtov"
+        and event_name
+        and event_name.startswith("Erev")
+        and is_shabbat
+        and seq_start and seq_end and seq_start < seq_end
+    )
+
+    # For Yom Tov connecting to Shabbat, resolve the title using the actual
+    # holiday name (e.g., "Shavuot") rather than the "Erev …" prefix.
+    title_event_name = (
+        event_name[len("Erev "):] if is_yomtov_to_shabbat else event_name
+    )
+
     # Use the centralized get_main_title function for title logic
     title = get_main_title(
-        event_name=event_name,
+        event_name=title_event_name,
         event_type=event_type,
         is_shabbat=is_shabbat,
         has_parsha=bool(parsha)
@@ -443,6 +459,12 @@ def compose_poster(
         else:
             holiday_name = translate_yomtov(event_name)
         sub_line = f"שבת חול המועד {holiday_name} | {date_str}"
+    elif is_yomtov_to_shabbat:
+        # Yom Tov flowing directly into Shabbat - show holiday name only
+        # (no parsha, no "Erev" prefix), since the sequence opens with the holiday.
+        stripped_event_name = event_name[len("Erev "):]
+        hebrew_event = translate_yomtov(stripped_event_name)
+        sub_line = f"{hebrew_event} | {date_str}"
     elif event_type == "yomtov" and event_name:
         # Regular Yom Tov - translate event name to Hebrew
         hebrew_event = translate_yomtov(event_name)
@@ -552,7 +574,11 @@ def compose_poster(
     # כותרות עמודות - ממורכזות (use same font as rows for consistency)
     draw_text_with_stroke(draw, (col_city_x, y), "עיר", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    if event_type == "yomtov":
+    if event_type == "yomtov" and is_shabbat:
+        # Yom Tov connecting to Shabbat - havdalah is actually Shabbat exit
+        draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "צאת השבת", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    elif event_type == "yomtov":
         draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
         draw_text_with_stroke(draw, (col_hav_x, y), "צאת החג", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
     else:
