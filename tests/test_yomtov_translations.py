@@ -96,6 +96,12 @@ class TestYomTovExactMatches(unittest.TestCase):
         self.assertEqual(translate_yomtov("Shavuot"), "שבועות")
         self.assertEqual(translate_yomtov("Shavuos"), "שבועות")
 
+    def test_erev_shavuot_variations(self):
+        """Erev Shavuot variations should translate correctly (raw jewcal string included)."""
+        self.assertEqual(translate_yomtov("Erev Shavuot"), "ערב שבועות")
+        self.assertEqual(translate_yomtov("Erev Shavuos"), "ערב שבועות")
+        self.assertEqual(translate_yomtov("Erev Shavut"), "ערב שבועות")
+
     def test_chanukah_variations(self):
         """Chanukah variations should translate correctly."""
         self.assertEqual(translate_yomtov("Chanukah"), "חנוכה")
@@ -379,6 +385,43 @@ class TestGetMainTitle(unittest.TestCase):
         """Erev Pesach not on Shabbat should return regular Shabbat greeting."""
         result = get_main_title("Erev Pesach", "yomtov", is_shabbat=False, has_parsha=True)
         self.assertEqual(result, "שבת שלום")
+
+
+class TestYomTovConnectingToShabbat(unittest.TestCase):
+    """Tests for Yom Tov sequences that connect directly into Shabbat.
+
+    Covers the case where jewcal returns event_name="Erev <Holiday>" and
+    the sequence ends on Saturday (e.g., Shavuot 2026: Thu Erev → Fri Yom
+    Tov → Sat Shabbat with no havdalah in between).
+    """
+
+    def test_erev_shavuot_on_shabbat_with_parsha(self):
+        """Erev Shavuot connecting to Shabbat (with parsha) → 'שבת שלום וחג שמח'."""
+        result = get_main_title(
+            "Erev Shavuot", "yomtov", is_shabbat=True, has_parsha=True
+        )
+        self.assertEqual(result, "שבת שלום וחג שמח")
+
+    def test_erev_pesach_on_shabbat_with_parsha(self):
+        """Erev Pesach connecting to Shabbat (with parsha) → 'שבת שלום וחג כשר ושמח'."""
+        result = get_main_title(
+            "Erev Pesach", "yomtov", is_shabbat=True, has_parsha=True
+        )
+        self.assertEqual(result, "שבת שלום וחג כשר ושמח")
+
+    def test_erev_shavuot_not_on_shabbat_unchanged(self):
+        """Erev Shavuot not on Shabbat keeps existing 'שבת שלום' fallback."""
+        result = get_main_title(
+            "Erev Shavuot", "yomtov", is_shabbat=False, has_parsha=False
+        )
+        self.assertEqual(result, "שבת שלום")
+
+    def test_shavuot_on_shabbat_with_parsha_regression(self):
+        """Regression: Shavuot on Shabbat with parsha still → 'שבת שלום וחג שמח'."""
+        result = get_main_title(
+            "Shavuot", "yomtov", is_shabbat=True, has_parsha=True
+        )
+        self.assertEqual(result, "שבת שלום וחג שמח")
 
 
 if __name__ == "__main__":
