@@ -21,6 +21,8 @@ import pytz
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import hebcal_api
+
 from make_shabbat_posts import (
     find_next_sequence,
     find_event_sequence,
@@ -35,6 +37,7 @@ from hebcal_api import (
     get_parsha_from_hebcal,
     clear_hebcal_cache,
     _get_saturday_for_date,
+    _build_hebcal_url,
 )
 
 
@@ -306,6 +309,45 @@ class TestMultipleCities(unittest.TestCase):
 
 class TestGetParshaFromHebcal(unittest.TestCase):
     """Tests for Hebcal API integration."""
+
+    def test_hebcal_url_uses_israel_schedule(self):
+        """Hebcal API requests should ask for Israel Torah readings."""
+        url = _build_hebcal_url(2026)
+        self.assertIn("i=on", url)
+
+    @patch('hebcal_api.requests.get')
+    def test_get_parsha_prefers_authoritative_api_over_stale_local_data(self, mock_get):
+        """API data should override stale local diaspora readings for Israel."""
+        clear_hebcal_cache()
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "items": [
+                {
+                    "category": "parashat",
+                    "date": "2026-05-30",
+                    "title": "Parashat Beha’alotcha",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        with patch.dict(hebcal_api._LOCAL_PARSHA_DATA, {"2026-05-30": "Nasso"}):
+            result = get_parsha_from_hebcal(date(2026, 5, 29))
+
+        self.assertEqual(result, "פרשת בהעלותך")
+        requested_url = mock_get.call_args.args[0]
+        self.assertIn("i=on", requested_url)
+
+    @patch('hebcal_api.requests.get')
+    def test_get_parsha_uses_corrected_local_israel_data_on_network_error(self, mock_get):
+        """Local fallback should contain Israel's 2026 post-Shavuot reading."""
+        clear_hebcal_cache()
+
+        mock_get.side_effect = Exception("Network error")
+
+        result = get_parsha_from_hebcal(date(2026, 5, 29))
+        self.assertEqual(result, "פרשת בהעלותך")
 
     @patch('hebcal_api.requests.get')
     def test_get_parsha_handles_network_error(self, mock_get):
