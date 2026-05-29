@@ -105,29 +105,28 @@ def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     # Find the Saturday of the week containing target_date
     saturday = _get_saturday_for_date(target_date)
 
-    # FAST PATH: Check local parsha data first (no API call needed)
+    # Use Hebcal as the authoritative source first. The bundled local data is
+    # only a fallback, because an older generated snapshot may contain diaspora
+    # readings for weeks when Israel and the diaspora are out of sync.
+    data = _get_hebcal_data_for_year(saturday.year)
+    if data:
+        # Find the parsha for our specific Saturday
+        parsha_title = _find_parsha_for_date(data, saturday)
+        if parsha_title:
+            parsha_clean = parsha_title.replace("Parashat ", "").strip()
+            return translate_parsha(parsha_clean)
+
+        # If exact match not found, find the closest Saturday before our target
+        parsha_title = _find_closest_parsha_before_date(data, saturday)
+        if parsha_title:
+            parsha_clean = parsha_title.replace("Parashat ", "").strip()
+            return translate_parsha(parsha_clean)
+
+    # Fallback: use bundled local parsha data when the API is unavailable.
     date_key = saturday.isoformat()  # YYYY-MM-DD format
     if date_key in _LOCAL_PARSHA_DATA:
         parsha_english = _LOCAL_PARSHA_DATA[date_key]
         return translate_parsha(parsha_english)
-
-    # SLOW PATH: Fallback to Hebcal API if date not in local data
-    # (e.g., for dates beyond 2040 or if local data file is missing)
-    data = _get_hebcal_data_for_year(saturday.year)
-    if not data:
-        return None
-
-    # Find the parsha for our specific Saturday
-    parsha_title = _find_parsha_for_date(data, saturday)
-    if parsha_title:
-        parsha_clean = parsha_title.replace("Parashat ", "").strip()
-        return translate_parsha(parsha_clean)
-
-    # If exact match not found, find the closest Saturday before our target
-    parsha_title = _find_closest_parsha_before_date(data, saturday)
-    if parsha_title:
-        parsha_clean = parsha_title.replace("Parashat ", "").strip()
-        return translate_parsha(parsha_clean)
 
     return None
 
@@ -146,7 +145,7 @@ def _build_hebcal_url(year: int) -> str:
         f"https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on&mod=on&nx=on"
         f"&year={year}&month=x&ss=on&mf=on&c=on&geo=pos"
         f"&latitude=31.778117828230577&longitude=35.23599222120022"
-        f"&tzid={TZID}&s=on"
+        f"&tzid={TZID}&s=on&i=on"
     )
 
 
