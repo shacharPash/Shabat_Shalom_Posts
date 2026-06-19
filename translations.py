@@ -277,6 +277,8 @@ HEBREW_MONTH_NAMES: Dict[str, str] = {
     "Nisan": "ניסן",
     "Iyar": "אייר",
     "Sivan": "סיון",
+    # jewcal spells this "Tamuz" (single 'm'); keep "Tammuz" too for safety.
+    "Tamuz": "תמוז",
     "Tammuz": "תמוז",
     "Av": "אב",
     "Elul": "אלול",
@@ -287,6 +289,10 @@ HEBREW_MONTH_NAMES: Dict[str, str] = {
     "Tevet": "טבת",
     "Shevat": "שבט",
     "Adar": "אדר",
+    # In leap years jewcal outputs "Adar 1"/"Adar 2"; keep Roman-numeral
+    # variants too in case the source spelling differs.
+    "Adar 1": "אדר א'",
+    "Adar 2": "אדר ב'",
     "Adar I": "אדר א'",
     "Adar II": "אדר ב'",
 }
