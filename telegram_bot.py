@@ -1298,12 +1298,22 @@ def handle_photo(update: Dict[str, Any]) -> None:
         send_message(chat_id, "✅ התמונה נשמרה לפוסטרי עומר!")
         return
 
-    # Default behavior: Ask user where to save the image
-    prefs["pending_image_file_id"] = file_id
     prefs["last_image_file_id"] = file_id  # Backward compatibility
+
+    # Outside the Omer period there is only one meaningful destination (Shabbat),
+    # so skip the Shabbat/Omer/both choice entirely and save the image directly.
+    # The Omer options should not appear at all when it's not the Omer period.
+    if not is_omer_period():
+        prefs["shabbat_image_file_id"] = file_id
+        prefs["pending_image_file_id"] = None
+        set_user_prefs(user_id, prefs)
+        send_message(chat_id, "✅ התמונה נשמרה לפוסטרי שבת!")
+        return
+
+    # During the Omer period, ask user where to save and offer to generate poster
+    prefs["pending_image_file_id"] = file_id
     set_user_prefs(user_id, prefs)
 
-    # Ask user where to save and offer to generate poster
     keyboard = [
         [{"text": "🕯️ שבת", "callback_data": "photo:shabbat"}],
         [{"text": "🔢 עומר", "callback_data": "photo:omer"}],
