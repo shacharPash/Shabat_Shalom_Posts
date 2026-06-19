@@ -170,10 +170,15 @@ def get_hebrew_date_string(gregorian_date: date) -> str:
     day = jewish_date.day
     year = jewish_date.year
 
-    # Get month name from the string representation (e.g., "23 Kislev 5786")
+    # Get month name from the string representation (e.g., "23 Kislev 5786",
+    # or "3 Adar 1 5784" in leap years). The month name is everything between
+    # the leading day and the trailing year, so it may span multiple tokens.
     date_str = str(jewish_date)
     parts = date_str.split()
-    if len(parts) >= 2:
+    if len(parts) >= 3:
+        month_name_english = " ".join(parts[1:-1])
+        month_name = HEBREW_MONTH_NAMES.get(month_name_english, month_name_english)
+    elif len(parts) == 2:
         month_name_english = parts[1]
         month_name = HEBREW_MONTH_NAMES.get(month_name_english, month_name_english)
     else:
