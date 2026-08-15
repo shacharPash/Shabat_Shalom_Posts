@@ -404,42 +404,36 @@ class TestSSRFProtection(unittest.TestCase):
 class TestTelegramWebhookValidation(unittest.TestCase):
     """Tests for Telegram webhook secret validation."""
 
-    def test_webhook_without_secret_configured(self):
-        """Webhook should work without secret when not configured."""
-        from io import BytesIO as IO
+    def test_webhook_fails_closed_without_secret(self):
+        """No incoming token is accepted when the server secret is missing."""
+        import api.telegram_webhook
 
-        # Import with no secret configured
-        with patch.dict(os.environ, {}, clear=False):
-            # Remove TELEGRAM_WEBHOOK_SECRET if it exists
-            env_backup = os.environ.pop("TELEGRAM_WEBHOOK_SECRET", None)
-            try:
-                # Reload module to pick up env change
-                import importlib
-                import api.telegram_webhook
-                importlib.reload(api.telegram_webhook)
-
-                # Should work without secret header
-                self.assertIsNone(api.telegram_webhook.TELEGRAM_WEBHOOK_SECRET)
-            finally:
-                if env_backup:
-                    os.environ["TELEGRAM_WEBHOOK_SECRET"] = env_backup
+        with patch.object(api.telegram_webhook, "TELEGRAM_WEBHOOK_SECRET", None):
+            self.assertFalse(api.telegram_webhook.is_valid_webhook_secret(None))
+            self.assertFalse(api.telegram_webhook.is_valid_webhook_secret("attacker-token"))
 
     def test_webhook_secret_validation_logic(self):
-        """Test the secret validation logic directly."""
-        # When secret is set, header must match
-        expected_secret = "my-secret-token"
+        """Only an exact Telegram secret-token header is accepted."""
+        import api.telegram_webhook
 
-        # Matching header should pass
-        header_value = "my-secret-token"
-        self.assertEqual(header_value, expected_secret)
+        with patch.object(api.telegram_webhook, "TELEGRAM_WEBHOOK_SECRET", "my-secret-token"):
+            self.assertTrue(api.telegram_webhook.is_valid_webhook_secret("my-secret-token"))
+            self.assertFalse(api.telegram_webhook.is_valid_webhook_secret("wrong-token"))
+            self.assertFalse(api.telegram_webhook.is_valid_webhook_secret(None))
 
-        # Non-matching header should fail
-        wrong_header = "wrong-token"
-        self.assertNotEqual(wrong_header, expected_secret)
+    @patch('api.poster.requests.get')
+    def test_image_url_redirect_is_rejected(self, mock_get):
+        """Redirects cannot pivot a validated public URL to a private host."""
+        mock_response = MagicMock()
+        mock_response.status_code = 302
+        mock_response.headers = {"Location": "http://169.254.169.254/latest/meta-data"}
+        mock_get.return_value = mock_response
 
-        # Missing header (None) should fail
-        missing_header = None
-        self.assertNotEqual(missing_header, expected_secret)
+        with self.assertRaises(ValueError):
+            build_poster_from_payload({"imageUrl": "https://example.com/image.jpg"})
+
+        mock_get.assert_called_once()
+        self.assertFalse(mock_get.call_args.kwargs["allow_redirects"])
 
 
 if __name__ == "__main__":

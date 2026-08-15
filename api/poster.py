@@ -65,8 +65,9 @@ def is_safe_url(url: str) -> bool:
                     if ip in network:
                         return False
         except socket.gaierror:
-            # DNS resolution failed - allow it (will fail at request time anyway)
-            pass
+            # Fail closed. A second DNS lookup during requests.get could resolve
+            # to an internal address and bypass this check.
+            return False
 
         return True
     except Exception:
@@ -83,6 +84,8 @@ CITY_BY_NAME = build_city_lookup(GEOJSON_CITIES)
 
 # Rate limiter: 10 requests per minute per IP
 _rate_limiter = RateLimiter(max_requests=10, window_seconds=60)
+MAX_REQUEST_BODY_BYTES = 12 * 1024 * 1024
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 
 def _detect_image_suffix(image_data: bytes) -> str:
@@ -208,7 +211,11 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     # Priority 1: imageBase64
     if image_base64:
         try:
-            image_bytes = base64.b64decode(image_base64)
+            if len(image_base64) > ((MAX_IMAGE_BYTES * 4) // 3) + 4:
+                raise ValueError("imageBase64 is too large")
+            image_bytes = base64.b64decode(image_base64, validate=True)
+            if len(image_bytes) > MAX_IMAGE_BYTES:
+                raise ValueError("imageBase64 is too large")
             # Detect format from magic bytes
             suffix = _detect_image_suffix(image_bytes)
             # Save to a temporary file (cloud-safe: uses /tmp)
@@ -232,7 +239,14 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
             last_error = None
             for attempt in range(2):
                 try:
-                    r = requests.get(image_url, timeout=6, headers=headers)
+                    r = requests.get(
+                        image_url,
+                        timeout=6,
+                        headers=headers,
+                        allow_redirects=False,
+                    )
+                    if 300 <= r.status_code < 400:
+                        raise ValueError("imageUrl redirects are not allowed")
                     if r.status_code == 200:
                         break
                 except requests.RequestException as e:
@@ -242,6 +256,11 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
                     raise
             if r is None or r.status_code != 200:
                 raise RuntimeError(f"Failed to download image from imageUrl after retries: {last_error or 'HTTP error'}")
+            content_length = r.headers.get("Content-Length")
+            if content_length and int(content_length) > MAX_IMAGE_BYTES:
+                raise ValueError("Downloaded image is too large")
+            if len(r.content) > MAX_IMAGE_BYTES:
+                raise ValueError("Downloaded image is too large")
             # Detect format from magic bytes
             suffix = _detect_image_suffix(r.content)
             # Save to a temporary file (cloud-safe: uses /tmp)
@@ -386,11 +405,23 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             # Read request body
-            content_length = int(self.headers.get("Content-Length", 0))
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+            except (TypeError, ValueError):
+                raise ValueError("Invalid Content-Length")
+            if content_length < 0 or content_length > MAX_REQUEST_BODY_BYTES:
+                self.send_response(413)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write("הבקשה גדולה מדי".encode("utf-8"))
+                return
             body = self.rfile.read(content_length) if content_length > 0 else b""
 
             # Parse JSON payload
             payload = json.loads(body.decode("utf-8")) if body else {}
+            if payload.get("image"):
+                raise ValueError("Local image paths are not accepted by the HTTP API")
 
             # Map city names to full city objects with coordinates
             map_city_payload(payload, CITY_BY_NAME)
