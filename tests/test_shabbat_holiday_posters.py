@@ -50,11 +50,16 @@ class TestShabbatHolidayPosters(unittest.TestCase):
         ])
         self.assertEqual(texts[2:5], ['עיר', 'הדלקת נרות', 'צאת החג'])
 
-    def test_rosh_hashana_starting_sunday(self):
+    def test_rosh_hashana_starting_sunday_evening_is_separate(self):
+        # Sunday daytime separates Shabbat from a holiday starting Sunday evening.
         texts = self.render(date(2029, 9, 7))
-        self.assertEqual(texts[0], 'שבת שלום וחג שמח')
+        self.assertEqual(texts[0], 'שבת שלום')
+        self.assertNotIn('ראש השנה', texts[1])
+        self.assertEqual(texts[4], 'צאת שבת')
+        texts = self.render(date(2029, 9, 9))
+        self.assertEqual(texts[0], 'שנה טובה')
         self.assertIn('ראש השנה', texts[1])
-        self.assertIn('7-10.09.2029', texts[1])
+        self.assertIn('9-11.09.2029', texts[1])
         self.assertEqual(texts[4], 'צאת החג')
 
     def test_one_day_festival_on_shabbat(self):
@@ -86,10 +91,18 @@ class TestShabbatHolidayPosters(unittest.TestCase):
         self.assertEqual(texts[4], 'צאת השבת')
 
     def test_yom_kippur_on_shabbat(self):
-        texts = self.render(date(2027, 10, 8))
+        texts = self.render(date(2024, 10, 11))
         self.assertEqual(texts[:2], [
-            'גמר חתימה טובה', 'יום כיפור | 8-9.10.2027',
+            'גמר חתימה טובה', 'יום כיפור | 11-12.10.2024',
         ])
+
+    def test_simchat_torah_on_shabbat_has_no_parsha_subtitle(self):
+        texts = self.render(date(2026, 10, 2))
+        self.assertEqual(texts[0], 'שבת שלום וחג שמח')
+        self.assertNotIn('פרשת', texts[1])
+        self.assertNotIn('הושענא', texts[1])
+        self.assertIn('שמיני עצרת', texts[1])
+        self.assertEqual(texts[4], 'צאת השבת והחג')
 
     def test_weekday_rosh_hashana(self):
         texts = self.render(date(2025, 9, 22))
