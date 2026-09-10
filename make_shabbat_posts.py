@@ -42,6 +42,8 @@ from calendar_utils import (
     find_next_event_date,
     find_next_sequence,
     get_effective_start_date,
+    get_full_yomtov_name,
+    get_shabbat_in_sequence,
     is_end_of_holiday_sequence,
     jewcal_times_for_date,
     jewcal_times_for_sequence,
@@ -370,8 +372,11 @@ def compose_poster(
     seq_end = week_info.get("seq_end")
     parsha = week_info.get("parsha")
 
-    # Determine if this is on Shabbat (Saturday = weekday 5)
-    is_shabbat = seq_end and seq_end.weekday() == 5
+    # A sequence may include Shabbat and finish on Sunday or Monday.
+    saturday = get_shabbat_in_sequence(seq_start, seq_end) if seq_start and seq_end else None
+    is_shabbat = saturday is not None
+    ends_on_shabbat = bool(seq_end and seq_end.weekday() == 5)
+    yomtov_on_shabbat = get_full_yomtov_name(saturday) if saturday else None
 
     # Detect "Yom Tov connecting to Shabbat" — Erev Yom Tov whose sequence
     # spans into Shabbat (e.g., Shavuot 2026: Thu Erev → Fri Yom Tov → Sat Shabbat).
@@ -379,14 +384,13 @@ def compose_poster(
         event_type == "yomtov"
         and event_name
         and event_name.startswith("Erev")
-        and is_shabbat
+        and ends_on_shabbat
         and seq_start and seq_end and seq_start < seq_end
     )
 
-    # For Yom Tov connecting to Shabbat, resolve the title using the actual
-    # holiday name (e.g., "Shavuot") rather than the "Erev …" prefix.
+    # The greeting describes the whole sequence, not just its opening eve.
     title_event_name = (
-        event_name[len("Erev "):] if is_yomtov_to_shabbat else event_name
+        event_name.removeprefix("Erev ") if event_name else ""
     )
 
     # Use the centralized get_main_title function for title logic
@@ -454,7 +458,9 @@ def compose_poster(
     )
 
     # Build subtitle based on event type
-    if is_shabbat_chol_hamoed and event_name:
+    if yomtov_on_shabbat:
+        sub_line = f"{translate_yomtov(yomtov_on_shabbat)} | {date_str}"
+    elif is_shabbat_chol_hamoed and event_name:
         # Shabbat Chol HaMoed - show "שבת חול המועד [holiday name]"
         # Determine the holiday name in Hebrew
         if "Pesach" in event_name:
@@ -579,10 +585,12 @@ def compose_poster(
     # כותרות עמודות - ממורכזות (use same font as rows for consistency)
     draw_text_with_stroke(draw, (col_city_x, y), "עיר", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    if event_type == "yomtov" and is_shabbat:
+    if event_type == "yomtov" and ends_on_shabbat:
         # Yom Tov connecting to Shabbat - havdalah is actually Shabbat exit
         draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
-        draw_text_with_stroke(draw, (col_hav_x, y), "צאת השבת", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        exit_label = "צאת השבת והחג" if yomtov_on_shabbat else "צאת השבת"
+        exit_font = get_fitted_font(exit_label, city_row_font, col_spacing * 1.5 - 20, rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), exit_label, exit_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
     elif event_type == "yomtov":
         draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
         draw_text_with_stroke(draw, (col_hav_x, y), "צאת החג", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)

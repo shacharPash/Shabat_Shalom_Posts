@@ -267,11 +267,11 @@ class TestGetMainTitle(unittest.TestCase):
         result = get_main_title("", "shabbos", is_shabbat=True, has_parsha=True)
         self.assertEqual(result, "שבת שלום")
 
-    # === Rosh Hashana (always same greeting) ===
+    # === Rosh Hashana ===
     def test_rosh_hashana_on_shabbat(self):
-        """Rosh Hashana on Shabbat should return 'שנה טובה'."""
+        """Rosh Hashana with Shabbat uses the combined greeting."""
         result = get_main_title("Rosh Hashana", "yomtov", is_shabbat=True, has_parsha=False)
-        self.assertEqual(result, "שנה טובה")
+        self.assertEqual(result, "שבת שלום וחג שמח")
 
     def test_rosh_hashana_not_on_shabbat(self):
         """Rosh Hashana not on Shabbat should return 'שנה טובה'."""
@@ -279,9 +279,9 @@ class TestGetMainTitle(unittest.TestCase):
         self.assertEqual(result, "שנה טובה")
 
     def test_rosh_hashanah_variant(self):
-        """Rosh Hashanah (alternate spelling) should return 'שנה טובה'."""
+        """The alternate spelling also uses the combined greeting."""
         result = get_main_title("Rosh Hashanah", "yomtov", is_shabbat=True, has_parsha=False)
-        self.assertEqual(result, "שנה טובה")
+        self.assertEqual(result, "שבת שלום וחג שמח")
 
     # === Yom Kippur (always same greeting) ===
     def test_yom_kippur_on_shabbat(self):
