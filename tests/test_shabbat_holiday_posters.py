@@ -46,7 +46,7 @@ class TestShabbatHolidayPosters(unittest.TestCase):
     def test_rosh_hashana_2026(self):
         texts = self.render(date(2026, 9, 11))
         self.assertEqual(texts[:2], [
-            'שבת שלום וחג שמח', 'ראש השנה | 11-13.09.2026',
+            'שבת שלום ושנה טובה', 'ראש השנה | 11-13.09.2026',
         ])
         self.assertEqual(texts[2:5], ['עיר', 'הדלקת נרות', 'צאת החג'])
 

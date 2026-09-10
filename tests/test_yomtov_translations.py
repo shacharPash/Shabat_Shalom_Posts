@@ -271,7 +271,7 @@ class TestGetMainTitle(unittest.TestCase):
     def test_rosh_hashana_on_shabbat(self):
         """Rosh Hashana with Shabbat uses the combined greeting."""
         result = get_main_title("Rosh Hashana", "yomtov", is_shabbat=True, has_parsha=False)
-        self.assertEqual(result, "שבת שלום וחג שמח")
+        self.assertEqual(result, "שבת שלום ושנה טובה")
 
     def test_rosh_hashana_not_on_shabbat(self):
         """Rosh Hashana not on Shabbat should return 'שנה טובה'."""
@@ -281,7 +281,7 @@ class TestGetMainTitle(unittest.TestCase):
     def test_rosh_hashanah_variant(self):
         """The alternate spelling also uses the combined greeting."""
         result = get_main_title("Rosh Hashanah", "yomtov", is_shabbat=True, has_parsha=False)
-        self.assertEqual(result, "שבת שלום וחג שמח")
+        self.assertEqual(result, "שבת שלום ושנה טובה")
 
     # === Yom Kippur (always same greeting) ===
     def test_yom_kippur_on_shabbat(self):

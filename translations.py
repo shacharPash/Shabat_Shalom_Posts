@@ -103,7 +103,7 @@ def get_main_title(event_name: str, event_type: str, is_shabbat: bool, has_parsh
     Determine the main title/greeting for the poster based on event and Shabbat collision rules.
 
     Title rules:
-    - Rosh Hashana with Shabbat: "שבת שלום וחג שמח"; otherwise "שנה טובה"
+    - Rosh Hashana with Shabbat: "שבת שלום ושנה טובה"; otherwise "שנה טובה"
     - Yom Kippur (even on Shabbat): "גמר חתימה טובה"
     - Holiday on Shabbat (Sukkot/Simchat Torah/Shavuot): "שבת שלום וחג שמח"
     - Pesach on Shabbat: "שבת שלום וחג כשר ושמח"
@@ -147,7 +147,7 @@ def get_main_title(event_name: str, event_type: str, is_shabbat: bool, has_parsh
 
     # Rosh Hashana uses the combined greeting when the sequence includes Shabbat.
     if "Rosh Hashana" in event_name or "Rosh Hashanah" in event_name:
-        return "שבת שלום וחג שמח" if is_shabbat else "שנה טובה"
+        return "שבת שלום ושנה טובה" if is_shabbat else "שנה טובה"
 
     # Yom Kippur - always "גמר חתימה טובה" (even on Shabbat)
     if "Yom Kippur" in event_name:
