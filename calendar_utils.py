@@ -66,6 +66,23 @@ def clear_jewcal_cache() -> None:
     _get_jewcal_with_location_cached.cache_clear()
 
 
+def get_shabbat_in_sequence(start_date: date, end_date: date) -> Optional[date]:
+    """Return the Saturday inside the sequence, regardless of its last day."""
+    saturday = start_date + timedelta(days=(5 - start_date.weekday()) % 7)
+    return saturday if saturday <= end_date else None
+
+
+def get_full_yomtov_name(target_date: date) -> Optional[str]:
+    """Return the daytime festival, excluding its eve and intermediate days."""
+    calendar = _get_jewcal_cached(target_date, False)
+    name = calendar.events.yomtov if calendar.has_events() else None
+    if not name or name.startswith("Erev"):
+        return None
+    if "Chol HaMoed" in name or "Hoshana Rabba" in name:
+        return None
+    return name
+
+
 def next_friday(d: date) -> date:
     """
     Find the next Friday from a given date.
@@ -461,10 +478,9 @@ def jewcal_times_for_sequence(
 
     # Get parsha information only if sequence involves Shabbat
     parsha = None
-    if (event_type == "shabbos" or
-        any((start_date + timedelta(days=i)).weekday() == 5
-            for i in range((end_date - start_date).days + 1))):
-        parsha = get_parsha_from_hebcal(start_date)
+    saturday = get_shabbat_in_sequence(start_date, end_date)
+    if saturday is not None:
+        parsha = get_parsha_from_hebcal(saturday)
 
     return {
         "parsha": parsha,

@@ -5,8 +5,8 @@ This module provides functions to interact with the Hebcal API to retrieve
 Torah portion (parsha) information for specific dates. It includes caching
 to minimize API calls and helper functions for date calculations.
 
-Local parsha data (parsha_data.json) is used first for fast lookups,
-with API fallback for dates not in the local dataset.
+Hebcal provides authoritative Israel readings, with bundled local data
+as an exact-date fallback when the API cannot provide a reading.
 """
 
 import json
@@ -18,6 +18,7 @@ import requests
 from jewcal import JewCal
 
 from translations import translate_parsha
+from calendar_utils import get_full_yomtov_name
 
 # Timezone constant for Hebcal API
 TZID = "Asia/Jerusalem"
@@ -81,9 +82,9 @@ def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     """
     Get parsha information for the week containing target_date.
 
-    First checks local parsha data (fast path), then falls back to Hebcal API
-    if the date is not found locally. Uses a cache to store API responses by year,
-    significantly reducing the number of API calls when fetching multiple dates.
+    Uses authoritative Hebcal data, then an exact-date local fallback.
+    Festival Saturdays have no regular weekly parsha, even if a stale local
+    snapshot contains one. Readings are never borrowed from another week.
 
     Args:
         target_date: The date to get parsha for
@@ -91,19 +92,17 @@ def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     Returns:
         Hebrew parsha name with prefix, or None if not found
     """
-    # Special cases for Torah reading during holidays
-    jewcal_obj = JewCal(gregorian_date=target_date, diaspora=False)
+    # Check the actual Saturday, not the eve or another day in the sequence.
+    saturday = _get_saturday_for_date(target_date)
+    if get_full_yomtov_name(saturday):
+        return None
+
+    jewcal_obj = JewCal(gregorian_date=saturday, diaspora=False)
     if jewcal_obj.has_events() and jewcal_obj.events.yomtov:
         event_name = jewcal_obj.events.yomtov
-        # Simchat Torah and Hoshana Rabba read "Vezot Haberakhah"
-        if any(s in event_name for s in ("Simchat Tora", "Hoshana Rabba")):
-            return "פרשת וזאת הברכה"
         # Shabbat Chol HaMoed (Pesach or Sukkot) has no regular parsha
         if "Chol HaMoed" in event_name:
             return None
-
-    # Find the Saturday of the week containing target_date
-    saturday = _get_saturday_for_date(target_date)
 
     # Use Hebcal as the authoritative source first. The bundled local data is
     # only a fallback, because an older generated snapshot may contain diaspora
@@ -112,12 +111,6 @@ def get_parsha_from_hebcal(target_date: date) -> Optional[str]:
     if data:
         # Find the parsha for our specific Saturday
         parsha_title = _find_parsha_for_date(data, saturday)
-        if parsha_title:
-            parsha_clean = parsha_title.replace("Parashat ", "").strip()
-            return translate_parsha(parsha_clean)
-
-        # If exact match not found, find the closest Saturday before our target
-        parsha_title = _find_closest_parsha_before_date(data, saturday)
         if parsha_title:
             parsha_clean = parsha_title.replace("Parashat ", "").strip()
             return translate_parsha(parsha_clean)
@@ -156,26 +149,3 @@ def _find_parsha_for_date(data: Dict[str, Any], saturday: date) -> Optional[str]
         if item.get("category") == "parashat" and item.get("date") == target_date_str:
             return item.get("title")
     return None
-
-
-def _find_closest_parsha_before_date(data: Dict[str, Any], saturday: date) -> Optional[str]:
-    """Find the parsha title closest to but not after the target Saturday."""
-    closest_parsha = None
-    closest_date = None
-
-    for item in data.get("items", []):
-        if item.get("category") != "parashat":
-            continue
-        item_date_str = item.get("date", "")
-        if not item_date_str:
-            continue
-        try:
-            item_date = date.fromisoformat(item_date_str)
-            if item_date <= saturday and (closest_date is None or item_date > closest_date):
-                closest_date = item_date
-                closest_parsha = item.get("title")
-        except ValueError:
-            continue
-
-    return closest_parsha
-
