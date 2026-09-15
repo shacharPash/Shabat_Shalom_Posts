@@ -467,7 +467,7 @@ def test_scheduler_fails_on_unresolved_page_and_bounds_pagination():
         assert runner.main()==1
         assert opener.open.call_count==3
     response=Mock();response.__enter__=Mock(return_value=response);response.__exit__=Mock(return_value=False)
-    response.read.return_value=b'{"status":"completed","failed":0,"cursor":"15"}'
+    response.read.return_value=json.dumps({'status':'completed','failed':0,'cursor':'a'*32}).encode()
     opener.open.side_effect=None;opener.open.return_value=response
     with patch.dict(os.environ,{'VERCEL_URL':'https://example.test','CRON_SECRET':'test','REMINDER_ENDPOINT':'omer_reminder'}), patch.object(runner.urllib.request,'build_opener',return_value=opener), patch.object(runner,'MAX_PAGES',2):
         assert runner.main()==1
@@ -488,8 +488,8 @@ def test_sparse_subscribers_have_bounded_scan_work(isolated_redis):
     keys=[f'zmunah:user:{i}' for i in range(100)]
     with patch.object(isolated_redis,'scan',return_value=(0,keys)), patch.object(storage,'get_user_prefs',return_value={}) as get:
         users,cursor=storage.reminder_user_batch('reminder_enabled')
-        assert users==[] and cursor=='0:20'
-        assert get.call_count==20
+        assert users==[] and len(cursor)==32
+        assert get.call_count<=2
 
 
 def test_partial_failure_preserves_success_receipt(isolated_redis):
@@ -587,3 +587,255 @@ def test_whitespace_message_is_safely_ignored(isolated_redis):
         bot.process_update(private_update(900,text='   '))
         send.assert_not_called()
         keyboard.assert_not_called()
+
+
+def test_fixed_subscriber_traversal_survives_delivery_key_churn(isolated_redis):
+    """Deterministically move live SCAN page boundaries as bookkeeping grows."""
+    for uid in range(1, 7):
+        storage.update_user_prefs(str(uid), {'reminder_enabled': True})
+    calls = {0: 0, 7: 0}
+    def scan(cursor, **kwargs):
+        cursor = int(cursor)
+        calls[cursor] += 1
+        if cursor == 0:
+            # The initial response overflows the two-recipient invocation limit.
+            # Re-reading it under churn no longer includes its third candidate.
+            names = ['1', '2', '3', '4'] if calls[0] == 1 else ['1', '2', '4']
+            return 7, ['zmunah:user:' + uid for uid in names]
+        return 0, ['zmunah:user:5', 'zmunah:user:6']
+    seen = set()
+    cursor = '0'
+    with patch.object(isolated_redis, 'scan', side_effect=scan):
+        for _ in range(12):
+            users, cursor = storage.reminder_user_batch('reminder_enabled', cursor)
+            for uid in users:
+                key = f'zmunah:delivery:{uid}:evening:churn'
+                token = storage.acquire_claim(key)
+                if token:
+                    storage.complete_claim(key, token, storage.EVENT_TTL)
+                    seen.add(uid)
+            if cursor == '0':
+                break
+    assert seen == {str(uid) for uid in range(1, 7)}
+    assert calls[0] == calls[7] == 1
+
+
+def test_failed_page_retries_same_recipients_under_scan_churn(isolated_redis):
+    import reminder_delivery as delivery
+    import omer_utils as o
+    module = importlib.import_module('api.omer_reminder')
+    for uid in ('1', '2', '3'):
+        storage.update_user_prefs(uid, {'reminder_enabled': True})
+    clock = Mock(); clock.now.return_value = o.ISRAEL_TZ.localize(datetime(2026, 4, 3, 22))
+    responses = [(0, ['zmunah:user:1', 'zmunah:user:2']),
+                 (0, ['zmunah:user:1', 'zmunah:user:3'])]
+    delivered = []
+    failed = False
+    def send(uid, context):
+        nonlocal failed
+        if uid == '2' and not failed:
+            failed = True
+            return False
+        delivered.append(uid)
+        return True
+    with patch.object(delivery, 'datetime', clock), patch.object(module, 'CRON_SECRET', 'test'), patch.object(module, 'send_omer_reminder', side_effect=send), patch.object(isolated_redis, 'scan', side_effect=responses):
+        h = request_handler(module, headers={'Authorization': 'Bearer test'}); h.do_GET()
+        assert h.send_response.call_args.args[0] == 503
+        h = request_handler(module, headers={'Authorization': 'Bearer test'}); h.do_GET()
+        assert h.send_response.call_args.args[0] == 200
+    assert delivered == ['1', '2']
+
+
+def test_confirmed_deletion_resumes_after_partial_failure_and_nonce_expiry(isolated_redis):
+    for uid in ('12', '123'):
+        storage.update_user_prefs(uid, {'reminder_enabled': True, 'blessing_text': 'preserve-until-deleted'})
+        isolated_redis.set(f'zmunah:state:{uid}', 'private state')
+    for index in range(130):
+        isolated_redis.set(f'zmunah:omer_counted:123:history{index:03}', '1')
+    with patch.object(bot, 'send_message') as notice, patch.object(bot, 'send_message_with_keyboard') as prompt:
+        bot.process_update(private_update(1000, text='/delete_my_data'))
+        data = prompt.call_args.args[2][0][0]['callback_data']
+        update = callback_update(data, 1001)
+        original_delete = isolated_redis.delete
+        chunk_calls = 0
+        def fail_second_chunk(*keys):
+            nonlocal chunk_calls
+            if len(keys) > 1:
+                chunk_calls += 1
+                if chunk_calls == 2:
+                    raise redis.ConnectionError('transient chunk failure')
+            return original_delete(*keys)
+        with patch.object(isolated_redis, 'delete', side_effect=fail_second_chunk):
+            with pytest.raises(redis.ConnectionError):
+                bot.process_update(update)
+        assert chunk_calls == 2
+        notice.assert_not_called()
+        assert isolated_redis.ttl('zmunah:privacy:123:delete_pending') > 600
+        # The original authorization window has elapsed before Telegram retries.
+        isolated_redis.pexpire('zmunah:privacy:123:delete', 1)
+        time.sleep(.02)
+        assert not isolated_redis.exists('zmunah:privacy:123:delete')
+        bot.process_update(update)
+    assert not any(isolated_redis.exists(key) for key in storage.user_data_keys('123'))
+    assert isolated_redis.exists('zmunah:user:12')
+    assert isolated_redis.exists('zmunah:state:12')
+
+
+def test_stale_callback_ack_does_not_gate_deduplicated_action(isolated_redis):
+    response = Mock()
+    response.json.return_value = {'ok': False, 'error_code': 400,
+        'description': 'Bad Request: query is too old and response timeout expired or query ID is invalid'}
+    with patch.object(bot.requests, 'post', return_value=response), patch.object(bot, 'handle_new_omer_settings'):
+        update = callback_update('toggle:reminder', 1100)
+        bot.process_update(update)
+        bot.process_update(update)
+    assert storage.get_user_prefs('123')['reminder_enabled'] is True
+
+
+def test_saved_pages_expire_fail_closed_and_explicit_restart_is_stable(isolated_redis):
+    for uid in ('12', '123', '456', '789'):
+        storage.update_user_prefs(uid, {'reminder_enabled': True})
+    users, cursor = storage.reminder_user_batch('reminder_enabled')
+    assert cursor != '0' and len(cursor) == 32
+    isolated_redis.delete(storage.REMINDER_PAGE_PREFIX + cursor)
+    with pytest.raises(ValueError, match='expired'):
+        storage.reminder_user_batch('reminder_enabled', cursor)
+    with pytest.raises(ValueError, match='expired'):
+        storage.reminder_user_batch('reminder_enabled', '0')
+    restart = 'r.' + 'a' * 32
+    first = storage.reminder_user_batch('reminder_enabled', restart)
+    second = storage.reminder_user_batch('reminder_enabled', restart)
+    assert first == second
+    assert first[0]
+
+
+def test_deletion_scrubs_saved_memberships_and_notice_follows_cleanup(isolated_redis):
+    for uid in ('12', '123'):
+        storage.update_user_prefs(uid, {'reminder_enabled': True})
+    storage.reminder_user_batch('reminder_enabled')
+    with patch.object(bot, 'send_message_with_keyboard') as prompt:
+        bot.process_update(private_update(1200, text='/delete_my_data'))
+    confirmation = prompt.call_args.args[2][0][0]['callback_data']
+    def notice(*args, **kwargs):
+        assert not isolated_redis.exists('zmunah:user:123')
+        for key in isolated_redis.scan_iter(match=storage.REMINDER_PAGE_PREFIX + '*'):
+            assert '123' not in json.loads(isolated_redis.get(key)).get('users', [])
+        raise bot.TelegramDeliveryError('transient notice failure')
+    with patch.object(bot, 'send_message', side_effect=notice):
+        with pytest.raises(bot.TelegramDeliveryError):
+            bot.process_update(callback_update(confirmation, 1201))
+    pending = 'zmunah:privacy:123:delete_pending'
+    assert isolated_redis.ttl(pending) > 600
+    assert isolated_redis.exists('zmunah:user:12')
+    with patch.object(bot, 'send_message'):
+        bot.process_update(callback_update(confirmation, 1201))
+    assert not any(isolated_redis.exists(key) for key in storage.user_data_keys('123'))
+    assert isolated_redis.exists('zmunah:user:12')
+
+
+def test_real_fixed_population_complete_with_bookkeeping_churn(isolated_redis):
+    for uid in range(1, 101):
+        storage.update_user_prefs(str(uid), {'reminder_enabled': True})
+    cursor = '0'
+    seen = set()
+    for _ in range(500):
+        users, cursor = storage.reminder_user_batch('reminder_enabled', cursor)
+        assert len(users) <= 2
+        for uid in users:
+            key = f'zmunah:delivery:{uid}:evening:2026-04-04'
+            token = storage.acquire_claim(key)
+            if token:
+                storage.complete_claim(key, token, storage.EVENT_TTL)
+                seen.add(uid)
+        if cursor == '0':
+            break
+    else:
+        pytest.fail('bounded traversal did not finish')
+    assert seen == {str(uid) for uid in range(1, 101)}
+
+
+def test_stale_ack_does_not_hide_action_delivery_failure(isolated_redis):
+    response = Mock(); response.json.return_value = {'ok': False, 'error_code': 400, 'description': 'query ID is invalid'}
+    update = callback_update('toggle:reminder', 1300)
+    with patch.object(bot.requests, 'post', return_value=response), patch.object(bot, 'handle_new_omer_settings', side_effect=[bot.TelegramDeliveryError('transient action delivery'), None]) as action:
+        with pytest.raises(bot.TelegramDeliveryError):
+            bot.process_update(update)
+        assert storage.get_user_prefs('123')['reminder_enabled']
+        bot.process_update(update)
+        assert storage.get_user_prefs('123')['reminder_enabled']
+        assert action.call_count == 2
+
+
+def test_workflow_driver_resume_and_restart_keep_opaque_retry_identity():
+    import importlib.util
+    import urllib.error
+    spec = importlib.util.spec_from_file_location('reminder_resume_runner', '.github/scripts/run_reminders.py')
+    runner = importlib.util.module_from_spec(spec); spec.loader.exec_module(runner)
+    opener = Mock(); opener.open.side_effect = urllib.error.HTTPError('https://example.test', 503, 'unavailable', {}, None)
+    values = {'VERCEL_URL': 'https://example.test', 'CRON_SECRET': 'test', 'REMINDER_ENDPOINT': 'omer_reminder'}
+    for options in ({'RESUME_CURSOR': 'b' * 32}, {'RESTART_TRAVERSAL': 'true'}):
+        opener.reset_mock()
+        with patch.dict(os.environ, {**values, **options}, clear=True), patch.object(runner.urllib.request, 'build_opener', return_value=opener), patch.object(runner.time, 'sleep'):
+            assert runner.main() == 1
+        urls = [call.args[0].full_url for call in opener.open.call_args_list]
+        assert len(urls) == 3 and len(set(urls)) == 1
+        cursor = runner.urllib.parse.parse_qs(runner.urllib.parse.urlparse(urls[0]).query)['cursor'][0]
+        if 'RESUME_CURSOR' in options:
+            assert cursor == 'b' * 32
+        else:
+            assert cursor.startswith('r.') and len(cursor) == 34
+
+
+def test_pending_deletion_survives_completion_write_failure(isolated_redis):
+    storage.update_user_prefs('123', {'reminder_enabled': True})
+    with patch.object(bot, 'send_message_with_keyboard') as prompt:
+        bot.process_update(private_update(1400, text='/delete_my_data'))
+    data = prompt.call_args.args[2][0][0]['callback_data']
+    update = callback_update(data, 1401)
+    with patch.object(bot, 'send_message'), patch.object(bot, 'complete_claim', side_effect=redis.ConnectionError('completion unavailable')):
+        with pytest.raises(redis.ConnectionError):
+            bot.process_update(update)
+    assert storage.get_pending_deletion('123') is not None
+    with pytest.raises(RuntimeError, match='deletion is pending'):
+        bot.process_update(private_update(1402, text='/reminder on'))
+    assert not isolated_redis.exists('zmunah:user:123')
+    with patch.object(bot, 'send_message'):
+        bot.process_update(update)
+    assert storage.get_pending_deletion('123') is None
+    assert not any(isolated_redis.exists(key) for key in storage.user_data_keys('123'))
+
+
+def test_snapshot_contention_does_not_deadlock_deletion(isolated_redis):
+    with patch.object(bot, 'send_message_with_keyboard') as prompt:
+        bot.process_update(private_update(1500, text='/delete_my_data'))
+    update = callback_update(prompt.call_args.args[2][0][0]['callback_data'], 1501)
+    with storage.reminder_snapshot_lock(), patch.object(bot, 'send_message') as send:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            attempt = pool.submit(bot.process_update, update)
+            with pytest.raises(RuntimeError, match='snapshot busy'):
+                attempt.result(timeout=2)
+        send.assert_not_called()
+    with patch.object(bot, 'send_message'):
+        bot.process_update(update)
+    assert not any(isolated_redis.exists(key) for key in storage.user_data_keys('123'))
+
+
+def test_saved_page_metadata_is_bounded_and_has_expected_ttls(isolated_redis):
+    for uid in range(1, 8):
+        storage.update_user_prefs(str(uid), {'reminder_enabled': True})
+    _, cursor = storage.reminder_user_batch('reminder_enabled')
+    assert len(cursor) == 32
+    for key in isolated_redis.scan_iter(match=storage.REMINDER_PAGE_PREFIX + '*'):
+        page = json.loads(isolated_redis.get(key))
+        assert len(page.get('users', [])) <= 2
+        assert 0 < isolated_redis.ttl(key) <= 3600
+    for key in isolated_redis.scan_iter(match='zmunah:reminder_root:*'):
+        assert len(isolated_redis.get(key)) == 32
+        assert 3600 < isolated_redis.ttl(key) <= 72 * 3600
+    key = storage.REMINDER_PAGE_PREFIX + cursor
+    page = json.loads(isolated_redis.get(key))
+    page['users'] = ['1', '2', '3']
+    page.pop('scan', None); page['next'] = '0'
+    isolated_redis.set(key, json.dumps(page))
+    with pytest.raises(ValueError, match='invalid reminder page'):
+        storage.reminder_user_batch('reminder_enabled', cursor)

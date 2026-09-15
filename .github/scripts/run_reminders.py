@@ -1,6 +1,8 @@
 """Bounded GitHub Actions reminder pagination. Logs only aggregate counts/cursors."""
 import json
 import os
+import re
+import uuid
 import sys
 import time
 import urllib.error
@@ -28,7 +30,15 @@ def main():
     if not secret:
         raise ValueError('missing secret')
     opener = urllib.request.build_opener(NoRedirect())
-    cursor = '0'
+    cursor = os.environ.get('RESUME_CURSOR') or '0'
+    restart = os.environ.get('RESTART_TRAVERSAL', '').lower() == 'true'
+    if restart:
+        if cursor != '0':
+            raise ValueError('choose resume or restart, not both')
+        # Generated once; all retries keep the same fresh traversal identity.
+        cursor = 'r.' + uuid.uuid4().hex
+    if not re.fullmatch(r'(?:0|[0-9a-f]{32}|r\.[0-9a-f]{32})', cursor):
+        raise ValueError('invalid resume cursor')
     started = time.monotonic()
     for page in range(MAX_PAGES):
         url = base + '/api/' + endpoint + '?' + urllib.parse.urlencode({'cursor': cursor})
@@ -52,7 +62,7 @@ def main():
                 time.sleep(5 * (attempt + 1))
         print(json.dumps({k: result.get(k) for k in ('status', 'reason', 'attempted', 'sent', 'failed', 'skipped', 'cursor')}))
         cursor = result['cursor']
-        if not isinstance(cursor, str) or not all(part.isdigit() for part in cursor.split(':')) or len(cursor) > 100:
+        if not isinstance(cursor, str) or not re.fullmatch(r'(?:0|[0-9a-f]{32})', cursor):
             raise RuntimeError('invalid continuation')
         if cursor == '0':
             return 0

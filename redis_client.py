@@ -6,6 +6,8 @@ Uses Upstash-compatible Redis (standard redis-py client).
 
 import json
 import secrets
+import re
+from datetime import date
 from copy import deepcopy
 from contextvars import ContextVar
 from contextlib import contextmanager
@@ -321,13 +323,15 @@ def release_claim(key: str, token: str) -> bool:
         "return redis.call('DEL', KEYS[1]) end return 0", 1, key, token))
 
 
-def complete_claim(key: str, token: str, ttl: int = DONE_TTL, *, success_key: str | None = None) -> bool:
+def complete_claim(key: str, token: str, ttl: int = DONE_TTL, *, success_key: str | None = None, cleanup_keys=()) -> bool:
     """Record success and release the owned lease in one transaction."""
     return bool(get_redis_client().eval(
         "if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end "
         "redis.call('SET', KEYS[2], '1', 'EX', ARGV[2]); "
-        "redis.call('DEL', KEYS[1], KEYS[3]); return 1",
-        3, key, success_key or key + ':done', key + ':budget', token, ttl))
+        "redis.call('DEL', KEYS[1], KEYS[3]); "
+        "for i=4,#KEYS do redis.call('DEL', KEYS[i]) end return 1",
+        3 + len(cleanup_keys), key, success_key or key + ':done', key + ':budget',
+        *cleanup_keys, token, ttl))
 
 
 def claim_completed(key: str, *, success_key: str | None = None) -> bool:
@@ -363,41 +367,144 @@ def export_user_data(user_id: str) -> dict:
     return result
 
 
+REMINDER_PAGE_TTL = 3600
+REMINDER_ROOT_TTL = EVENT_TTL
+MAX_SCAN_CANDIDATES = 1000
+REMINDER_PAGE_PREFIX = 'zmunah:reminder_page:'
+SNAPSHOT_LOCK_KEY = 'zmunah:reminder_snapshot_lock'
+
+
+@contextmanager
+def reminder_snapshot_lock():
+    """Never acquire/wait for a user lock while holding this snapshot lock."""
+    token = acquire_claim(SNAPSHOT_LOCK_KEY)
+    if token is None:
+        raise RuntimeError('reminder snapshot busy')
+    try:
+        yield
+    finally:
+        release_claim(SNAPSHOT_LOCK_KEY, token)
+
+
+def _read_reminder_page(token, scope=None):
+    if not isinstance(token, str) or not re.fullmatch(r'[0-9a-f]{32}', token):
+        raise ValueError('invalid reminder cursor')
+    raw = get_redis_client().get(REMINDER_PAGE_PREFIX + token)
+    if raw is None or len(raw) > 4096:
+        raise ValueError('missing or expired reminder cursor')
+    page = json.loads(raw)
+    if not isinstance(page, dict) or not isinstance(page.get('scope'), str) or len(page['scope']) > 80:
+        raise ValueError('invalid reminder page')
+    if scope is not None and page['scope'] != scope:
+        raise ValueError('mismatched reminder cursor')
+    if 'scan' in page:
+        if set(page) != {'scope', 'scan'} or not re.fullmatch(r'[0-9]{1,20}', str(page['scan'])):
+            raise ValueError('invalid reminder page')
+    else:
+        if set(page) != {'scope', 'users', 'next'} or not isinstance(page['users'], list) or len(page['users']) > 2:
+            raise ValueError('invalid reminder page')
+        if any(not isinstance(uid, str) or not re.fullmatch(r'[0-9]{1,20}', uid) for uid in page['users']):
+            raise ValueError('invalid reminder page')
+        if page['next'] != '0' and not re.fullmatch(r'[0-9a-f]{32}', str(page['next'])):
+            raise ValueError('invalid reminder page')
+    return page
+
+
+def _expand_reminder_page(token, page):
+    """Consume a SCAN cursor once; atomically save all bounded overflow identities."""
+    client = get_redis_client()
+    cursor, keys = client.scan(int(page['scan']), match=USER_PREFS_KEY_PREFIX + '*', count=20)
+    if len(keys) > MAX_SCAN_CANDIDATES:
+        raise ValueError('reminder scan page exceeds limit')
+    users = sorted({key[len(USER_PREFS_KEY_PREFIX):] for key in keys
+                    if re.fullmatch(r'zmunah:user:[0-9]{1,20}', key)})
+    groups = [users[i:i + 2] for i in range(0, len(users), 2)] or [[]]
+    tokens = [token] + [secrets.token_hex(16) for _ in groups[1:]]
+    continuation = secrets.token_hex(16) if cursor else '0'
+    records = []
+    for index, group in enumerate(groups):
+        next_token = tokens[index + 1] if index + 1 < len(tokens) else continuation
+        records.append((tokens[index], {'scope': page['scope'], 'users': group, 'next': next_token}))
+    if cursor:
+        records.append((continuation, {'scope': page['scope'], 'scan': str(cursor)}))
+    with client.pipeline(transaction=True) as pipe:
+        for page_token, record in records:
+            pipe.set(REMINDER_PAGE_PREFIX + page_token, json.dumps(record), ex=REMINDER_PAGE_TTL)
+        pipe.execute()
+    return records[0][1]
+
+
+def _remove_user_from_reminder_pages(user_id):
+    """Called only with the snapshot lock, including throughout owned deletion."""
+    client = get_redis_client()
+    for key in client.scan_iter(match=REMINDER_PAGE_PREFIX + '*', count=100):
+        raw = client.get(key)
+        if raw is None:
+            continue
+        page = _read_reminder_page(key[len(REMINDER_PAGE_PREFIX):])
+        if user_id in page.get('users', []):
+            page['users'] = [uid for uid in page['users'] if uid != user_id]
+            # Preserve its original expiry and linked position; no positional offset.
+            client.set(key, json.dumps(page), xx=True, keepttl=True)
+
+
 def delete_user_data(user_id: str, preserve_keys=()) -> None:
-    """Remove owned data. A missing preference record has reminders disabled by default."""
+    """Remove owned records and saved recipient membership under the snapshot lock."""
     client = get_redis_client()
-    keys = [key for key in user_data_keys(user_id) if key not in preserve_keys]
-    for start in range(0, len(keys), 100):
-        client.delete(*keys[start:start + 100])
+    with reminder_snapshot_lock():
+        keys = [key for key in user_data_keys(user_id) if key not in preserve_keys]
+        for start in range(0, len(keys), 100):
+            client.delete(*keys[start:start + 100])
+        _remove_user_from_reminder_pages(str(user_id))
 
 
-def reminder_user_batch(field: str, cursor: str = '0', limit: int = 2) -> tuple[list[str], str]:
-    """Bound sends even when Redis SCAN returns more than its COUNT hint.
+def reminder_user_batch(field: str, cursor: str = '0', limit: int = 2, *, scope: str | None = None) -> tuple[list[str], str]:
+    """Read a stable two-candidate page; retries preserve exact recipient identity.
 
-    Cursor stores the SCAN position and offset within that returned page. Page
-    contents can change during scanning; completed event claims make repeats safe.
+    Zero selects the existing event root or initializes it. Other cursors are
+    opaque saved-page tokens. Expired/missing saved pages fail closed.
     """
-    if field not in ('reminder_enabled', 'shabbat_reminder_enabled'):
-        raise ValueError('invalid reminder field')
-    parts = cursor.split(':')
-    scan_cursor = int(parts[0])
-    offset = int(parts[1]) if len(parts) == 2 else 0
-    if scan_cursor < 0 or offset < 0 or len(parts) > 2:
-        raise ValueError('invalid cursor')
+    if field not in ('reminder_enabled', 'shabbat_reminder_enabled') or limit != 2:
+        raise ValueError('invalid reminder batch configuration')
+    scope = scope or field + ':' + date.today().isoformat()
+    if not re.fullmatch(r'[a-z_]+:[0-9-]{10}', scope):
+        raise ValueError('invalid reminder scope')
     client = get_redis_client()
-    next_cursor, keys = client.scan(scan_cursor, match=USER_PREFS_KEY_PREFIX + '*', count=20)
-    keys = sorted(keys)
-    users = []
-    stop = min(offset + 20, len(keys))
-    for position in range(offset, stop):
-        user_id = keys[position][len(USER_PREFS_KEY_PREFIX):]
-        if user_id.isdigit() and get_user_prefs(user_id).get(field) is True:
-            users.append(user_id)
-        if len(users) == limit:
-            next_position = position + 1
-            resume = f'{scan_cursor}:{next_position}' if next_position < len(keys) else str(next_cursor)
-            return users, resume
-    return users, (f"{scan_cursor}:{stop}" if stop < len(keys) else str(next_cursor))
+    with reminder_snapshot_lock():
+        if cursor == '0' or (isinstance(cursor, str) and re.fullmatch(r'r\.[0-9a-f]{32}', cursor)):
+            root_key = 'zmunah:reminder_root:' + scope
+            if cursor != '0':
+                root_key += ':restart:' + cursor[2:]
+            token = client.get(root_key)
+            if token is None:
+                token = secrets.token_hex(16)
+                with client.pipeline(transaction=True) as pipe:
+                    pipe.set(REMINDER_PAGE_PREFIX + token,
+                             json.dumps({'scope': scope, 'scan': '0'}), ex=REMINDER_PAGE_TTL)
+                    pipe.set(root_key, token, ex=REMINDER_ROOT_TTL)
+                    pipe.execute()
+        else:
+            token = cursor
+        page = _read_reminder_page(token, scope)
+        if 'scan' in page:
+            page = _expand_reminder_page(token, page)
+        if page['next'] != '0':
+            _read_reminder_page(page['next'], scope)
+        candidates = page['users']
+        continuation = page['next']
+    # The global page lock has been released before any user lock can be taken.
+    users = [uid for uid in candidates if get_user_prefs(uid).get(field) is True]
+    return users, continuation
+
+
+def get_pending_deletion(user_id):
+    raw = get_redis_client().get(f'zmunah:privacy:{user_id}:delete_pending')
+    if raw is None:
+        return None
+    pending = json.loads(raw)
+    if not isinstance(pending, dict) or not re.fullmatch(r'[0-9a-f]{24}', str(pending.get('nonce', ''))) or type(pending.get('update_id')) is not int:
+        raise ValueError('invalid pending deletion')
+    return pending
 
 
 def consume_update_budget(user_id: str, receipt_key: str, limit: int = 30, window: int = 60) -> bool:

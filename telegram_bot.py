@@ -21,13 +21,14 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from redis_client import consume_update_budget, preference_operation, update_user_prefs, mutate_user_prefs, acquire_claim, release_claim, complete_claim, claim_completed, export_user_data, delete_user_data, get_redis_client, get_user_prefs, set_user_prefs, DEFAULT_PREFERENCES, mark_omer_counted, was_omer_counted
+from redis_client import DONE_TTL, get_pending_deletion, consume_update_budget, preference_operation, update_user_prefs, mutate_user_prefs, acquire_claim, release_claim, complete_claim, claim_completed, export_user_data, delete_user_data, get_redis_client, get_user_prefs, set_user_prefs, DEFAULT_PREFERENCES, mark_omer_counted, was_omer_counted
 from api import poster as poster_api
 from media_validation import MAX_POSTER_TEXT_LENGTH, MAX_POSTER_CITIES
 from cities import build_city_lookup, get_cities_list, SPECIAL_OFFSET_CITIES, DEFAULT_CANDLE_OFFSET
 from omer_utils import is_omer_period, get_omer_day, get_omer_info_for_time, ISRAEL_TZ, omer_event_context
 
 _request_time = ContextVar('bot_request_time', default=None)
+POSTER_CORRECTION_MESSAGE = f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.'
 
 
 def build_poster_from_payload(payload):
@@ -197,6 +198,14 @@ def answer_callback_query(callback_id: str, text: str = None) -> Dict[str, Any]:
     if text:
         payload["text"] = text
     response = requests.post(url, json=payload, timeout=30)
+    try:
+        result = response.json()
+    except ValueError:
+        return _telegram_result(response)
+    if isinstance(result, dict) and result.get('error_code') == 400:
+        description = str(result.get('description', '')).lower()
+        if 'query is too old' in description or 'query id is invalid' in description or 'query_id_invalid' in description:
+            return {'ok': False, 'stale': True}
     return _telegram_result(response)
 
 
@@ -936,7 +945,7 @@ def handle_poster(update: Dict[str, Any], force_omer: bool = False) -> None:
             send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
 
     except ValueError:
-        send_message(chat_id, f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.')
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_omer(update: Dict[str, Any]) -> None:
@@ -1552,7 +1561,7 @@ def handle_start_poster_shabbat(chat_id: int, user_id: str) -> None:
         send_photo_with_keyboard(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!", keyboard)
 
     except ValueError:
-        send_message(chat_id, f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.')
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_start_poster_omer(chat_id: int, user_id: str) -> None:
@@ -1590,7 +1599,7 @@ def handle_start_poster_omer(chat_id: int, user_id: str) -> None:
         send_photo_with_keyboard(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!", keyboard)
 
     except ValueError:
-        send_message(chat_id, f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.')
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_preview_shabbat(chat_id: int, user_id: str) -> None:
@@ -1629,7 +1638,7 @@ def handle_preview_shabbat(chat_id: int, user_id: str) -> None:
         send_photo(chat_id, poster_bytes, "👆 כך ייראה פוסטר השבת שלך עם ההגדרות הנוכחיות")
 
     except ValueError:
-        send_message(chat_id, f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.')
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_preview_omer(chat_id: int, user_id: str) -> None:
@@ -1670,7 +1679,7 @@ def handle_preview_omer(chat_id: int, user_id: str) -> None:
         send_photo(chat_id, poster_bytes, "👆 כך ייראה פוסטר העומר שלך עם ההגדרות הנוכחיות")
 
     except ValueError:
-        send_message(chat_id, f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.')
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_show_saved_image(chat_id: int, user_id: str) -> None:
@@ -2254,7 +2263,7 @@ def handle_start_poster(chat_id: int, user_id: str) -> None:
             send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
 
     except ValueError:
-        send_message(chat_id, f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.')
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_start_omer_settings(chat_id: int, user_id: str) -> None:
@@ -2340,7 +2349,7 @@ def handle_start_omer_poster(chat_id: int, user_id: str) -> None:
         send_photo_with_keyboard(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!", keyboard)
 
     except ValueError:
-        send_message(chat_id, f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.')
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_back_to_start(chat_id: int, user_id: str) -> None:
@@ -2459,7 +2468,7 @@ def handle_show_preview(chat_id: int, user_id: str) -> None:
             caption = "👆 כך ייראה הפוסטר שלך עם ההגדרות הנוכחיות"
         send_photo(chat_id, poster_bytes, caption)
     except ValueError:
-        send_message(chat_id, f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.')
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_text_message(update: Dict[str, Any]) -> None:
@@ -2600,15 +2609,18 @@ def process_update(update: Dict[str, Any]) -> None:
                 return
             raise RuntimeError('update processing is busy')
         try:
+            pending = get_pending_deletion(user_id)
+            if pending and update.get('callback_query', {}).get('data') != 'privacy:delete:' + pending['nonce']:
+                raise RuntimeError('confirmed deletion is pending')
             if not consume_update_budget(user_id, key + ':budget'):
                 raise UpdateRateLimited('update quota exceeded')
             time_token = _request_time.set(datetime.now(ISRAEL_TZ))
             try:
                 with nullcontext() if private_flow else preference_operation(user_id, update["update_id"]):
-                    _route_update(update)
+                    cleanup_keys = _route_update(update) or ()
             finally:
                 _request_time.reset(time_token)
-            if not complete_claim(key, token, success_key=success_key):
+            if not complete_claim(key, token, success_key=success_key, cleanup_keys=cleanup_keys):
                 raise RuntimeError('update lease expired')
         except Exception:
             release_claim(key, token)
@@ -2743,7 +2755,8 @@ def handle_privacy_confirmation(update):
         send_message(chat_id, 'הפעולה בוטלה.')
         return
     key = f'zmunah:privacy:{user_id}:{action}'
-    expected = client.get(key)
+    pending = get_pending_deletion(user_id) if action == 'delete' else None
+    expected = pending['nonce'] if pending else client.get(key)
     if not expected or not secrets.compare_digest(expected, nonce):
         send_message(chat_id, 'האישור פג תוקף או אינו מתאים. התחל שוב מהפקודה.')
         return
@@ -2756,10 +2769,16 @@ def handle_privacy_confirmation(update):
             _telegram_result(response)
         client.delete(key)
     else:
-        # Disable first, then confirm and remove while holding the user's send lock.
+        pending_key = f'zmunah:privacy:{user_id}:delete_pending'
+        if pending is None:
+            client.set(pending_key, json.dumps({'nonce': nonce, 'update_id': update['update_id']}), ex=DONE_TTL, nx=True)
+        # Durable confirmed proof survives nonce expiry, cleanup failure and send failure.
         update_user_prefs(user_id, {'reminder_enabled': False, 'shabbat_reminder_enabled': False})
-        send_message(chat_id, 'המידע השמור יימחק כעת והתזכורות הופסקו. עותקים בטלגרם אינם נמחקים.')
         delete_user_data(user_id, preserve_keys=(
             f'zmunah:delivery:{user_id}:processing',
             f'zmunah:delivery:{user_id}:update:{update["update_id"]}',
+            pending_key,
         ))
+        send_message(chat_id, 'המידע השמור נמחק והתזכורות הופסקו. עותקים בטלגרם אינם נמחקים.')
+        # Removed atomically with the global success receipt by process_update.
+        return (pending_key,)

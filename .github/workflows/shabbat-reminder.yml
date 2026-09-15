@@ -4,6 +4,16 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
+    inputs:
+      resume_cursor:
+        description: 'Opaque cursor from a failed run (leave empty for normal start)'
+        required: false
+        type: string
+      restart_traversal:
+        description: 'Explicitly start a fresh traversal after saved pages expire'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -22,5 +32,7 @@ jobs:
         env:
           VERCEL_URL: ${{ secrets.VERCEL_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          RESUME_CURSOR: ${{ inputs.resume_cursor }}
+          RESTART_TRAVERSAL: ${{ inputs.restart_traversal }}
           REMINDER_ENDPOINT: shabbat_reminder
         run: python3 .github/scripts/run_reminders.py

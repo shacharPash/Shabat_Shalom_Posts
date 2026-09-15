@@ -134,13 +134,35 @@ and sends nothing. The morning window is 06:00-12:00 local time and uses the pri
 evening's event identity. Morning reminders can cover missed evening runs but do
 not send the missed evening poster or its blessing text.
 
-Each request inspects at most twenty preference records and attempts at most two recipients and returns a resumable `cursor`.
+Each request inspects at most two saved candidates and attempts at most two
+recipients. Candidate identities are saved in linked Redis pages before sending;
+retries of an input page reuse exactly those identities. SCAN advances at page
+boundaries, never through a positional offset into a newly fetched response.
+Each SCAN response is capped at 1000 candidates and divided into two-candidate
+pages. Each page expires after one hour. Root pointers contain only event scope
+and an opaque token, no recipient IDs, and remain for 72 hours so expired runs
+fail explicitly rather than silently reseeding. The traversal is not a complete
+subscription snapshot; enrollment changes during traversal can wait for another
+run, but delivery bookkeeping does not cause unchanged subscribers to be omitted.
+
 The workflow follows at most 100 pages, retries a failed page up to three times,
 and fails on unresolved recipient failures, pagination caps or transport errors.
-The script has a 25-minute budget and the job a 30-minute timeout. Resume a stopped
-run using its reported cursor in an authenticated request; rerunning from cursor
-zero also safely revisits completed events. The SCAN traversal is not a snapshot:
-subscription changes during traversal may wait until a later scan.
+The script has a 25-minute budget and the job a 30-minute timeout. For a failed
+run, dispatch the workflow with its logged `resume_cursor` in the `resume_cursor`
+input. This value is an opaque random page token, never a recipient ID.
+
+If a page expired, use the explicit `restart_traversal` checkbox and leave
+`resume_cursor` empty. The driver generates one fresh `r.<128-bit-token>` cursor
+and keeps it unchanged across retries. Existing event success receipts still
+suppress completed sends. For a manual authenticated request, pass the saved
+`cursor` value to the same reminder route. To explicitly restart, generate a new
+32-character lowercase hexadecimal random token and use `cursor=r.<token>`;
+retry that exact value if the initial fresh page fails. Missing, invalid or
+expired ordinary continuation tokens fail closed. Starting with `cursor=0`
+reuses the existing event root; it does not implicitly replace an expired run.
+Completed runs also require explicit restart after their saved pages expire.
+Resume/restart remains subject to the same active event and delivery time guards.
+No manual Redis editing is needed.
 
 The response and logs contain `attempted`, `sent`, `failed`, `skipped`, `status`
 and `cursor`. Partial delivery failures return HTTP 503, allowing both Actions and
@@ -158,12 +180,26 @@ The JSON document is assembled in memory and contains only that user's stored
 preferences, state and reminder/count records. Privacy-flow and webhook-processing
 metadata is excluded. Export confirmation metadata is removed after success.
 
-Deletion disables both reminder types, then removes the user's preferences,
-conversation state, legacy sent/count records, delivery leases, success and
-mutation receipts, and privacy confirmation tokens. Other users' keys are kept.
-The active user and update processing locks remain until cleanup finishes, then are released. Telegram's
-copies of messages, photos and exported documents are not deleted. `/reset`
-continues to reset settings; it is not a data deletion command.
+Deletion first persists proof of the already-confirmed operation for up to seven
+days. This record survives the initial ten-minute nonce expiry, partial cleanup,
+and failed delivery of the completion notice. While it is pending, reminders are
+suppressed and unrelated bot actions wait for the deletion to finish. Retrying
+the confirmed callback, including clicking its same confirmation button again,
+resumes cleanup without requiring the expired initial nonce.
+
+Cleanup removes the user's preferences, conversation state, legacy sent/count
+records, delivery/mutation records, privacy tokens, and membership in all live
+recipient pages. Exact ownership keeps other users' data. Page creation and
+deletion share an owned snapshot lock, so a new saved page cannot retain the user's
+ID after cleanup. This lock is released before any reminder takes a user lock;
+contention fails retryably instead of waiting in an unsafe lock order.
+
+The deletion success notice is sent only after owned data and page membership
+cleanup succeeds. The pending proof and active update processing claim are removed
+atomically with the global successful-update receipt after the notice succeeds.
+The user processing lock is then released. Failures retain proof for retry and do
+not claim deletion completed. Telegram's copies of messages, photos and exported
+documents are not deleted. `/reset` remains a settings reset.
 
 Every successfully processed webhook update retains a pseudonymous anti-replay receipt for seven days:
 a SHA-256 digest of the Telegram update ID with the constant value `1`. It contains
@@ -225,3 +261,19 @@ is removed atomically on success. Exceeding quota returns 429 with
 confirmed deletion. Retaining it prevents privacy commands from resetting quota.
 Global seven-day success receipts contain no actor mapping and survive deletion;
 user-owned processing and mutation records remain deletable.
+
+## Callback acknowledgements and recovery metadata
+
+Telegram's terminal expired/invalid callback-query acknowledgement response does
+not prevent an authenticated, deduplicated action from proceeding. Genuine action
+storage or message/photo delivery errors remain retryable.
+
+Saved candidate pages live at `zmunah:reminder_page:<opaque-token>` for one hour,
+with at most two candidate IDs per page. Their memberships are removed on user
+deletion and excluded from the private data export as transient processing data.
+Root pointers at `zmunah:reminder_root:<scope>` (or with a fresh-run suffix) contain
+no recipient IDs and expire after 72 hours. The snapshot lock is token-owned and
+expires after 600 seconds. Confirmed-but-pending deletion proof is stored at
+`zmunah:privacy:<user_id>:delete_pending` for at most seven days, is excluded from
+export, and is removed on completed deletion. These are operational lifetimes,
+not promises about copies retained by Telegram or infrastructure backups.

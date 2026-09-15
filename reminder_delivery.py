@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 from bot_auth import authenticate_cron, send_json
 from omer_utils import ISRAEL_TZ, omer_event_context
 from redis_client import (acquire_claim, release_claim, complete_claim, claim_completed,
-                          get_user_prefs, reminder_user_batch, was_omer_counted, EVENT_TTL)
+                          get_user_prefs, get_pending_deletion, reminder_user_batch, was_omer_counted, EVENT_TTL)
 from telegram_bot import user_processing
 
 
@@ -31,14 +31,14 @@ def run_reminders(handler, secret, kind, send, eligible=None):
             response = {'status': 'skipped', 'reason': 'outside_delivery_window', 'cursor': '0', **counts}
         else:
             field = 'shabbat_reminder_enabled' if kind == 'shabbat' else 'reminder_enabled'
-            users, cursor = ([target], '0') if target else reminder_user_batch(field, query.get('cursor', ['0'])[0])
+            users, cursor = ([target], '0') if target else reminder_user_batch(field, query.get('cursor', ['0'])[0], scope=f"{kind}:{context['event_id']}")
             for user_id in users:
                 key = f"zmunah:delivery:{user_id}:{kind}:{context['event_id']}"
                 token = None
                 try:
                     with user_processing(user_id):
                         # Re-read after acquiring the lock, including for test mode.
-                        if get_user_prefs(user_id).get(field) is not True:
+                        if get_pending_deletion(user_id) is not None or get_user_prefs(user_id).get(field) is not True:
                             counts['skipped'] += 1
                             continue
                         if kind == 'morning' and (was_omer_counted(user_id, context['event_id']) or was_omer_counted(user_id, context['day'])):
