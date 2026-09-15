@@ -210,3 +210,25 @@ def test_decoded_upload_at_limit_is_accepted():
     raw += b"\0" * (3 * 1024 * 1024 - len(raw))
     result = poster.build_poster_from_payload({"imageBase64": base64.b64encode(raw).decode(), "omerMode": True, "omerDay": 1})
     assert result.startswith(b"\x89PNG")
+
+
+@pytest.mark.parametrize("supplied_offset,effective_offset", [(None, 20), (40, 40)])
+def test_coordinate_city_defaults_without_mutating_caller(monkeypatch, supplied_offset, effective_offset):
+    import copy
+    city = {"name": "ירושלים", "lat": 32.1, "lon": 34.8}
+    if supplied_offset is not None:
+        city["candle_offset"] = supplied_offset
+    payload = {"startDate": "2025-01-24", "cities": [city]}
+    original = copy.deepcopy(payload)
+    actual_cities = []
+    real_render = poster.generate_poster
+
+    def observe_render(**kwargs):
+        actual_cities.extend(copy.deepcopy(kwargs["cities"]))
+        return real_render(**kwargs)
+
+    monkeypatch.setattr(poster, "generate_poster", observe_render)
+    result = poster.build_poster_from_payload(payload)
+    assert result.startswith(b"\x89PNG")
+    assert actual_cities == [{"name": "ירושלים", "lat": 32.1, "lon": 34.8, "candle_offset": effective_offset}]
+    assert payload == original

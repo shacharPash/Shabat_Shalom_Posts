@@ -160,3 +160,22 @@ def test_vercel_response_limit(monkeypatch):
 def test_in_process_output_does_not_inherit_http_limit(monkeypatch):
     monkeypatch.setattr(poster, "generate_poster", lambda **kwargs: b"x" * 4_400_001)
     assert len(poster.build_poster_from_payload({})) == 4_400_001
+
+
+def test_coordinate_city_without_offset_renders(client):
+    result = client.post("/poster", json={
+        "startDate": "2025-01-24",
+        "cities": [{"name": "ירושלים", "lat": 31.779737, "lon": 35.209554}],
+    })
+    assert result.status_code == 200
+    assert result.content.startswith(b"\x89PNG")
+
+
+def test_vercel_coordinate_city_without_offset_renders(monkeypatch):
+    monkeypatch.setattr(poster._rate_limiter, "check", lambda ip: (True, 9))
+    status, headers, body = invoke_vercel(json.dumps({
+        "startDate": "2025-01-24",
+        "cities": [{"name": "ירושלים", "lat": 31.779737, "lon": 35.209554}],
+    }).encode())
+    assert status == 200
+    assert body.startswith(b"\x89PNG")

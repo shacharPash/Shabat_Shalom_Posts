@@ -41,11 +41,16 @@ def build_poster_from_payload(payload: Dict[str, Any], *, allow_local_image=Fals
     validate_payload(payload, allow_local_image=allow_local_image)
     payload = payload.copy()
     # Keep explicit coordinate objects for trusted bot/CLI callers and map UI names.
-    if payload.get("cities") and not all(
-        isinstance(city, dict) and "lat" in city and "lon" in city
-        for city in payload["cities"]
-    ):
-        map_city_payload(payload, CITY_BY_NAME)
+    if payload.get("cities"):
+        if all(
+            isinstance(city, dict) and "lat" in city and "lon" in city
+            for city in payload["cities"]
+        ):
+            payload["cities"] = [
+                {"candle_offset": 20, **city} for city in payload["cities"]
+            ]
+        else:
+            map_city_payload(payload, CITY_BY_NAME)
     temporary_path = None
     try:
         if payload.get("imageBase64") is not None:
