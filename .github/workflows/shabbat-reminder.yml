@@ -2,22 +2,25 @@ name: Shabbat Reminder
 
 on:
   schedule:
-    # Run Friday mornings at 5:00 UTC (8:00 Israel summer time / 7:00 winter time)
-    # Also check for Erev Yom Tov on all days
-    - cron: '0 5 * * 5'   # Every Friday at 5:00 UTC
-    - cron: '0 5 * * *'   # Every day at 5:00 UTC (for Erev Yom Tov)
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shabbat-reminder
+  cancel-in-progress: false
 
 jobs:
-  send-shabbat-reminder:
+  send-reminders:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 30
     steps:
-      - name: Trigger Shabbat Reminder Check
-        run: |
-          curl -X GET "${{ secrets.VERCEL_URL }}/api/shabbat_reminder" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            --fail-with-body \
-            --max-time 60
-
+      - uses: actions/checkout@v4
+      - name: Send bounded reminder batches
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          REMINDER_ENDPOINT: shabbat_reminder
+        run: python3 .github/scripts/run_reminders.py

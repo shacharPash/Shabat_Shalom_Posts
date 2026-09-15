@@ -11,6 +11,8 @@ from PIL import Image, UnidentifiedImageError
 
 MAX_REQUEST_BODY_BYTES = 4_400_000
 MAX_RESPONSE_BYTES = 4_400_000
+MAX_POSTER_TEXT_LENGTH = 500
+MAX_POSTER_CITIES = 12
 MAX_IMAGE_BYTES = 3 * 1024 * 1024
 MAX_SOURCE_PIXELS = 20_000_000
 MAX_SOURCE_DIMENSION = 12_000
@@ -81,7 +83,7 @@ def validate_payload(payload, *, allow_local_image=False):
     if payload.get("image") is not None and not allow_local_image:
         raise InputError("יש להעלות קובץ תמונה")
     for name in ("message", "leiluyNeshama", "overrideMainTitle", "overrideSubtitle"):
-        _text(payload.get(name), 500)
+        _text(payload.get(name), MAX_POSTER_TEXT_LENGTH)
     for name in ("hideDedication", "hideBlessing", "showWatermark", "flexibleAspect", "omerMode"):
         if name in payload and type(payload[name]) is not bool:
             raise InputError()
@@ -113,7 +115,7 @@ def validate_payload(payload, *, allow_local_image=False):
     for group in (cities, custom):
         if group is not None and not isinstance(group, list):
             raise InputError()
-    if len(cities or []) + len(custom or []) > 12:
+    if len(cities or []) + len(custom or []) > MAX_POSTER_CITIES:
         raise InputError()
     for city in cities or []:
         if isinstance(city, str):
