@@ -6,22 +6,24 @@ import json
 import os
 import sys
 from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 from http.server import BaseHTTPRequestHandler
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from make_shabbat_posts import find_next_sequence
-from hebcal_api import get_parsha_from_hebcal
+from hebcal_api import get_parsha_from_hebcal, hebcal_request_sequence
 from translations import translate_yomtov
 
 
+@hebcal_request_sequence()
 def get_upcoming_events():
     """Get upcoming Shabbat/holiday events for one year ahead."""
     events = []
     current_date = date.today()
     # Calculate end date as one year from today
-    one_year_ahead = date(current_date.year + 1, current_date.month, current_date.day)
+    one_year_ahead = current_date + relativedelta(years=1)
 
     i = 0
     while current_date < one_year_ahead:

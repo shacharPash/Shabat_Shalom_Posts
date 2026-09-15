@@ -39,7 +39,7 @@ def no_external_connections():
 def isolated_redis():
     executable = shutil.which('redis-server')
     assert executable, 'redis-server is required for critical concurrency tests'
-    with tempfile.TemporaryDirectory(prefix='shabat-redis-', dir='/private/tmp') as folder:
+    with tempfile.TemporaryDirectory(prefix='shabat-redis-', dir=os.path.realpath('/tmp')) as folder:
         path = folder + '/redis.sock'
         process = subprocess.Popen([executable, '--port', '0', '--unixsocket', path,
                                     '--unixsocketperm', '700', '--save', '',
@@ -54,19 +54,28 @@ def isolated_redis():
             return previous_connect(sock, address)
         try:
             with patch.object(socket.socket, 'connect', connect):
-                client = redis.Redis(unix_socket_path=path, decode_responses=True,
-                                     socket_timeout=2, socket_connect_timeout=2)
+                # Probe with an explicitly closed socket before constructing the
+                # client. redis-py 5 can leak sockets on failed startup connects.
                 for _ in range(100):
                     try:
-                        if client.ping():
-                            break
-                    except redis.ConnectionError:
+                        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+                            probe.settimeout(.1)
+                            probe.connect(path)
+                        break
+                    except OSError:
+                        if process.poll() is not None:
+                            pytest.fail('isolated Redis exited during startup')
                         time.sleep(.02)
                 else:
                     pytest.fail('isolated Redis failed to start')
-                with patch.object(storage, '_redis_client', client):
-                    yield client
-                client.close()
+                client = redis.Redis(unix_socket_path=path, decode_responses=True,
+                                     socket_timeout=2, socket_connect_timeout=2)
+                try:
+                    assert client.ping()
+                    with patch.object(storage, '_redis_client', client):
+                        yield client
+                finally:
+                    client.close()
         finally:
             process.terminate()
             process.wait(timeout=5)

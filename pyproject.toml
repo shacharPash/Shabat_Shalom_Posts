@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# New warnings fail release validation instead of disappearing in CI output.
+filterwarnings = ["error"]
+
+[tool.ruff]
+target-version = "py312"
+# Core correctness checks across production and tests; cosmetic legacy debt is
+# intentionally outside this gate. Keep undefined names and invalid syntax fatal.
+exclude = [".superpowers", ".venv", "venv"]
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+
+[tool.mypy]
+python_version = "3.12"
+# Maintained typed boundaries. Legacy rendering/bot modules remain outside this
+# gate until their dynamic library interfaces can be annotated without churn.
+files = ["run_tests.py", "hebcal_api.py", "scripts/update_parsha_data.py", "bot_auth.py", "media_validation.py", "poster_http.py"]
+follow_imports = "skip"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true

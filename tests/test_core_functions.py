@@ -9,6 +9,7 @@ Tests cover:
 """
 
 import os
+import tempfile
 import sys
 import unittest
 from datetime import date
@@ -182,7 +183,9 @@ class TestImageHelpers(unittest.TestCase):
         """fit_background should create image of correct size."""
         # Create a test image file
         test_img = Image.new("RGB", (800, 600), color="red")
-        temp_path = "/tmp/test_image.png"
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        temp_path = os.path.join(temp_dir.name, 'test_image.png')
         test_img.save(temp_path)
 
         try:
@@ -195,7 +198,9 @@ class TestImageHelpers(unittest.TestCase):
     def test_fit_background_different_sizes(self):
         """fit_background should work with various target sizes."""
         test_img = Image.new("RGB", (1920, 1080), color="blue")
-        temp_path = "/tmp/test_image_wide.png"
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        temp_path = os.path.join(temp_dir.name, 'test_image_wide.png')
         test_img.save(temp_path)
 
         try:

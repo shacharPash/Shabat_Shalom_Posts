@@ -1,0 +1,10 @@
+# Includes runtime at exactly the production lock's versions.
+-c requirements.txt
+-r requirements.in
+pytest
+httpx2>=2.0.0
+ruff
+mypy
+types-requests
+pip-audit
+pip-tools
