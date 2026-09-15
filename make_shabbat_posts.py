@@ -67,6 +67,7 @@ from image_utils import (
     is_video_file,
     load_font,
     overlay_watermark,
+    add_calendar_attribution,
 )
 
 # Type aliases for clarity
@@ -634,7 +635,7 @@ def compose_poster(
         )
 
     # Do NOT save to disk here anymore
-    return img
+    return add_calendar_attribution(img)
 
 
 def compose_omer_poster(
@@ -842,7 +843,7 @@ def compose_omer_poster(
             opacity=WATERMARK_OPACITY
         )
 
-    return img
+    return add_calendar_attribution(img)
 
 
 # ========= MAIN =========

@@ -343,6 +343,21 @@ def draw_text_with_stroke(draw, xy, text, font, fill, stroke_fill, stroke_width,
     )
 
 
+def add_calendar_attribution(img: Image.Image) -> Image.Image:
+    """Keep calendar credit legible in every export, away from bottom-right branding."""
+    result = img.convert("RGB").copy()
+    draw = ImageDraw.Draw(result)
+    text = "Hebcal.com | CC BY 4.0 | adapted"
+    font = load_font(18)
+    bounds = draw.textbbox((0, 0), text, font=font)
+    width = bounds[2] - bounds[0]
+    height = bounds[3] - bounds[1]
+    x, y = 12, 12
+    draw.rectangle((x - 4, y - 4, x + width + 4, y + height + 4), fill="black")
+    draw.text((x - bounds[0], y - bounds[1]), text, font=font, fill="white")
+    return result
+
+
 def overlay_watermark(
     img: Image.Image,
     watermark_path: str,

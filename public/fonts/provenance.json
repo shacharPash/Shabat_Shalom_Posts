@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Heebo.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/heebo/Heebo%5Bwght%5D.ttf",
+    "sha256": "18f930b583fa8fe6b40b2f8263b7ac6afbac07adc91a12467874e7467d3ace30",
+    "bytes": 122012
+  },
+  {
+    "name": "Heebo-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/heebo/OFL.txt",
+    "sha256": "866747cbccae229433e946b90fcfc457b81c33ac89e593855770851354f9e6c3",
+    "bytes": 4474
+  },
+  {
+    "name": "Alef-Regular.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/alef/Alef-Regular.ttf",
+    "sha256": "a32adcc953ac356906901778460083dc207d4560cb586fd9ea24ec5b186969ed",
+    "bytes": 90996
+  },
+  {
+    "name": "Alef-Bold.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/alef/Alef-Bold.ttf",
+    "sha256": "5dae0d7b2365288d8a34f5fb033d4278be96cef2547862cb93ceb8373e10bcf1",
+    "bytes": 92312
+  },
+  {
+    "name": "Alef-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/alef/OFL.txt",
+    "sha256": "c267a00c9476c78a2336d7b372b536885b8b24173a29ed53496f67a742c14961",
+    "bytes": 4519
+  }
+]
