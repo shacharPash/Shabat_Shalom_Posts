@@ -140,10 +140,10 @@ def fit_background(
     Returns:
         Resized and cropped PIL Image
     """
-    img = Image.open(image_path).convert("RGB")
-
-    # Fix orientation based on EXIF data
-    img = fix_image_orientation(img)
+    from media_validation import validate_geometry
+    with Image.open(image_path) as source:
+        validate_geometry(*source.size)
+        img = fix_image_orientation(source).convert("RGB")
 
     if flexible_aspect:
         # Use flexible aspect ratio mode
@@ -165,29 +165,19 @@ def _fit_background_fixed(
     """
     base_w, base_h = size
 
-    # Scale to cover the target size
+    # Map the crop window back to source coordinates before resizing. This
+    # preserves position while avoiding enormous intermediate images.
     scale = max(base_w / img.width, base_h / img.height)
-    new_w = int(img.width * scale)
-    new_h = int(img.height * scale)
-    img = img.resize((new_w, new_h), Image.LANCZOS)
-
-    # Use provided crop position or default to center (0.5, 0.5)
     crop_x, crop_y = crop_position if crop_position else (0.5, 0.5)
-
-    # Clamp values to valid range [0.0, 1.0]
     crop_x = max(0.0, min(1.0, crop_x))
     crop_y = max(0.0, min(1.0, crop_y))
-
-    # Calculate crop position based on percentage
-    # The crop window can move from 0 to (new_dimension - base_dimension)
-    max_left = new_w - base_w
-    max_top = new_h - base_h
-
-    left = int(max_left * crop_x)
-    top = int(max_top * crop_y)
-
-    img = img.crop((left, top, left + base_w, top + base_h))
-    return img
+    source_w, source_h = base_w / scale, base_h / scale
+    left = (img.width - source_w) * crop_x
+    top = (img.height - source_h) * crop_y
+    # Pillow applies the source box during resampling; fractional coordinates
+    # also preserve subpixel crop positions on very narrow images.
+    return img.resize(size, Image.Resampling.LANCZOS,
+                      box=(left, top, left + source_w, top + source_h))
 
 
 # Flexible aspect ratio constraints
@@ -520,8 +510,11 @@ def extract_gif_frames(image_path: str) -> Tuple[List[Image.Image], List[int]]:
     frames = []
     durations = []
 
+    from media_validation import inspect_image, MAX_IMAGE_BYTES
+    with open(image_path, "rb") as source:
+        inspect_image(source.read(MAX_IMAGE_BYTES + 1))
     with Image.open(image_path) as img:
-        # Iterate through all frames
+        # Iterate through validated, bounded frames
         try:
             while True:
                 # Copy the frame to preserve it

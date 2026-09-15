@@ -6,7 +6,7 @@ Tests cover:
 - Request handling with various payload configurations
 - Response formatting (PNG output)
 - Error cases (invalid images, missing data)
-- SSRF protection (is_safe_url)
+- Public remote-image rejection
 - Telegram webhook secret validation
 """
 
@@ -14,6 +14,7 @@ import base64
 import os
 import sys
 import unittest
+import tempfile
 from io import BytesIO
 from unittest.mock import patch, MagicMock
 
@@ -22,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PIL import Image
 
-from api.poster import build_poster_from_payload, is_safe_url
+from api.poster import build_poster_from_payload
 
 
 def create_test_image_base64() -> str:
@@ -108,58 +109,25 @@ class TestBuildPosterFromPayload(unittest.TestCase):
         self.assertTrue(result.startswith(b'\x89PNG'))
 
     def test_invalid_image_base64_raises_error(self):
-        """Invalid base64 image should raise RuntimeError."""
+        """Invalid base64 image is a public input error."""
         payload = {
             "imageBase64": "not-valid-base64!!!"
         }
 
-        with self.assertRaises(RuntimeError) as context:
+        with self.assertRaises(ValueError):
             build_poster_from_payload(payload)
 
-        self.assertIn("Failed to decode imageBase64", str(context.exception))
-
-    @patch('api.poster.requests.get')
-    def test_payload_with_image_url_success(self, mock_get):
-        """Payload with valid imageUrl should download and use image."""
-        # Create a mock response with valid image bytes
-        img = Image.new("RGB", (100, 100), color="green")
-        buffer = BytesIO()
-        img.save(buffer, format="JPEG")
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = buffer.getvalue()
-        mock_get.return_value = mock_response
-
-        payload = {
-            "imageUrl": "https://example.com/image.jpg"
-        }
-
-        result = build_poster_from_payload(payload)
-        self.assertIsInstance(result, bytes)
-        self.assertTrue(result.startswith(b'\x89PNG'))
-
-    @patch('api.poster.requests.get')
-    def test_payload_with_image_url_failure(self, mock_get):
-        """Failed image download should raise RuntimeError."""
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_get.return_value = mock_response
-
-        payload = {
-            "imageUrl": "https://example.com/nonexistent.jpg"
-        }
-
-        with self.assertRaises(RuntimeError) as context:
-            build_poster_from_payload(payload)
-
-        self.assertIn("Failed to download image", str(context.exception))
+    def test_public_image_url_rejected(self):
+        with self.assertRaises(ValueError):
+            build_poster_from_payload({"imageUrl": "https://example.com/image.jpg"})
 
     def test_payload_with_local_image_path(self):
         """Payload with local image path should work."""
         # Create a temporary image file
         img = Image.new("RGB", (100, 100), color="yellow")
-        temp_path = "/tmp/test_local_image.png"
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        temp_path = os.path.join(directory.name, "local.png")
         img.save(temp_path)
 
         try:
@@ -167,7 +135,7 @@ class TestBuildPosterFromPayload(unittest.TestCase):
                 "image": temp_path
             }
 
-            result = build_poster_from_payload(payload)
+            result = build_poster_from_payload(payload, allow_local_image=True)
             self.assertIsInstance(result, bytes)
             self.assertTrue(result.startswith(b'\x89PNG'))
         finally:
@@ -177,32 +145,25 @@ class TestBuildPosterFromPayload(unittest.TestCase):
 class TestApiPayloadPriority(unittest.TestCase):
     """Tests for image source priority in payload processing."""
 
-    def test_base64_takes_priority_over_url(self):
-        """imageBase64 should take priority over imageUrl - verify image is used."""
-        test_image_b64 = create_test_image_base64()
-
-        payload = {
-            "imageBase64": test_image_b64,
-            "imageUrl": "https://example.com/nonexistent.jpg"  # Would fail if used
-        }
-
-        # If base64 didn't take priority, this would fail due to invalid URL
-        result = build_poster_from_payload(payload)
-        self.assertIsInstance(result, bytes)
-        self.assertTrue(result.startswith(b'\x89PNG'))
+    def test_forbidden_source_rejected_even_with_base64(self):
+        payload = {"imageBase64": create_test_image_base64(), "imageUrl": "https://example.com/private"}
+        with self.assertRaises(ValueError):
+            build_poster_from_payload(payload)
 
     def test_local_path_fallback_works(self):
         """Local image path should work as fallback."""
         # Create a temporary image
         img = Image.new("RGB", (100, 100), color="purple")
-        temp_path = "/tmp/test_fallback_image.png"
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        temp_path = os.path.join(directory.name, "fallback.png")
         img.save(temp_path)
 
         try:
             payload = {
                 "image": temp_path
             }
-            result = build_poster_from_payload(payload)
+            result = build_poster_from_payload(payload, allow_local_image=True)
             self.assertIsInstance(result, bytes)
         finally:
             os.remove(temp_path)
@@ -316,91 +277,6 @@ class TestUpcomingEventsEndpoint(unittest.TestCase):
             self.assertFalse(event["isNext"])
 
 
-class TestSSRFProtection(unittest.TestCase):
-    """Tests for SSRF protection in is_safe_url function."""
-
-    def test_safe_https_url(self):
-        """Normal HTTPS URLs should be safe."""
-        self.assertTrue(is_safe_url("https://example.com/image.jpg"))
-        self.assertTrue(is_safe_url("https://images.unsplash.com/photo.jpg"))
-
-    def test_safe_http_url(self):
-        """Normal HTTP URLs should be safe."""
-        self.assertTrue(is_safe_url("http://example.com/image.jpg"))
-
-    def test_localhost_blocked(self):
-        """Localhost URLs should be blocked."""
-        self.assertFalse(is_safe_url("http://localhost/image.jpg"))
-        self.assertFalse(is_safe_url("http://localhost:8080/image.jpg"))
-        self.assertFalse(is_safe_url("https://localhost/secret"))
-
-    def test_loopback_ip_blocked(self):
-        """127.x.x.x addresses should be blocked."""
-        self.assertFalse(is_safe_url("http://127.0.0.1/image.jpg"))
-        self.assertFalse(is_safe_url("http://127.0.0.1:3000/api/secret"))
-        self.assertFalse(is_safe_url("http://127.1.2.3/test"))
-
-    def test_private_class_a_blocked(self):
-        """10.x.x.x private addresses should be blocked."""
-        self.assertFalse(is_safe_url("http://10.0.0.1/image.jpg"))
-        self.assertFalse(is_safe_url("http://10.255.255.255/internal"))
-
-    def test_private_class_b_blocked(self):
-        """172.16-31.x.x private addresses should be blocked."""
-        self.assertFalse(is_safe_url("http://172.16.0.1/image.jpg"))
-        self.assertFalse(is_safe_url("http://172.31.255.255/internal"))
-        # 172.15.x.x should be allowed (not in private range)
-        # Note: this is a public IP, but may not resolve - test is for validation logic
-
-    def test_private_class_c_blocked(self):
-        """192.168.x.x private addresses should be blocked."""
-        self.assertFalse(is_safe_url("http://192.168.0.1/image.jpg"))
-        self.assertFalse(is_safe_url("http://192.168.1.100/internal"))
-
-    def test_link_local_blocked(self):
-        """169.254.x.x link-local addresses should be blocked."""
-        self.assertFalse(is_safe_url("http://169.254.169.254/latest/meta-data"))
-        self.assertFalse(is_safe_url("http://169.254.0.1/image.jpg"))
-
-    def test_invalid_scheme_blocked(self):
-        """Non-HTTP(S) schemes should be blocked."""
-        self.assertFalse(is_safe_url("file:///etc/passwd"))
-        self.assertFalse(is_safe_url("ftp://example.com/file"))
-        self.assertFalse(is_safe_url("gopher://example.com/"))
-
-    def test_empty_url_blocked(self):
-        """Empty or invalid URLs should be blocked."""
-        self.assertFalse(is_safe_url(""))
-        self.assertFalse(is_safe_url("not-a-url"))
-
-    @patch('api.poster.requests.get')
-    def test_ssrf_url_returns_400(self, mock_get):
-        """SSRF attempt with private IP should raise ValueError."""
-        payload = {
-            "imageUrl": "http://127.0.0.1:8080/internal/secret"
-        }
-
-        with self.assertRaises(ValueError) as context:
-            build_poster_from_payload(payload)
-
-        self.assertIn("Unsafe imageUrl", str(context.exception))
-        # requests.get should NOT have been called
-        mock_get.assert_not_called()
-
-    @patch('api.poster.requests.get')
-    def test_ssrf_localhost_returns_400(self, mock_get):
-        """SSRF attempt with localhost should raise ValueError."""
-        payload = {
-            "imageUrl": "http://localhost/admin"
-        }
-
-        with self.assertRaises(ValueError) as context:
-            build_poster_from_payload(payload)
-
-        self.assertIn("Unsafe imageUrl", str(context.exception))
-        mock_get.assert_not_called()
-
-
 class TestTelegramWebhookValidation(unittest.TestCase):
     """Tests for Telegram webhook secret validation."""
 
@@ -421,19 +297,12 @@ class TestTelegramWebhookValidation(unittest.TestCase):
             self.assertFalse(api.telegram_webhook.is_valid_webhook_secret("wrong-token"))
             self.assertFalse(api.telegram_webhook.is_valid_webhook_secret(None))
 
-    @patch('api.poster.requests.get')
-    def test_image_url_redirect_is_rejected(self, mock_get):
-        """Redirects cannot pivot a validated public URL to a private host."""
-        mock_response = MagicMock()
-        mock_response.status_code = 302
-        mock_response.headers = {"Location": "http://169.254.169.254/latest/meta-data"}
-        mock_get.return_value = mock_response
-
+    @patch('requests.get', side_effect=AssertionError("Remote fetch attempted"))
+    @patch('socket.getaddrinfo', side_effect=AssertionError("DNS lookup attempted"))
+    def test_image_url_rejected_before_redirect_or_dns(self, lookup, fetch):
+        """Rejecting URL input prevents redirects and DNS rebinding outright."""
         with self.assertRaises(ValueError):
             build_poster_from_payload({"imageUrl": "https://example.com/image.jpg"})
-
-        mock_get.assert_called_once()
-        self.assertFalse(mock_get.call_args.kwargs["allow_redirects"])
 
 
 if __name__ == "__main__":

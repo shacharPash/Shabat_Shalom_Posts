@@ -16,15 +16,53 @@ import pytz
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from omer_utils import (
-    get_omer_day,
-    get_omer_count_text,
-    get_sefirah_text,
-    get_omer_info_for_time,
-)
+from omer_utils import get_omer_info_for_time
 
 # Israel timezone for current time
 ISRAEL_TZ = pytz.timezone("Asia/Jerusalem")
+
+
+def get_omer_info(query_params):
+    """Return Omer information for flat date/testTime query parameters."""
+    # Check for testTime parameter (for development testing)
+    # Format: ?testTime=2026-04-15T22:30
+    test_time_param = query_params.get("testTime")
+
+    if test_time_param:
+        # Parse test time
+        try:
+            test_datetime = datetime.fromisoformat(test_time_param)
+            target_date = test_datetime.date()
+            current_hour = test_datetime.hour
+            current_minute = test_datetime.minute
+        except ValueError:
+            raise ValueError("Invalid testTime format") from None
+    else:
+        # Get date parameter (optional, defaults to today)
+        date_param = query_params.get("date")
+        if date_param:
+            target_date = date.fromisoformat(date_param)
+            # When a specific date is provided without testTime,
+            # use evening time (20:00) as the default context
+            current_hour = 20
+            current_minute = 0
+        else:
+            # Use actual current time in Israel timezone
+            now = datetime.now(ISRAEL_TZ)
+            target_date = now.date()
+            current_hour = now.hour
+            current_minute = now.minute
+
+    # Get comprehensive Omer info including sunset times
+    omer_info = get_omer_info_for_time(target_date, current_hour, current_minute)
+
+    # For backward compatibility, also include dayNumber if in Omer period
+    if omer_info.get("isOmerPeriod"):
+        default_day = omer_info.get("defaultDay")
+        if default_day:
+            omer_info["dayNumber"] = default_day
+
+    return omer_info
 
 
 class handler(BaseHTTPRequestHandler):
@@ -36,43 +74,7 @@ class handler(BaseHTTPRequestHandler):
             parsed_url = urlparse(self.path)
             query_params = parse_qs(parsed_url.query)
 
-            # Check for testTime parameter (for development testing)
-            # Format: ?testTime=2026-04-15T22:30
-            test_time_param = query_params.get("testTime", [None])[0]
-
-            if test_time_param:
-                # Parse test time
-                try:
-                    test_datetime = datetime.fromisoformat(test_time_param)
-                    target_date = test_datetime.date()
-                    current_hour = test_datetime.hour
-                    current_minute = test_datetime.minute
-                except ValueError:
-                    raise ValueError(f"Invalid testTime format: {test_time_param}. Use ISO format like 2026-04-15T22:30")
-            else:
-                # Get date parameter (optional, defaults to today)
-                date_param = query_params.get("date", [None])[0]
-                if date_param:
-                    target_date = date.fromisoformat(date_param)
-                    # When a specific date is provided without testTime,
-                    # use evening time (20:00) as the default context
-                    current_hour = 20
-                    current_minute = 0
-                else:
-                    # Use actual current time in Israel timezone
-                    now = datetime.now(ISRAEL_TZ)
-                    target_date = now.date()
-                    current_hour = now.hour
-                    current_minute = now.minute
-
-            # Get comprehensive Omer info including sunset times
-            omer_info = get_omer_info_for_time(target_date, current_hour, current_minute)
-
-            # For backward compatibility, also include dayNumber if in Omer period
-            if omer_info.get("isOmerPeriod"):
-                default_day = omer_info.get("defaultDay")
-                if default_day:
-                    omer_info["dayNumber"] = default_day
+            omer_info = get_omer_info({key: values[0] for key, values in query_params.items()})
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")

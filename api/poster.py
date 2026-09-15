@@ -2,77 +2,18 @@ import json
 import os
 import sys
 from http.server import BaseHTTPRequestHandler
-from ipaddress import ip_address, ip_network
-from urllib.parse import urlparse
-
-# Add parent directory to path for Vercel serverless environment
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-# Import other dependencies (may fail, but handler should still load)
-import base64
-import socket
 import tempfile
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-import requests
+# Add parent directory to path for Vercel serverless environment.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-
-# Private/internal IP ranges to block for SSRF protection
-BLOCKED_IP_NETWORKS = [
-    ip_network("127.0.0.0/8"),      # Loopback
-    ip_network("10.0.0.0/8"),       # Private Class A
-    ip_network("172.16.0.0/12"),    # Private Class B
-    ip_network("192.168.0.0/16"),   # Private Class C
-    ip_network("169.254.0.0/16"),   # Link-local
-    ip_network("::1/128"),          # IPv6 loopback
-    ip_network("fc00::/7"),         # IPv6 private
-    ip_network("fe80::/10"),        # IPv6 link-local
-]
-
-
-def is_safe_url(url: str) -> bool:
-    """
-    Check if a URL is safe to fetch (not pointing to internal/private resources).
-
-    Returns True if the URL is safe, False if it could be an SSRF attack.
-    """
-    try:
-        parsed = urlparse(url)
-
-        # Only allow http and https schemes
-        if parsed.scheme not in ("http", "https"):
-            return False
-
-        hostname = parsed.hostname
-        if not hostname:
-            return False
-
-        # Block localhost variants
-        hostname_lower = hostname.lower()
-        if hostname_lower in ("localhost", "localhost.localdomain"):
-            return False
-
-        # Resolve hostname to IP addresses
-        try:
-            addr_info = socket.getaddrinfo(hostname, None)
-            for family, _, _, _, sockaddr in addr_info:
-                ip_str = sockaddr[0]
-                ip = ip_address(ip_str)
-
-                # Check if IP is in any blocked network
-                for network in BLOCKED_IP_NETWORKS:
-                    if ip in network:
-                        return False
-        except socket.gaierror:
-            # Fail closed. A second DNS lookup during requests.get could resolve
-            # to an internal address and bypass this check.
-            return False
-
-        return True
-    except Exception:
-        # Any parsing error means unsafe URL
-        return False
+from media_validation import (
+    InputError, MediaTooLarge, UnsupportedMedia, MAX_REQUEST_BODY_BYTES,
+    MAX_IMAGE_BYTES, decode_upload, inspect_image, validate_payload,
+    validate_content_length, validate_response_size,
+)
 
 from make_shabbat_posts import generate_poster, DEFAULT_CITIES
 from cities import get_cities_list, build_city_lookup, map_city_payload
@@ -84,74 +25,45 @@ CITY_BY_NAME = build_city_lookup(GEOJSON_CITIES)
 
 # Rate limiter: 10 requests per minute per IP
 _rate_limiter = RateLimiter(max_requests=10, window_seconds=60)
-MAX_REQUEST_BODY_BYTES = 12 * 1024 * 1024
-MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 
 def _detect_image_suffix(image_data: bytes) -> str:
-    """Detect image/video format from magic bytes and return appropriate file suffix."""
-    # GIF
-    if image_data[:6] in (b'GIF87a', b'GIF89a'):
-        return '.gif'
-    # PNG
-    elif image_data[:8] == b'\x89PNG\r\n\x1a\n':
-        return '.png'
-    # MP4 (ftyp box - appears at offset 4)
-    elif len(image_data) >= 12 and b'ftyp' in image_data[:12]:
-        return '.mp4'
-    # WebM (EBML header)
-    elif image_data[:4] == b'\x1a\x45\xdf\xa3':
-        return '.webm'
-    else:
-        return '.jpg'
+    """Inspect the actual format, accepting only supported bounded media."""
+    return inspect_image(image_data)
 
 
-def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
+def build_poster_from_payload(payload: Dict[str, Any], *, allow_local_image=False) -> bytes:
+    """Render a poster from validated input. Local files require explicit trust.
+
+    Public callers upload base64 images or use the bundled default background.
+    Returns PNG or bounded GIF bytes and raises InputError for public input errors.
     """
-    Pure logic function that:
-    - Receives a dict representing the JSON payload of a request
-    - Returns PNG bytes for a single generated poster.
+    validate_payload(payload, allow_local_image=allow_local_image)
+    payload = payload.copy()
+    # Keep explicit coordinate objects for trusted bot/CLI callers and map UI names.
+    if payload.get("cities") and not all(
+        isinstance(city, dict) and "lat" in city and "lon" in city
+        for city in payload["cities"]
+    ):
+        map_city_payload(payload, CITY_BY_NAME)
+    temporary_path = None
+    try:
+        if payload.get("imageBase64") is not None:
+            image_bytes, suffix = decode_upload(payload["imageBase64"])
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as uploaded:
+                temporary_path = uploaded.name
+                uploaded.write(image_bytes)
+            payload["image"] = temporary_path
+        elif payload.get("image") is not None:
+            with open(payload["image"], "rb") as source:
+                inspect_image(source.read(MAX_IMAGE_BYTES + 1))
+        return _render_payload(payload)
+    finally:
+        if temporary_path is not None:
+            os.unlink(temporary_path)
 
-    Expected payload structure (all fields optional):
-    {
-      "imageBase64": "...",                 # base64-encoded PNG/JPEG (highest priority)
-      "imageUrl": "https://...",            # URL to download image from
-      "image": "images/example.jpg",        # path to background image (local)
-      "message": "שבת שלום לכולם!",        # bottom blessing text
-      "leiluyNeshama": "אורי בורנשטיין",  # dedication name
-      "cities": [                          # override default CITIES
-        { "name": "...", "lat": ..., "lon": ..., "candle_offset": ... }
-      ],
-      "startDate": "YYYY-MM-DD",           # base date for calculations
-      "dateFormat": "gregorian",           # "gregorian", "hebrew", or "both"
 
-      # Manual overrides (optional - override auto-detected values):
-      "overrideMainTitle": "שבת שלום",     # custom main title (greeting)
-      "overrideSubtitle": "פרשת... | ...", # custom subtitle (parsha + date line)
-
-      # Custom cities with manual times:
-      "customCities": [
-        { "name": "עיר מותאמת", "candle": "16:30", "havdalah": "17:45" }
-      ],
-
-      # Aspect ratio control:
-      "aspectRatio": "1:1"     // "1:1" (square), "4:5" (portrait), or "auto"
-      "flexibleAspect": false  // DEPRECATED: use aspectRatio="auto" instead
-
-      # Sefirat HaOmer mode:
-      "omerMode": true,                    # enable Sefirat HaOmer poster mode
-      "omerDate": "2025-04-20"             # optional: specific date for Omer count (for testing)
-    }
-
-    Priority for background image:
-    1. imageBase64 (if provided)
-    2. imageUrl (if provided)
-    3. image (local path, if provided)
-    4. Fallback: first image from images/ folder
-    """
-
-    image_base64: Optional[str] = payload.get("imageBase64")
-    image_url: Optional[str] = payload.get("imageUrl")
+def _render_payload(payload):
     image_path: Optional[str] = payload.get("image")
     message: Optional[str] = payload.get("message")
     leiluy_neshama: Optional[str] = payload.get("leiluyNeshama")
@@ -192,15 +104,9 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
 
     # Direct omer day specification (overrides date-based calculation)
     omer_day_direct: Optional[int] = payload.get("omerDay")
-    if omer_day_direct is not None:
-        omer_day_direct = int(omer_day_direct)
-        if omer_day_direct < 1 or omer_day_direct > 49:
-            raise ValueError(f"omerDay must be 1-49, got {omer_day_direct}")
 
     # Nusach (liturgical tradition) for Omer counting
     nusach: str = payload.get("nusach", "sefard")
-    if nusach not in ("sefard", "ashkenaz", "edot_hamizrach"):
-        nusach = "sefard"  # Default to sefard if invalid
 
     start_date_str: Optional[str] = payload.get("startDate")
     if start_date_str:
@@ -208,72 +114,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
     else:
         start_date = None
 
-    # Priority 1: imageBase64
-    if image_base64:
-        try:
-            if len(image_base64) > ((MAX_IMAGE_BYTES * 4) // 3) + 4:
-                raise ValueError("imageBase64 is too large")
-            image_bytes = base64.b64decode(image_base64, validate=True)
-            if len(image_bytes) > MAX_IMAGE_BYTES:
-                raise ValueError("imageBase64 is too large")
-            # Detect format from magic bytes
-            suffix = _detect_image_suffix(image_bytes)
-            # Save to a temporary file (cloud-safe: uses /tmp)
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-            tmp.write(image_bytes)
-            tmp.close()
-            image_path = tmp.name
-        except Exception as e:
-            raise RuntimeError(f"Failed to decode imageBase64: {e}")
-
-    # Priority 2: imageUrl
-    elif image_url:
-        # SSRF protection: validate URL before fetching
-        if not is_safe_url(image_url):
-            raise ValueError("Unsafe imageUrl: URL points to internal/private resource")
-
-        try:
-            headers = {"User-Agent": "Mozilla/5.0"}
-            # Optimized timeout for Vercel free tier (10s limit) with simple retry
-            r = None
-            last_error = None
-            for attempt in range(2):
-                try:
-                    r = requests.get(
-                        image_url,
-                        timeout=6,
-                        headers=headers,
-                        allow_redirects=False,
-                    )
-                    if 300 <= r.status_code < 400:
-                        raise ValueError("imageUrl redirects are not allowed")
-                    if r.status_code == 200:
-                        break
-                except requests.RequestException as e:
-                    last_error = e
-                    if attempt == 0:
-                        continue  # Retry once
-                    raise
-            if r is None or r.status_code != 200:
-                raise RuntimeError(f"Failed to download image from imageUrl after retries: {last_error or 'HTTP error'}")
-            content_length = r.headers.get("Content-Length")
-            if content_length and int(content_length) > MAX_IMAGE_BYTES:
-                raise ValueError("Downloaded image is too large")
-            if len(r.content) > MAX_IMAGE_BYTES:
-                raise ValueError("Downloaded image is too large")
-            # Detect format from magic bytes
-            suffix = _detect_image_suffix(r.content)
-            # Save to a temporary file (cloud-safe: uses /tmp)
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-            tmp.write(r.content)
-            tmp.close()
-            image_path = tmp.name
-        except requests.RequestException as e:
-            raise RuntimeError(f"Failed to download image from imageUrl: {e}")
-
-    # Priority 3: image (local path) - already set from payload.get("image")
-    # Priority 4: Fallback - use mode-specific default or first image from images/ folder
-    elif image_path is None:
+    if image_path is None:
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         # For Omer mode, use the Omer-specific default background
@@ -282,7 +123,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
                 # Vercel serverless - api folder (highest priority)
                 os.path.join(os.path.dirname(__file__), "omer_default.png"),
                 # Local development - public folder
-                os.path.join(project_root, "public", "static", "backgrounds", "omer_default.png"),
+                os.path.join(project_root, "public", "backgrounds", "omer_default.png"),
             ]
             for path in omer_default_paths:
                 if os.path.isfile(path):
@@ -295,7 +136,7 @@ def build_poster_from_payload(payload: Dict[str, Any]) -> bytes:
                 # Vercel serverless - api folder (highest priority)
                 os.path.join(os.path.dirname(__file__), "shabat_default.png"),
                 # Local development - public folder
-                os.path.join(project_root, "public", "static", "backgrounds", "shabat_default.png"),
+                os.path.join(project_root, "public", "backgrounds", "shabat_default.png"),
             ]
             for path in shabat_default_paths:
                 if os.path.isfile(path):
@@ -404,30 +245,17 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            # Read request body
-            try:
-                content_length = int(self.headers.get("Content-Length", 0))
-            except (TypeError, ValueError):
-                raise ValueError("Invalid Content-Length")
-            if content_length < 0 or content_length > MAX_REQUEST_BODY_BYTES:
-                self.send_response(413)
-                self.send_header("Content-Type", "text/plain; charset=utf-8")
-                self.send_header("Cache-Control", "no-store")
-                self.end_headers()
-                self.wfile.write("הבקשה גדולה מדי".encode("utf-8"))
-                return
-            body = self.rfile.read(content_length) if content_length > 0 else b""
-
-            # Parse JSON payload
+            content_length = validate_content_length(self.headers.get("Content-Length"))
+            if self.headers.get("Transfer-Encoding"):
+                raise InputError()
+            body = self.rfile.read(content_length) if content_length else b""
+            if content_length is not None and len(body) != content_length:
+                raise InputError()
             payload = json.loads(body.decode("utf-8")) if body else {}
-            if payload.get("image"):
-                raise ValueError("Local image paths are not accepted by the HTTP API")
-
-            # Map city names to full city objects with coordinates
-            map_city_payload(payload, CITY_BY_NAME)
 
             # Generate poster
             poster_bytes = build_poster_from_payload(payload)
+            validate_response_size(poster_bytes)
 
             # Detect output format from magic bytes
             # GIF starts with "GIF87a" or "GIF89a", PNG starts with \x89PNG
@@ -440,46 +268,29 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(poster_bytes)))
-            self.send_header("Cache-Control", "public, max-age=3600")
+            self.send_header("Cache-Control", "private, no-store")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(poster_bytes)
 
-        except json.JSONDecodeError as e:
-            print(f"JSON decode error: {e}")  # Log full details
-            error_msg = "שגיאה בפורמט הבקשה".encode("utf-8")
-            self.send_response(400)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            self.end_headers()
-            self.wfile.write(error_msg)
+        except InputError as error:
+            self._send_error(error.status_code, str(error))
+        except (ValueError, UnicodeError):
+            self._send_error(400, "שגיאה בנתוני הבקשה")
+        except Exception:
+            self._send_error(500, "שגיאה ביצירת הפוסטר")
 
-        except ValueError as e:
-            # Handle validation errors (e.g., unsafe URL for SSRF protection)
-            print(f"Validation error: {e}")  # Log full details
-            error_msg = "שגיאה בנתוני הבקשה".encode("utf-8")
-            self.send_response(400)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            self.end_headers()
-            self.wfile.write(error_msg)
-
-        except Exception as e:
-            print(f"Internal error in poster generation: {e}")  # Log full details
-            error_msg = "שגיאה ביצירת הפוסטר".encode("utf-8")
-            self.send_response(500)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            self.end_headers()
-            self.wfile.write(error_msg)
+    def _send_error(self, status, message):
+        body = message.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "private, no-store")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_OPTIONS(self):
         """Handle CORS preflight requests."""
