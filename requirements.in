@@ -5,7 +5,7 @@ Pillow==12.3.0
 arabic-reshaper~=3.0.0
 python-bidi~=0.6.7
 jewcal~=0.8.0
-pytz~=2025.2
+pytz~=2026.3
 fastapi==0.141.1
 starlette==1.6.0
 # Starlette 1.6.0 still uses an alias deprecated in AnyIO 4.15.
