@@ -27,6 +27,8 @@ Production installation:
 python3.12 -m pip install --require-hashes -r requirements.txt
 ```
 
+Vercel discovers `requirements.txt` as the deployment dependency manifest. Keep tool settings in `pytest.ini`, `ruff.toml` and `mypy.ini`; a tool-only `pyproject.toml` takes precedence during manifest discovery and prevents this requirements-based build. Both hash locks remain the dependency sources for their respective installations.
+
 ## Configuration
 
 Use `.env.example` as a names/reference guide. Do not commit `.env` or secret values. The local server does not automatically load that file; pass only the needed variables explicitly in your own environment. Use disposable Redis state and absent or dummy service secrets for development and previews.
@@ -34,6 +36,8 @@ Use `.env.example` as a names/reference guide. Do not commit `.env` or secret va
 Service variable names: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `CRON_SECRET`, `REDIS_URL` (legacy fallback `KV_URL`), `WEB_APP_URL`. GitHub reminder workflows need `CRON_SECRET` and `VERCEL_URL`. Image, time, watermark and calendar configuration names are described in `.env.example`. Configure the canonical personal site origin before using bot privacy links.
 
 The webhook registration's `secret_token` must equal `TELEGRAM_WEBHOOK_SECRET`; reminder workflow and production `CRON_SECRET` must match. Do not print either value while comparing. Registration and command setup are explicit release operations documented in [bot setup](TELEGRAM_BOT_SETUP.md).
+
+The deployed `api/poster` handler permits ten requests per minute per IP. With configured Redis it uses shared fixed-window counters; Redis construction or command failures return generic HTTP 503 before rendering. Without `REDIS_URL`/`KV_URL`, it uses a sliding window in each process, capped at 4,096 active identifiers. New identifiers receive 503 when that store is full; active quota entries are never evicted to make room. Each local request removes expired timestamps and identifiers across the store. Without further requests, entries remain until process exit. Normal exhausted quotas return 429. This local fallback is per process, not a deployment-wide quota. The local FastAPI apps do not apply this hosted IP limiter.
 
 ## Media and settings links
 

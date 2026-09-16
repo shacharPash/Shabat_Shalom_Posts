@@ -1,0 +1,7 @@
+target-version = "py312"
+# Core correctness checks across production and tests; cosmetic legacy debt is
+# intentionally outside this gate. Keep undefined names and invalid syntax fatal.
+exclude = [".superpowers", ".venv", "venv"]
+
+[lint]
+select = ["E9", "F63", "F7", "F82"]

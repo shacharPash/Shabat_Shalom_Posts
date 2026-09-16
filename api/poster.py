@@ -17,7 +17,7 @@ from media_validation import (
 
 from make_shabbat_posts import generate_poster, DEFAULT_CITIES
 from cities import get_cities_list, build_city_lookup, map_city_payload
-from rate_limiter import RateLimiter
+from rate_limiter import RateLimiter, RateLimitUnavailable
 
 # Load cities once at module level (cached internally)
 GEOJSON_CITIES = get_cities_list()
@@ -235,7 +235,11 @@ class handler(BaseHTTPRequestHandler):
         """Handle POST request to generate a poster."""
         # Rate limiting check
         client_ip = self._get_client_ip()
-        is_allowed, remaining = _rate_limiter.check(client_ip)
+        try:
+            is_allowed, remaining = _rate_limiter.check(client_ip)
+        except RateLimitUnavailable:
+            self._send_error(503, "Service unavailable. Try again later.")
+            return
 
         if not is_allowed:
             error_body = b'{"error": "Rate limit exceeded. Try again later."}'

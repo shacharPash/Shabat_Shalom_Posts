@@ -848,3 +848,78 @@ def test_saved_page_metadata_is_bounded_and_has_expected_ttls(isolated_redis):
     isolated_redis.set(key, json.dumps(page))
     with pytest.raises(ValueError, match='invalid reminder page'):
         storage.reminder_user_batch('reminder_enabled', cursor)
+
+
+NOT_MODIFIED = ('Bad Request: message is not modified: specified new message content and reply markup '
+                'are exactly the same as a current content and reply markup of the message')
+
+
+def telegram_error(status, payload):
+    response = bot.requests.Response()
+    response.status_code = status
+    response._content = json.dumps(payload).encode()
+    return response
+
+
+@pytest.mark.parametrize('callback,method', [
+    ('city:ירושלים:0', 'editMessageReplyMarkup'),
+    ('omer:toggle_reminder', 'editMessageText'),
+])
+def test_webhook_lost_edit_response_converges_once(isolated_redis, callback, method):
+    import hashlib
+    module = importlib.import_module('api.telegram_webhook')
+    body = json.dumps(callback_update(callback, 910)).encode()
+    headers = {'Content-Length': str(len(body)), 'X-Telegram-Bot-Api-Secret-Token': 'test'}
+    success_key = 'zmunah:update_receipt:' + hashlib.sha256(b'910').hexdigest()
+    applied = []
+
+    def post(url, *, json, timeout):
+        assert url.endswith('/' + method)
+        if not applied:
+            applied.append(json)
+            raise bot.requests.Timeout('lost response after applied edit')
+        assert json == applied[0]
+        return telegram_error(400, {'ok': False, 'error_code': 400, 'description': NOT_MODIFIED})
+
+    with (patch.object(module, 'TELEGRAM_WEBHOOK_SECRET', 'test'),
+          patch.object(bot, 'answer_callback_query'),
+          patch.object(bot.requests, 'post', side_effect=post) as transport):
+        statuses = []
+        for _ in range(3):
+            h = request_handler(module, headers=headers, body=body)
+            h.do_POST()
+            statuses.append(h.send_response.call_args.args[0])
+        assert statuses == [503, 200, 200]
+        assert transport.call_count == 2
+    prefs = storage.get_user_prefs('123')
+    if method == 'editMessageReplyMarkup':
+        assert [city['name'] for city in prefs['cities']] == ['תל אביב -יפו', 'חיפה']
+    else:
+        assert prefs['reminder_enabled'] is True
+    assert len(list(isolated_redis.scan_iter(match='zmunah:delivery:123:update:910:mutation:*'))) == 1
+    assert isolated_redis.get(success_key) == '1'
+
+
+@pytest.mark.parametrize('helper,args', [
+    (bot.edit_message_with_keyboard, (123, 1, 'text', [])),
+    (bot.edit_message_keyboard_only, (123, 1, [])),
+])
+@pytest.mark.parametrize('status,payload', [
+    (400, {'ok': False, 'error_code': 400, 'description': 'Bad Request: message to edit not found'}),
+    (401, {'ok': False, 'error_code': 401, 'description': NOT_MODIFIED}),
+    (400, {'ok': False, 'error_code': 401, 'description': NOT_MODIFIED}),
+    (400, {'ok': True, 'error_code': 400, 'description': NOT_MODIFIED}),
+    (400, {'ok': False, 'error_code': 400, 'description': 'Other error: message is not modified'}),
+    (400, []),
+])
+def test_edit_helpers_reject_genuine_or_malformed_errors(helper, args, status, payload):
+    with patch.object(bot.requests, 'post', return_value=telegram_error(status, payload)):
+        with pytest.raises(bot.TelegramDeliveryError, match='Telegram request failed'):
+            helper(*args)
+
+
+def test_send_message_does_not_accept_edit_noop():
+    response = telegram_error(400, {'ok': False, 'error_code': 400, 'description': NOT_MODIFIED})
+    with patch.object(bot.requests, 'post', return_value=response):
+        with pytest.raises(bot.TelegramDeliveryError):
+            bot.send_message(123, 'text')

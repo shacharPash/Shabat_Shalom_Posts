@@ -142,6 +142,26 @@ def _telegram_result(response):
     return result
 
 
+def _telegram_edit_result(response):
+    """A confirmed already-applied edit is successful for edit methods only."""
+    if response.status_code == 400:
+        try:
+            result = response.json()
+        except (requests.RequestException, ValueError):
+            raise TelegramDeliveryError("Telegram request failed") from None
+        if (
+            isinstance(result, dict)
+            and result.get("ok") is False
+            and result.get("error_code") == 400
+            and result.get("description") == (
+                "Bad Request: message is not modified: specified new message content and reply markup "
+                "are exactly the same as a current content and reply markup of the message"
+            )
+        ):
+            return {"ok": True, "already_applied": True}
+    return _telegram_result(response)
+
+
 def download_photo(file_id: str) -> Optional[bytes]:
     """Download only a bounded Telegram file into memory, closing every response."""
     from media_validation import MAX_IMAGE_BYTES
@@ -227,7 +247,7 @@ def edit_message_with_keyboard(
     if parse_mode:
         payload["parse_mode"] = parse_mode
     response = requests.post(url, json=payload, timeout=30)
-    return _telegram_result(response)
+    return _telegram_edit_result(response)
 
 
 def edit_message_keyboard_only(
@@ -241,7 +261,7 @@ def edit_message_keyboard_only(
         "reply_markup": {"inline_keyboard": keyboard},
     }
     response = requests.post(url, json=payload, timeout=30)
-    return _telegram_result(response)
+    return _telegram_edit_result(response)
 
 
 # --- User State Management ---

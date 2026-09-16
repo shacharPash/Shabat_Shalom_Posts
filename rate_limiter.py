@@ -1,40 +1,45 @@
 """
-Rate limiter module with Redis backend and in-memory fallback.
+Redis fixed-window quota with a bounded local sliding-window fallback.
 
-Uses a sliding window counter algorithm for rate limiting.
-When Redis is unavailable, falls back to in-memory dictionary.
+Missing configuration permits secret-free local use. Configured Redis failures
+raise RateLimitUnavailable so the public adapter can decline rendering.
 """
 
 import os
 import time
-from typing import Optional, Tuple
+from threading import Lock
+from typing import Tuple
 
-# In-memory fallback storage: {key: [(timestamp, count), ...]}
-_memory_store: dict = {}
+# Store at most this many active identifier/window pairs per process. Never evict
+# an active quota to admit a new identifier, which would let churn reset limits.
+MAX_MEMORY_IDENTIFIERS = 4096
+_memory_store: dict[tuple[str, int], list[float]] = {}
+_memory_lock = Lock()
+
+
+class RateLimitUnavailable(RuntimeError):
+    """The quota cannot be enforced; public rendering must be declined."""
 
 
 def _get_redis_client():
-    """
-    Try to get a Redis client. Returns None if Redis is unavailable.
-    """
+    """Only absent configuration selects local mode, never a storage error."""
+    if not (os.getenv("REDIS_URL") or os.getenv("KV_URL")):
+        return None
     try:
         from redis_client import get_redis_client
         return get_redis_client()
     except Exception:
-        return None
+        raise RateLimitUnavailable("Rate limit unavailable") from None
 
 
-def _cleanup_memory_store(key: str, window_seconds: int) -> None:
-    """Remove expired entries from in-memory store."""
-    if key not in _memory_store:
-        return
-    
-    current_time = time.time()
-    cutoff = current_time - window_seconds
-    _memory_store[key] = [
-        (ts, count) for ts, count in _memory_store[key]
-        if ts > cutoff
-    ]
+def _cleanup_memory_store(current_time: float) -> None:
+    """On each local request, remove expired timestamps and identifiers."""
+    for key, timestamps in list(_memory_store.items()):
+        active = [ts for ts in timestamps if ts > current_time - key[1]]
+        if active:
+            _memory_store[key] = active
+        else:
+            del _memory_store[key]
 
 
 def _check_rate_limit_redis(
@@ -64,8 +69,7 @@ def _check_rate_limit_redis(
         
         return is_allowed, remaining
     except Exception:
-        # If Redis fails, allow the request
-        return True, max_requests
+        raise RateLimitUnavailable("Rate limit unavailable") from None
 
 
 def _check_rate_limit_memory(
@@ -79,30 +83,19 @@ def _check_rate_limit_memory(
     Returns:
         Tuple[bool, int]: (is_allowed, remaining_requests)
     """
-    current_time = time.time()
-    
-    # Clean up old entries
-    _cleanup_memory_store(key, window_seconds)
-    
-    # Initialize if needed
-    if key not in _memory_store:
-        _memory_store[key] = []
-    
-    # Count requests in current window
-    cutoff = current_time - window_seconds
-    current_count = sum(
-        count for ts, count in _memory_store[key]
-        if ts > cutoff
-    )
-    
-    if current_count >= max_requests:
-        return False, 0
-    
-    # Add this request
-    _memory_store[key].append((current_time, 1))
-    remaining = max(0, max_requests - current_count - 1)
-    
-    return True, remaining
+    with _memory_lock:
+        current_time = time.time()
+        _cleanup_memory_store(current_time)
+        storage_key = (key, window_seconds)
+        if storage_key not in _memory_store:
+            if len(_memory_store) >= MAX_MEMORY_IDENTIFIERS:
+                raise RateLimitUnavailable("Rate limit unavailable")
+            _memory_store[storage_key] = []
+        timestamps = _memory_store[storage_key]
+        if len(timestamps) >= max_requests:
+            return False, 0
+        timestamps.append(current_time)
+        return True, max_requests - len(timestamps)
 
 
 class RateLimiter:
@@ -168,9 +161,8 @@ class RateLimiter:
             identifier: Unique identifier to reset
         """
         # Reset in-memory store
-        key = identifier
-        if key in _memory_store:
-            del _memory_store[key]
+        with _memory_lock:
+            _memory_store.pop((identifier, self.window_seconds), None)
         
         # Reset in Redis if available
         redis_client = self._get_client()
