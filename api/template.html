@@ -22,10 +22,18 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
+    @font-face { font-family: Heebo; src: url('/fonts/Heebo.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #2764d7; outline-offset: 3px; }
+    .city-move { padding: 6px; font: inherit; border-radius: 6px; cursor: pointer; }
+    .city-picker-item { width: 100%; text-align: right; font: inherit; color: inherit; background: transparent; border: 0; }
+    .crop-keyboard { margin-top: 12px; padding: 12px; border: 1px solid #888; border-radius: 8px; color: var(--text-secondary); }
+    .crop-keyboard label { display: block; margin-top: 8px; }
+    .crop-keyboard input { width: 100%; direction: ltr; }
+    .release-links { margin-top: 16px; line-height: 1.9; }
+    .media-limits, .share-details { font-size: .875rem; line-height: 1.7; color: var(--text-secondary); }
+
     :root {
       /* Light mode colors */
       --bg-gradient-start: #1a237e;
@@ -3246,11 +3254,6 @@
     }
   </style>
 
-  <!-- Vercel Analytics -->
-  <script defer src="/_vercel/insights/script.js"></script>
-
-  <!-- Vercel Speed Insights -->
-  <script defer src="/_vercel/speed-insights/script.js"></script>
 </head>
 <body>
   <div class="container">
@@ -3468,7 +3471,7 @@
       <div class="step-content">
         <div class="form-group">
           <div class="file-upload-wrapper">
-            <input type="file" id="imageFile" class="file-input-hidden" accept="image/*,video/mp4,video/webm" multiple />
+            <input type="file" id="imageFile" class="file-input-hidden" accept="image/jpeg,image/png,image/webp,image/gif" aria-describedby="mediaLimits" multiple />
             <button type="button" id="fileUploadBtn" class="file-upload-btn">
               <span>📷</span> העלה תמונה
             </button>
@@ -3477,6 +3480,17 @@
               <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
             </div>
           </div>
+          <p id="mediaLimits" class="media-limits">אפשר להעלות תמונות JPEG, PNG או WebP רגילות, או הנפשת GIF. עד 3 MiB לקובץ, 20 מיליון פיקסלים ועד 12,000 פיקסלים לצלע. בהנפשה: עד 30 פריימים ועד 40 מיליון פיקסלים בסך הכול. בפוסטר עומר מתקבלת תמונה קבועה גם מקובץ מונפש. סרטונים אינם נתמכים. קובץ פלט גדול מדי יצריך תמונה קטנה יותר.</p>
+          <fieldset id="cropKeyboard" class="crop-keyboard" hidden>
+            <legend>כיוון חיתוך במקלדת</legend>
+            <label for="cropImageSelect">התמונה לכיוון</label>
+            <select id="cropImageSelect"></select>
+            <label for="cropHorizontal">מיקום אופקי: משמאל לימין</label>
+            <input id="cropHorizontal" type="range" min="0" max="100" value="50" step="1" />
+            <label for="cropVertical">מיקום אנכי: מלמעלה למטה</label>
+            <input id="cropVertical" type="range" min="0" max="100" value="50" step="1" />
+            <p>השתמשו בחצים להזזה ובמקשי הבית והסוף לקצוות. השינוי נראה בתצוגה המקדימה ומשפיע על התמונה שנוצרת.</p>
+          </fieldset>
           <!-- Image crop toggle button - hidden, crop done in preview -->
           <button type="button" id="cropToggleBtn" class="crop-toggle-btn" style="display: none !important;">✂️ התאם חיתוך תמונה</button>
           <!-- Image crop preview - hidden, crop done in preview -->
@@ -3561,7 +3575,7 @@
 
             <!-- City picker dropdown (hidden by default) -->
             <div class="city-picker" id="cityPicker">
-              <input type="text" id="citySearch" class="city-search" placeholder="🔍 חפש עיר..." />
+              <input type="text" id="citySearch" aria-label="חיפוש עיר" class="city-search" placeholder="🔍 חפש עיר..." />
               <div class="city-picker-list" id="cityPickerList"></div>
             </div>
 
@@ -3702,9 +3716,14 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
-    <button id="copyLinkBtn" class="btn-copy-link">
+    <div class="share-details">
+      <p>הקישור שומר מצב שבת או עומר, ערים רגילות והסדר שלהן בשבת, ונוסח בעומר. תמונות, חיתוך, תאריכים, ערים מותאמות, דקות לפני השקיעה ועיצוב אינם נשמרים בקישור.</p>
+      <label><input type="checkbox" id="shareIncludeTexts" /> לכלול גם את טקסט הברכה וההקדשה בקישור</label>
+      <p>כל מי שמקבל את הקישור יכול לקרוא את הטקסט שנכלל בו. הקישור עשוי להישמר גם בהיסטוריית הדפדפן ובמערכות האירוח.</p>
+    </div>
+    <button type="button" id="copyLinkBtn" class="btn-copy-link">
       <span id="copyLinkIcon">💾</span>
-      <span id="copyLinkText">שמרו את ההגדרות 💾</span>
+      <span id="copyLinkText">העתקת קישור להגדרות</span>
     </button>
     <div class="copy-link-hint" id="copyLinkHint">רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎</div>
 
@@ -3741,6 +3760,11 @@ CITY_CHECKBOXES_PLACEHOLDER
     </div>
 
     <div class="footer">
+      <div class="release-links">
+        <a href="/privacy.html">פרטיות</a> · <a href="/terms.html">תנאי שימוש</a><br>
+        נתוני פרשות מאת <a href="https://www.hebcal.com/home/developer-apis" rel="noreferrer">Hebcal</a>, ברישיון <a href="https://creativecommons.org/licenses/by/4.0/" rel="noreferrer">CC BY 4.0</a>. הנתונים עובדו לתצוגה בעברית ולפוסטר.<br>
+        הלוח לפי מנהג ישראל. תזכורות העומר לפי שעון ישראל וצאת הכוכבים בירושלים.
+      </div>
       🕯️ לזכר <a href="https://www.izkor.gov.il/%D7%90%D7%95%D7%A8%D7%99%20%D7%9E%D7%A9%D7%94%20%D7%91%D7%95%D7%A8%D7%A0%D7%A9%D7%98%D7%99%D7%99%D7%9F/en_afdfb0c864fda6c94fb84ac656761710" target="_blank" rel="noopener noreferrer">אורי בורנשטיין</a> הי״ד
       <div class="share-invite">
         אהבתם? מוזמנים <a href="https://wa.me/?text=%D7%92%D7%99%D7%9C%D7%99%D7%AA%D7%99%20%D7%90%D7%AA%D7%A8%20%D7%9E%D7%93%D7%94%D7%99%D7%9D%20%D7%9C%D7%99%D7%A6%D7%99%D7%A8%D7%AA%20%D7%96%D7%9E%D7%95%D7%A0%D7%95%D7%AA%20%D7%9C%D7%A9%D7%91%D7%AA%20%E2%9C%A1%EF%B8%8F%0Ahttps://shabat-posts.vercel.app" target="_blank" rel="noopener noreferrer">לשתף עם חברים ומשפחה</a> 💬
@@ -5022,10 +5046,10 @@ CITY_CHECKBOXES_PLACEHOLDER
           const maxCities = 4;
           const citiesToShow = orderedSelectedCities.slice(0, maxCities);
           livePreviewCities.innerHTML = citiesToShow.map(name => {
-            const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+            const opt = findCityOption(name);
             const displayName = opt ? opt.querySelector('.city-name').textContent : name;
             return `<div class="live-preview-city-row">
-              <span>${displayName}</span>
+              <span>${escapeHtml(displayName)}</span>
               <span>--:--</span>
               <span>--:--</span>
             </div>`;
@@ -5072,6 +5096,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Update preview background when image is uploaded
     function updateLivePreviewBackground() {
+      syncCropControls();
       if (!livePreviewBg) return;
 
       const previewResetBtn = document.getElementById('previewResetCropBtn');
@@ -5386,6 +5411,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         const posX = previewDragState.bgPosX / 100;
         const posY = previewDragState.bgPosY / 100;
         imageCropPositions[index] = { x: posX, y: posY };
+        syncCropControls();
 
         // Update main crop preview if visible
         updateMainCropPosition(posX, posY);
@@ -5409,6 +5435,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         const index = currentCropIndex || 0;
         if (uploadedFiles.length > 0) {
           imageCropPositions[index] = { x: 0.5, y: 0.5 };
+          syncCropControls();
           updateMainCropPosition(0.5, 0.5);
         }
 
@@ -5503,6 +5530,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         const posX = omerDragState.bgPosX / 100;
         const posY = omerDragState.bgPosY / 100;
         imageCropPositions[index] = { x: posX, y: posY };
+        syncCropControls();
 
         // Update main crop preview if visible
         updateMainCropPosition(posX, posY);
@@ -5775,6 +5803,16 @@ CITY_CHECKBOXES_PLACEHOLDER
       return val.replace(/"/g, '\\"');
     }
 
+    function escapeHtml(value) {
+      const span = document.createElement('span');
+      span.textContent = value;
+      return span.innerHTML;
+    }
+
+    function findCityOption(name) {
+      return Array.from(document.querySelectorAll('.city-option')).find(opt => opt.dataset.name === name);
+    }
+
     // Store city offsets (separate from hidden grid for better UX)
     let cityOffsets = {}; // { cityName: offsetValue }
 
@@ -5800,24 +5838,44 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
 
       // Render city rows in the user's preferred order
-      selectedCitiesList.innerHTML = orderedSelectedCities.map((name) => {
-        const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+      selectedCitiesList.replaceChildren();
+      orderedSelectedCities.forEach((name, index) => {
+        const opt = findCityOption(name);
         const displayName = opt ? opt.querySelector('.city-name').textContent : name;
-        // Get offset from our store or from the hidden grid
-        const gridOffset = opt ? (opt.querySelector('.candle-offset')?.value || 20) : 20;
+        const gridOffset = opt ? (opt.querySelector('.candle-offset')?.value ?? 20) : 20;
         const offset = cityOffsets[name] !== undefined ? cityOffsets[name] : gridOffset;
-
-        return `<div class="city-row" data-name="${name}" draggable="true">
-          <span class="drag-handle" title="גרור לשינוי סדר">☰</span>
-          <span class="city-row-name">${displayName}</span>
-          <div class="city-offset">
-            <span class="candle-icon">🕯️</span>
-            <input type="number" class="candle-offset" value="${offset}" min="0" max="60" />
-            <span class="offset-label">דק'</span>
-          </div>
-          <button type="button" class="city-remove" title="הסר עיר">🗑️</button>
-        </div>`;
-      }).join('');
+        const row = document.createElement('div');
+        row.className = 'city-row';
+        row.dataset.name = name;
+        row.draggable = true;
+        row.innerHTML = `<span class="drag-handle" aria-hidden="true">☰</span>
+          <span class="city-row-name"></span>
+          <button type="button" class="city-move city-up">↑</button>
+          <button type="button" class="city-move city-down">↓</button>
+          <div class="city-offset"><span class="candle-icon" aria-hidden="true">🕯️</span>
+            <input type="number" class="candle-offset" min="0" max="60" />
+            <span class="offset-label">דק'</span></div>
+          <button type="button" class="city-remove">🗑️</button>`;
+        row.querySelector('.city-row-name').textContent = displayName;
+        const offsetInput = row.querySelector('.candle-offset');
+        offsetInput.value = offset;
+        offsetInput.setAttribute('aria-label', `דקות לפני השקיעה בעיר ${displayName}`);
+        row.querySelector('.city-remove').setAttribute('aria-label', `הסרת העיר ${displayName}`);
+        for (const [selector, delta, label] of [['.city-up', -1, 'העלאת העיר'], ['.city-down', 1, 'הורדת העיר']]) {
+          const move = row.querySelector(selector);
+          move.setAttribute('aria-label', `${label} ${displayName}`);
+          move.disabled = index + delta < 0 || index + delta >= orderedSelectedCities.length;
+          move.addEventListener('click', () => {
+            const target = index + delta;
+            [orderedSelectedCities[index], orderedSelectedCities[target]] = [orderedSelectedCities[target], orderedSelectedCities[index]];
+            renderCityList();
+            const moved = selectedCitiesList.children[target];
+            const sameControl = moved.querySelector(selector);
+            (sameControl.disabled ? moved.querySelector(delta < 0 ? '.city-down' : '.city-up') : sameControl).focus();
+          });
+        }
+        selectedCitiesList.appendChild(row);
+      });
 
       // Add drag & drop event handlers (desktop + mobile)
       setupDragAndDrop();
@@ -5831,7 +5889,7 @@ CITY_CHECKBOXES_PLACEHOLDER
           orderedSelectedCities = orderedSelectedCities.filter(n => n !== name);
           delete cityOffsets[name];
           // Uncheck the option in hidden grid
-          const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+          const opt = findCityOption(name);
           if (opt) { opt.classList.remove('checked'); opt.dataset.selected = 'false'; }
           renderCityList();
           updateCityLimit();
@@ -5842,9 +5900,9 @@ CITY_CHECKBOXES_PLACEHOLDER
       selectedCitiesList.querySelectorAll('.candle-offset').forEach(input => {
         input.addEventListener('change', () => {
           const name = input.closest('.city-row').dataset.name;
-          cityOffsets[name] = parseInt(input.value) || 20;
+          cityOffsets[name] = Number.isFinite(parseInt(input.value)) ? parseInt(input.value) : 20;
           // Sync back to hidden grid
-          const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+          const opt = findCityOption(name);
           if (opt) {
             const gridInput = opt.querySelector('.candle-offset');
             if (gridInput) gridInput.value = cityOffsets[name];
@@ -6039,25 +6097,21 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       // Add selected cities (only for shabbat mode)
       if (!omerModeEnabled) {
-        const selectedCityNames = Array.from(document.querySelectorAll('.city-option.checked'))
-          .map(opt => opt.dataset.name);
-        if (selectedCityNames.length > 0) {
-          params.set('cities', selectedCityNames.join(','));
-        }
+        params.set('cities', orderedSelectedCities.join(','));
       }
 
       // Add message if present
-      if (messageInput.value.trim()) {
+      if (document.getElementById('shareIncludeTexts').checked && messageInput.value.trim()) {
         params.set('message', messageInput.value.trim());
       }
 
       // Add neshama if present
-      if (neshamaInput.value.trim()) {
+      if (document.getElementById('shareIncludeTexts').checked && neshamaInput.value.trim()) {
         params.set('neshama', neshamaInput.value.trim());
       }
 
-      // Add nusach if not default (only for omer mode)
-      if (omerModeEnabled && currentNusach !== 'sefard') {
+      // Add the current nusach for every newly shared Omer link.
+      if (omerModeEnabled) {
         params.set('nusach', currentNusach);
       }
 
@@ -6144,32 +6198,33 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       // Pre-select cities from URL, or use defaults if no cities param (only for shabbat mode)
       const citiesParam = urlParams.get('cities');
-      const cityNames = citiesParam
-        ? citiesParam.split(',').map(c => decodeURIComponent(c.trim()))
+      const cityNames = citiesParam !== null
+        ? citiesParam.split(',').map(c => c.trim())
         : DEFAULT_CITIES;
 
       cityNames.forEach(name => {
-        const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+        const opt = findCityOption(name);
         if (opt) {
           opt.classList.add('checked');
           opt.dataset.selected = 'true';
           if (citiesParam) hasParams = true; // Only mark as URL param if explicitly set
         }
       });
+      orderedSelectedCities = [...new Set(cityNames.filter(name => findCityOption(name)))];
       renderChips();
       updateCityLimit();
 
       // Pre-fill message
       const messageParam = urlParams.get('message');
       if (messageParam) {
-        messageInput.value = decodeURIComponent(messageParam);
+        messageInput.value = messageParam;
         hasParams = true;
       }
 
       // Pre-fill leiluy neshama
       const neshamaParam = urlParams.get('neshama');
       if (neshamaParam) {
-        neshamaInput.value = decodeURIComponent(neshamaParam);
+        neshamaInput.value = neshamaParam;
         hasParams = true;
       }
 
@@ -6208,7 +6263,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
       // Re-select default cities
       DEFAULT_CITIES.forEach(name => {
-        const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+        const opt = findCityOption(name);
         if (opt) {
           opt.classList.add('checked');
           opt.dataset.selected = 'true';
@@ -6246,7 +6301,8 @@ CITY_CHECKBOXES_PLACEHOLDER
       cityOptions.forEach(opt => {
         const name = opt.dataset.name;
         const displayName = opt.querySelector('.city-name').textContent;
-        const item = document.createElement('div');
+        const item = document.createElement('button');
+        item.type = 'button';
         item.className = 'city-picker-item';
         item.dataset.name = name;
         item.textContent = displayName;
@@ -6293,14 +6349,16 @@ CITY_CHECKBOXES_PLACEHOLDER
     }
 
     function closeCityPicker() {
+      const wasOpen = cityPicker.classList.contains('show');
       cityPicker.classList.remove('show');
+      if (wasOpen) addCityBtn.focus();
     }
 
     // Update city picker to reflect current selection
     function updateCityPickerState() {
       cityPickerList.querySelectorAll('.city-picker-item').forEach(item => {
         const name = item.dataset.name;
-        const opt = document.querySelector(`.city-option[data-name="${escapeAttrForSelector(name)}"]`);
+        const opt = findCityOption(name);
         const isSelected = opt && opt.classList.contains('checked');
         item.classList.toggle('selected', isSelected);
         // Hide already selected cities from picker
@@ -6336,6 +6394,10 @@ CITY_CHECKBOXES_PLACEHOLDER
     addCityBtn.addEventListener('click', () => {
       if (getTotalCitiesCount() >= MAX_CITIES) return;
       toggleCityPicker();
+    });
+
+    cityPicker.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeCityPicker();
     });
 
     // City search filters picker
@@ -6420,6 +6482,12 @@ CITY_CHECKBOXES_PLACEHOLDER
     // When files are selected
     fileInput.addEventListener("change", () => {
       if (fileInput.files && fileInput.files.length > 0) {
+        const files = Array.from(fileInput.files);
+        if (files.some(file => !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 3 * 1024 * 1024)) {
+          alert('יש לבחור תמונת JPEG, PNG, WebP או GIF בגודל עד 3 MiB לכל קובץ.');
+          fileInput.value = '';
+          return;
+        }
         const count = fileInput.files.length;
         uploadedFiles = Array.from(fileInput.files);
 
@@ -6679,7 +6747,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       });
     }
 
-    // Helper function to read file as base64 with compression (skips GIF and video)
+    // Helper function to read file as base64 with compression (preserves GIF)
     async function readFileAsBase64(file) {
       // Skip compression for GIF files - preserve animation
       if (file.type === 'image/gif') {
@@ -6700,22 +6768,6 @@ CITY_CHECKBOXES_PLACEHOLDER
         });
       }
 
-      // Handle video files - send as-is (backend will convert to GIF)
-      if (file.type.startsWith('video/')) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const base64 = e.target.result.split(',')[1];
-            if (base64.length > MAX_BASE64_SIZE) {
-              reject(new Error('קובץ הוידאו גדול מדי (מקסימום 3MB). נסה קובץ קטן יותר.'));
-            }
-            resolve(base64);
-          };
-          reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
-          reader.readAsDataURL(file);
-        });
-      }
-
       // Compress non-GIF images
       const base64 = await compressImage(file);
 
@@ -6725,6 +6777,46 @@ CITY_CHECKBOXES_PLACEHOLDER
       }
 
       return base64;
+    }
+
+    function syncCropControls() {
+      const fieldset = document.getElementById('cropKeyboard');
+      const select = document.getElementById('cropImageSelect');
+      fieldset.hidden = uploadedFiles.length === 0;
+      if (select.options.length !== uploadedFiles.length) {
+        select.replaceChildren();
+        uploadedFiles.forEach((file, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = `תמונה ${index + 1}: ${file.name}`;
+          select.appendChild(option);
+        });
+      }
+      uploadedFiles.forEach((file, index) => {
+        select.options[index].textContent = `תמונה ${index + 1}: ${file.name}`;
+      });
+      select.value = currentCropIndex;
+      const position = imageCropPositions[currentCropIndex] || {x: 0.5, y: 0.5};
+      document.getElementById('cropHorizontal').value = Math.round(position.x * 100);
+      document.getElementById('cropVertical').value = Math.round(position.y * 100);
+    }
+    document.getElementById('cropImageSelect').addEventListener('change', event => {
+      currentCropIndex = Number(event.target.value);
+      showCropPreview(uploadedFiles[currentCropIndex], currentCropIndex);
+      syncCropControls();
+    });
+    for (const id of ['cropHorizontal', 'cropVertical']) {
+      document.getElementById(id).addEventListener('input', () => {
+        if (!uploadedFiles.length) return;
+        const position = {
+          x: Number(document.getElementById('cropHorizontal').value) / 100,
+          y: Number(document.getElementById('cropVertical').value) / 100,
+        };
+        imageCropPositions[currentCropIndex] = position;
+        updateCropImagePosition(position.x, position.y);
+        updateLivePreviewBackground();
+        if (omerModeEnabled) updateOmerPreviewDisplay();
+      });
     }
 
     // ===== Crop Preview Functionality =====
@@ -7014,7 +7106,7 @@ CITY_CHECKBOXES_PLACEHOLDER
           });
 
           if (!resp.ok) {
-            throw new Error("שגיאה מהשרת: " + resp.status);
+            throw new Error((await resp.text()) || "שגיאה ביצירת הפוסטר. נסו תמונה קטנה יותר.");
           }
 
           const blob = await resp.blob();

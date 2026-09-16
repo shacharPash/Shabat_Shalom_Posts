@@ -11,6 +11,10 @@ as an exact-date fallback when the API cannot provide a reading.
 
 import json
 import os
+import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from collections.abc import Iterator
 from datetime import date, timedelta
 from typing import Any, Dict, Optional
 
@@ -41,6 +45,22 @@ if os.path.exists(_parsha_file):
 # Cache to store Hebcal API responses by year - avoids redundant API calls
 # Key: year (int), Value: API response data (dict)
 _hebcal_cache: Dict[int, Dict[str, Any]] = {}
+_failure_cache: Dict[int, float] = {}
+FAILURE_CACHE_SECONDS = 60
+MAX_FAILURE_YEARS = 128
+FETCH_TIMEOUT = (2, 3)
+_sequence_cache: ContextVar[Optional[dict[int, Optional[Dict[str, Any]]]]] = ContextVar(
+    'hebcal_sequence', default=None)
+
+
+@contextmanager
+def hebcal_request_sequence() -> Iterator[None]:
+    """Attempt each year once in a request, even if the failure TTL expires."""
+    token = _sequence_cache.set({})
+    try:
+        yield
+    finally:
+        _sequence_cache.reset(token)
 
 
 def _get_hebcal_data_for_year(year: int) -> Optional[Dict[str, Any]]:
@@ -53,29 +73,48 @@ def _get_hebcal_data_for_year(year: int) -> Optional[Dict[str, Any]]:
     Returns:
         Hebcal API response data, or None if fetch failed
     """
-    # Check cache first
+    sequence = _sequence_cache.get()
+    if sequence is not None and year in sequence:
+        return sequence[year]
     if year in _hebcal_cache:
         return _hebcal_cache[year]
-
-    # Fetch from API
-    url = _build_hebcal_url(year)
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-
-        # Store in cache for future use
-        _hebcal_cache[year] = data
-        return data
-
-    except Exception as e:
-        print(f"Warning: Could not fetch Hebcal data for year {year}: {e}")
+    now = time.monotonic()
+    for failed_year, expiry in list(_failure_cache.items()):
+        if expiry <= now:
+            _failure_cache.pop(failed_year, None)
+    if year in _failure_cache:
+        if sequence is not None:
+            sequence[year] = None
         return None
+
+    response = None
+    data = None
+    try:
+        response = requests.get(_build_hebcal_url(year), timeout=FETCH_TIMEOUT)
+        response.raise_for_status()
+        candidate = response.json()
+        if not isinstance(candidate, dict) or not isinstance(candidate.get('items'), list):
+            raise ValueError('Malformed calendar response')
+        if not all(isinstance(item, dict) for item in candidate['items']):
+            raise ValueError('Malformed calendar items')
+        data = candidate
+        _hebcal_cache[year] = data
+    except Exception:
+        if len(_failure_cache) >= MAX_FAILURE_YEARS:
+            _failure_cache.pop(next(iter(_failure_cache)))
+        _failure_cache[year] = time.monotonic() + FAILURE_CACHE_SECONDS
+    finally:
+        if response is not None:
+            response.close()
+    if sequence is not None:
+        sequence[year] = data
+    return data
 
 
 def clear_hebcal_cache() -> None:
     """Clear the Hebcal API cache. Useful for testing or memory management."""
     _hebcal_cache.clear()
+    _failure_cache.clear()
 
 
 def get_parsha_from_hebcal(target_date: date) -> Optional[str]:

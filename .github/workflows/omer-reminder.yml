@@ -2,20 +2,37 @@ name: Omer Reminder
 
 on:
   schedule:
-    # Run at 17:00 UTC = 20:00 Israel summer time (19:00 Israel winter time)
-    - cron: '0 17 * * *'
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+    inputs:
+      resume_cursor:
+        description: 'Opaque cursor from a failed run (leave empty for normal start)'
+        required: false
+        type: string
+      restart_traversal:
+        description: 'Explicitly start a fresh traversal after saved pages expire'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omer-reminder
+  cancel-in-progress: false
 
 jobs:
-  send-omer-reminder:
+  send-reminders:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     steps:
-      - name: Trigger Omer Reminder
-        run: |
-          curl -L -X GET "${{ secrets.VERCEL_URL }}/api/omer_reminder" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            --fail-with-body \
-            --max-time 120
-
+      - uses: actions/checkout@v4
+      - name: Send bounded reminder batches
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          RESUME_CURSOR: ${{ inputs.resume_cursor }}
+          RESTART_TRAVERSAL: ${{ inputs.restart_traversal }}
+          REMINDER_ENDPOINT: omer_reminder
+        run: python3 .github/scripts/run_reminders.py

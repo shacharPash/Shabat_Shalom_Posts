@@ -4,13 +4,14 @@ import sys
 from http.server import BaseHTTPRequestHandler
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from cities import get_cities_list, map_city_payload
-from api.poster import build_poster_from_payload, CITY_BY_NAME
+from cities import get_cities_list
+from api.poster import build_poster_from_payload
+from poster_http import create_poster_response, register_public_routes
 
 # FastAPI app for local development with `vercel dev`
 app = FastAPI()
@@ -46,7 +47,7 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(html_content.encode("utf-8"))
         except Exception as e:
-            error_msg = f"Internal Server Error: {e}".encode("utf-8")
+            error_msg = "שגיאה בטעינת העמוד".encode("utf-8")
             self.send_response(500)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
@@ -62,20 +63,7 @@ async def root():
 
 @app.post("/poster")
 async def create_poster(request: Request):
-    """Create poster (for local dev)."""
-    try:
-        payload = await request.json()
-        # Map city names to full city objects with coordinates (same as Vercel handler)
-        map_city_payload(payload, CITY_BY_NAME)
-        poster_bytes = build_poster_from_payload(payload)
+    return await create_poster_response(request, build_poster_from_payload)
 
-        # Detect output format from magic bytes
-        # GIF starts with "GIF87a" or "GIF89a", PNG starts with \x89PNG
-        if poster_bytes[:6] in (b'GIF87a', b'GIF89a'):
-            media_type = "image/gif"
-        else:
-            media_type = "image/png"
 
-        return Response(content=poster_bytes, media_type=media_type)
-    except Exception as e:
-        return Response(content=str(e), status_code=500)
+register_public_routes(app)

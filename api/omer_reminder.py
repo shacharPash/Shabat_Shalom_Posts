@@ -1,28 +1,19 @@
-"""
-Vercel Cron endpoint for daily Omer reminders.
-
-Runs at 17:00 UTC (20:00 Israel summer time / 19:00 winter time).
-Sends Omer poster to all users with reminder_enabled=True.
-
-Query Parameters:
-    test_user_id: (optional) Send reminder to specific user for testing.
-                  Bypasses the Omer period check. Example: ?test_user_id=123456789
-"""
+"""Authenticated GitHub Actions reminder endpoint. Targeted calls retain all guards."""
 
 import base64
-import json
 import os
 import sys
-from datetime import date, datetime
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
 
 # Add parent directory to path for Vercel serverless environment
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text, ISRAEL_TZ
-from redis_client import get_users_with_reminders_enabled, get_user_prefs, mark_omer_sent_today, was_omer_sent_today
-from telegram_bot import send_photo, send_photo_with_keyboard, send_message, download_photo, CITY_BY_NAME, _build_omer_poster_keyboard
+from reminder_delivery import run_reminders
+
+from omer_utils import get_omer_day, get_omer_count_text, get_sefirah_text, ISRAEL_TZ, omer_event_context
+from redis_client import get_user_prefs
+from telegram_bot import send_message_with_keyboard, send_photo_with_keyboard, download_photo, CITY_BY_NAME, _build_omer_poster_keyboard
 from api.poster import build_poster_from_payload
 
 # Vercel cron secret for authentication
@@ -36,7 +27,7 @@ def is_omer_period() -> bool:
     return omer_day is not None and 1 <= omer_day <= 49
 
 
-def send_omer_reminder(user_id: str) -> bool:
+def send_omer_reminder(user_id: str, context: dict | None = None) -> bool:
     """
     Send Omer reminder to a single user (text or image based on preference).
 
@@ -47,6 +38,7 @@ def send_omer_reminder(user_id: str) -> bool:
         bool: True if sent successfully, False otherwise
     """
     try:
+        context = context or omer_event_context()
         # Get user preferences
         prefs = get_user_prefs(user_id)
         nusach = prefs.get("nusach", "sefard")
@@ -57,17 +49,16 @@ def send_omer_reminder(user_id: str) -> bool:
         # Check reminder type preference
         if reminder_type == "text":
             # Send text-only reminder
-            return _send_text_reminder(chat_id, nusach)
+            return _send_text_reminder(chat_id, nusach, context)
         else:
             # Send image reminder (default)
-            return _send_image_reminder(chat_id, prefs, nusach)
+            return _send_image_reminder(chat_id, prefs, nusach, context)
 
-    except Exception as e:
-        print(f"Error sending reminder to user {user_id}: {e}")
+    except Exception:
         return False
 
 
-def _send_text_reminder(chat_id: int, nusach: str) -> bool:
+def _send_text_reminder(chat_id: int, nusach: str, context: dict | None = None) -> bool:
     """
     Send text-only Omer reminder with the counting text.
 
@@ -78,8 +69,8 @@ def _send_text_reminder(chat_id: int, nusach: str) -> bool:
     Returns:
         bool: True if sent successfully, False otherwise
     """
-    today = date.today()
-    omer_day = get_omer_day(today)
+    context = context or omer_event_context()
+    omer_day = context["day"]
 
     if not omer_day or omer_day < 1 or omer_day > 49:
         return False
@@ -94,11 +85,11 @@ def _send_text_reminder(chat_id: int, nusach: str) -> bool:
     message += f"🕯️ {count_text}\n\n"
     message += f"✨ {sefirah_text}"
 
-    result = send_message(chat_id, message, parse_mode="Markdown")
+    result = send_message_with_keyboard(chat_id, message, _build_omer_poster_keyboard(context), parse_mode="Markdown")
     return result.get("ok", False)
 
 
-def _send_image_reminder(chat_id: int, prefs: dict, nusach: str) -> bool:
+def _send_image_reminder(chat_id: int, prefs: dict, nusach: str, context: dict | None = None) -> bool:
     """
     Send image (poster) Omer reminder.
 
@@ -110,9 +101,12 @@ def _send_image_reminder(chat_id: int, prefs: dict, nusach: str) -> bool:
     Returns:
         bool: True if sent successfully, False otherwise
     """
+    context = context or omer_event_context()
     # Build payload for Omer poster
     payload = {
         "omerMode": True,
+        "omerDay": context["day"],
+        "omerDate": context["date"].isoformat(),
         "dateFormat": prefs.get("date_format", "both"),
         "nusach": nusach,
     }
@@ -152,112 +146,15 @@ def _send_image_reminder(chat_id: int, prefs: dict, nusach: str) -> bool:
     poster_bytes = build_poster_from_payload(payload)
 
     # Send to user with "ספרתי" keyboard
-    keyboard = _build_omer_poster_keyboard()
+    keyboard = _build_omer_poster_keyboard(context)
     result = send_photo_with_keyboard(chat_id, poster_bytes, "🔢 תזכורת יומית לספירת העומר!", keyboard)
 
     return result.get("ok", False)
 
 
 class handler(BaseHTTPRequestHandler):
-    """Vercel serverless function entrypoint for Omer reminder cron."""
-
     def do_GET(self):
-        """Handle GET request from Vercel Cron or manual test."""
-        # Parse query parameters first to check for test mode
-        parsed_url = urlparse(self.path)
-        query_params = parse_qs(parsed_url.query)
-
-        # Check for test_user_id parameter (for manual testing)
-        test_user_id = query_params.get("test_user_id", [None])[0]
-
-        # Skip auth for test mode, require cron secret for production requests
-        if not test_user_id:
-            # Verify cron secret if configured
-            if CRON_SECRET:
-                auth_header = self.headers.get("Authorization")
-                if auth_header != f"Bearer {CRON_SECRET}":
-                    self.send_response(401)
-                    self.send_header("Content-Type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(b'{"error": "Unauthorized"}')
-                    return
-
-        try:
-            if test_user_id:
-                # Manual test mode: send reminder to specific user regardless of Omer period
-                success = send_omer_reminder(test_user_id)
-                response = {
-                    "status": "test_completed",
-                    "test_user_id": test_user_id,
-                    "sent": 1 if success else 0,
-                    "failed": 0 if success else 1,
-                }
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
-                return
-
-            # Check if we're in the Omer period
-            if not is_omer_period():
-                response = {
-                    "status": "skipped",
-                    "reason": "Not in Omer period",
-                    "sent": 0,
-                    "failed": 0,
-                }
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
-                return
-
-            # Get today's date for duplicate prevention
-            now_israel = datetime.now(ISRAEL_TZ)
-            today_str = now_israel.date().isoformat()
-
-            # Get all users with reminders enabled
-            users = get_users_with_reminders_enabled()
-
-            sent_count = 0
-            failed_count = 0
-            skipped_count = 0
-
-            for user_id in users:
-                # Check if already sent today (duplicate prevention)
-                if was_omer_sent_today(user_id, today_str):
-                    skipped_count += 1
-                    continue
-
-                if send_omer_reminder(user_id):
-                    # Mark as sent to prevent duplicates
-                    mark_omer_sent_today(user_id, today_str)
-                    sent_count += 1
-                else:
-                    failed_count += 1
-
-            response = {
-                "status": "completed",
-                "sent": sent_count,
-                "failed": failed_count,
-                "skipped": skipped_count,
-                "total_users": len(users),
-            }
-
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
-
-        except Exception as e:
-            print(f"Omer reminder cron error: {e}")
-            error_response = {"error": str(e)}
-            self.send_response(500)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(json.dumps(error_response, ensure_ascii=False).encode("utf-8"))
+        run_reminders(self, CRON_SECRET, 'evening', send_omer_reminder)
 
     def log_message(self, format, *args):
-        """Suppress default logging."""
         pass
-

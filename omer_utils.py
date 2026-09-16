@@ -656,3 +656,25 @@ def get_omer_info_for_time(
         "isAfterSunset": is_after_tzet,
     }
 
+
+
+def omer_event_context(now: datetime | None = None) -> dict:
+    """One Jerusalem timestamp identifies the count, Hebrew date and overnight event.
+
+    Automated evening sends require Jerusalem nightfall at 8.5 degrees below
+    the horizon and stop at local midnight. No inferred dawn time is used.
+    """
+    if now is None:
+        now = datetime.now(ISRAEL_TZ)
+    if now.tzinfo is None:
+        raise ValueError('aware timestamp required')
+    now = now.astimezone(ISRAEL_TZ)
+    nightfall = _get_jerusalem_tzet_datetime(now.date())
+    if nightfall is None:
+        raise ValueError('astronomical times unavailable')
+    after_nightfall = now >= nightfall
+    event_date = now.date() + timedelta(days=1) if after_nightfall else now.date()
+    day = get_omer_day(event_date)
+    return {'now': now, 'day': day, 'date': event_date,
+            'event_id': event_date.isoformat(),
+            'evening_eligible': day is not None and after_nightfall}

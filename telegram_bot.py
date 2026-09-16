@@ -7,6 +7,13 @@ Shabbat time posters via Telegram.
 
 import base64
 import io
+import json
+import secrets
+import time
+import hashlib
+from copy import deepcopy
+from contextlib import contextmanager, nullcontext
+from contextvars import ContextVar
 import os
 import re
 from datetime import datetime, timedelta
@@ -14,10 +21,25 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from redis_client import get_redis_client, get_user_prefs, set_user_prefs, DEFAULT_PREFERENCES, mark_omer_counted, was_omer_counted
-from api.poster import build_poster_from_payload
+from redis_client import DONE_TTL, get_pending_deletion, consume_update_budget, preference_operation, update_user_prefs, mutate_user_prefs, acquire_claim, release_claim, complete_claim, claim_completed, export_user_data, delete_user_data, get_redis_client, get_user_prefs, set_user_prefs, DEFAULT_PREFERENCES, mark_omer_counted, was_omer_counted
+from api import poster as poster_api
+from media_validation import MAX_POSTER_TEXT_LENGTH, MAX_POSTER_CITIES
 from cities import build_city_lookup, get_cities_list, SPECIAL_OFFSET_CITIES, DEFAULT_CANDLE_OFFSET
-from omer_utils import is_omer_period, get_omer_day, get_omer_info_for_time, ISRAEL_TZ
+from omer_utils import is_omer_period, get_omer_day, get_omer_info_for_time, ISRAEL_TZ, omer_event_context
+
+_request_time = ContextVar('bot_request_time', default=None)
+POSTER_CORRECTION_MESSAGE = f'לא ניתן ליצור פוסטר מהנתונים האלה. פתח את /settings ובדוק שיש עד {MAX_POSTER_CITIES} ערים ועד {MAX_POSTER_TEXT_LENGTH} תווים בכל טקסט. בדוק גם שהתמונה נתמכת. ההגדרות הקיימות נשמרו.'
+
+
+def build_poster_from_payload(payload):
+    """Use the request's single Omer context, then delegate to the safe builder."""
+    if payload.get('omerMode'):
+        context = omer_event_context(_request_time.get())
+        if context['day'] is None:
+            raise ValueError('outside Omer period')
+        payload = {**payload, 'omerDay': context['day'], 'omerDate': context['date'].isoformat()}
+    return poster_api.build_poster_from_payload(payload)
+
 
 # Load city lookup and list once at module level
 AVAILABLE_CITIES = get_cities_list()
@@ -44,7 +66,7 @@ def get_user_id(update: Dict[str, Any]) -> Optional[str]:
     """Extract user ID from a Telegram update."""
     message = update.get("message") or update.get("callback_query", {}).get("message")
     if message:
-        user = message.get("from") or update.get("callback_query", {}).get("from")
+        user = update.get("callback_query", {}).get("from") or message.get("from")
         if user:
             return str(user.get("id"))
     return None
@@ -67,7 +89,7 @@ def send_message(chat_id: int, text: str, parse_mode: str = "HTML") -> Dict[str,
         "parse_mode": parse_mode,
     }
     response = requests.post(url, json=payload, timeout=30)
-    return response.json()
+    return _telegram_result(response)
 
 
 def send_photo(chat_id: int, photo_bytes: bytes, caption: str = "") -> Dict[str, Any]:
@@ -78,7 +100,7 @@ def send_photo(chat_id: int, photo_bytes: bytes, caption: str = "") -> Dict[str,
     if caption:
         data["caption"] = caption
     response = requests.post(url, data=data, files=files, timeout=60)
-    return response.json()
+    return _telegram_result(response)
 
 
 def send_photo_with_keyboard(
@@ -94,29 +116,80 @@ def send_photo_with_keyboard(
         "reply_markup": json.dumps({"inline_keyboard": keyboard}),
     }
     response = requests.post(url, data=data, files=files, timeout=60)
-    return response.json()
+    return _telegram_result(response)
+
+
+class UpdateRateLimited(RuntimeError):
+    """The authenticated private actor exhausted their own update budget."""
+
+
+class BotPreferenceLimit(ValueError):
+    """A new preference would exceed shared poster limits."""
+
+
+class TelegramDeliveryError(RuntimeError):
+    """A delivery did not produce a confirmed Telegram success."""
+
+
+def _telegram_result(response):
+    try:
+        response.raise_for_status()
+        result = response.json()
+    except (requests.RequestException, ValueError):
+        raise TelegramDeliveryError("Telegram request failed") from None
+    if not isinstance(result, dict) or result.get("ok") is not True:
+        raise TelegramDeliveryError("Telegram request failed")
+    return result
+
+
+def _telegram_edit_result(response):
+    """A confirmed already-applied edit is successful for edit methods only."""
+    if response.status_code == 400:
+        try:
+            result = response.json()
+        except (requests.RequestException, ValueError):
+            raise TelegramDeliveryError("Telegram request failed") from None
+        if (
+            isinstance(result, dict)
+            and result.get("ok") is False
+            and result.get("error_code") == 400
+            and result.get("description") == (
+                "Bad Request: message is not modified: specified new message content and reply markup "
+                "are exactly the same as a current content and reply markup of the message"
+            )
+        ):
+            return {"ok": True, "already_applied": True}
+    return _telegram_result(response)
 
 
 def download_photo(file_id: str) -> Optional[bytes]:
-    """Download a photo from Telegram by file ID."""
-    # Get file path
+    """Download only a bounded Telegram file into memory, closing every response."""
+    from media_validation import MAX_IMAGE_BYTES
+    started = time.monotonic()
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile"
-    response = requests.get(url, params={"file_id": file_id}, timeout=30)
-    result = response.json()
-    
-    if not result.get("ok"):
-        return None
-    
-    file_path = result.get("result", {}).get("file_path")
-    if not file_path:
-        return None
-    
-    # Download file
-    download_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
-    response = requests.get(download_url, timeout=60)
-    if response.status_code == 200:
-        return response.content
-    return None
+    with requests.get(url, params={"file_id": file_id}, timeout=(3, 15)) as response:
+        result = _telegram_result(response)["result"]
+    file_path = result.get("file_path", "")
+    if not re.fullmatch(r"[A-Za-z0-9_./-]+", file_path) or ".." in file_path or file_path.startswith('/'):
+        raise ValueError("invalid Telegram file path")
+    if result.get("file_size", 0) > MAX_IMAGE_BYTES:
+        raise ValueError("image too large")
+    url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+    with requests.get(url, stream=True, timeout=(3, 15), allow_redirects=False) as response:
+        response.raise_for_status()
+        if response.status_code != 200:
+            raise TelegramDeliveryError("Telegram download failed")
+        size = int(response.headers.get("Content-Length", "0"))
+        if size < 0 or size > MAX_IMAGE_BYTES:
+            raise ValueError("image too large")
+        content = bytearray()
+        for chunk in response.iter_content(64 * 1024):
+            if time.monotonic() - started > 30:
+                raise TelegramDeliveryError("Telegram download timed out")
+            content.extend(chunk)
+            if len(content) > MAX_IMAGE_BYTES:
+                raise ValueError("image too large")
+        return bytes(content)
 
 
 # --- Inline Keyboard Functions ---
@@ -135,7 +208,7 @@ def send_message_with_keyboard(
     if parse_mode:
         payload["parse_mode"] = parse_mode
     response = requests.post(url, json=payload, timeout=30)
-    return response.json()
+    return _telegram_result(response)
 
 
 def answer_callback_query(callback_id: str, text: str = None) -> Dict[str, Any]:
@@ -145,7 +218,15 @@ def answer_callback_query(callback_id: str, text: str = None) -> Dict[str, Any]:
     if text:
         payload["text"] = text
     response = requests.post(url, json=payload, timeout=30)
-    return response.json()
+    try:
+        result = response.json()
+    except ValueError:
+        return _telegram_result(response)
+    if isinstance(result, dict) and result.get('error_code') == 400:
+        description = str(result.get('description', '')).lower()
+        if 'query is too old' in description or 'query id is invalid' in description or 'query_id_invalid' in description:
+            return {'ok': False, 'stale': True}
+    return _telegram_result(response)
 
 
 def edit_message_with_keyboard(
@@ -166,7 +247,7 @@ def edit_message_with_keyboard(
     if parse_mode:
         payload["parse_mode"] = parse_mode
     response = requests.post(url, json=payload, timeout=30)
-    return response.json()
+    return _telegram_edit_result(response)
 
 
 def edit_message_keyboard_only(
@@ -180,7 +261,7 @@ def edit_message_keyboard_only(
         "reply_markup": {"inline_keyboard": keyboard},
     }
     response = requests.post(url, json=payload, timeout=30)
-    return response.json()
+    return _telegram_edit_result(response)
 
 
 # --- User State Management ---
@@ -372,11 +453,13 @@ def _build_date_format_keyboard(current: str) -> List[List[Dict[str, str]]]:
     return [buttons, [{"text": "⬅️ חזרה", "callback_data": "shabbat:settings"}]]
 
 
-def _build_omer_poster_keyboard() -> List[List[Dict[str, str]]]:
+def _build_omer_poster_keyboard(context: dict | None = None) -> List[List[Dict[str, str]]]:
     """Build keyboard for Omer poster with 'ספרתי' button."""
+    context = context or omer_event_context(_request_time.get())
+    callback = f"omer:count:{context["event_id"]}:{context["day"]}"
     return [
         [
-            {"text": "ספרתי ✓", "callback_data": "omer:mark_counted"},
+            {"text": "ספרתי ✓", "callback_data": callback},
             {"text": "🏠 תפריט ראשי", "callback_data": "start:main"},
         ],
     ]
@@ -489,70 +572,19 @@ def get_omer_counting_status(user_id: str) -> dict:
         - omer_day: the relevant day number
         - message: Hebrew message to display
     """
-    # Get current time in Israel
-    now = datetime.now(ISRAEL_TZ)
-    today = now.date()
-
-    # Get Omer timing info
-    omer_info = get_omer_info_for_time(today, now.hour, now.minute)
-
-    if not omer_info.get("isOmerPeriod"):
-        return {
-            "status": "not_in_omer_period",
-            "omer_day": None,
-            "message": "אנחנו לא בתקופת ספירת העומר כרגע."
-        }
-
-    is_after_tzet = omer_info.get("isAfterSunset", False)
-
-    if is_after_tzet:
-        # Evening/Night: After tzet hakochavim
-        # The day we're counting tonight is the posterDay from omer_info
-        current_day = omer_info.get("posterDay") or omer_info.get("todayOmerDay")
-        if current_day is None:
-            return {
-                "status": "not_in_omer_period",
-                "omer_day": None,
-                "message": "אנחנו לא בתקופת ספירת העומר כרגע."
-            }
-
-        # Check if user marked this day as counted
-        if was_omer_counted(user_id, current_day):
-            return {
-                "status": "counted_tonight",
-                "omer_day": current_day,
-                "message": f"✅ ספרת היום יום {current_day} לעומר"
-            }
-        else:
-            return {
-                "status": "waiting_for_new_day",
-                "omer_day": current_day,
-                "message": f"⏳ היום יום {current_day} לעומר\n\nלחץ 'ספרתי' אחרי שתספור"
-            }
+    context = omer_event_context(_request_time.get())
+    day = context['day']
+    if day is None:
+        return {'status': 'not_in_omer_period', 'omer_day': None,
+                'message': 'אנחנו לא בתקופת ספירת העומר כרגע.'}
+    counted = was_omer_counted(user_id, context['event_id']) or was_omer_counted(user_id, day)
+    if counted:
+        status = 'counted_tonight' if context['evening_eligible'] else 'counted_last_night'
+        message = f'כבר סימנת שספרת את יום {day} לעומר.'
     else:
-        # Morning/Afternoon: Before tzet hakochavim
-        # "Today" is what was counted last night (todayOmerDay)
-        yesterday_day = omer_info.get("todayOmerDay") or omer_info.get("currentDay")
-        if yesterday_day is None:
-            return {
-                "status": "not_in_omer_period",
-                "omer_day": None,
-                "message": "אנחנו לא בתקופת ספירת העומר כרגע."
-            }
-
-        # Check if user marked yesterday's day as counted
-        if was_omer_counted(user_id, yesterday_day):
-            return {
-                "status": "counted_last_night",
-                "omer_day": yesterday_day,
-                "message": f"✅ ספרת אתמול בערב יום {yesterday_day} לעומר"
-            }
-        else:
-            return {
-                "status": "not_counted",
-                "omer_day": yesterday_day,
-                "message": f"❌ לא סימנת שספרת יום {yesterday_day}.\n\nאפשר לספור בלי ברכה."
-            }
+        status = 'waiting_for_new_day' if context['evening_eligible'] else 'not_counted'
+        message = f'לא סימנת שספרת את יום {day} לעומר.'
+    return {'status': status, 'omer_day': day, 'event_id': context['event_id'], 'message': message}
 
 
 def format_settings(prefs: Dict[str, Any]) -> str:
@@ -703,7 +735,7 @@ def handle_reset(update: Dict[str, Any]) -> None:
     if not chat_id or not user_id:
         return
 
-    set_user_prefs(user_id, DEFAULT_PREFERENCES.copy())
+    set_user_prefs(user_id, deepcopy(DEFAULT_PREFERENCES))
     send_message(chat_id, "✅ ההגדרות אופסו לברירת מחדל.")
 
 
@@ -748,8 +780,7 @@ def handle_clear_blessing(update: Dict[str, Any]) -> None:
         return
 
     prefs = get_user_prefs(user_id)
-    prefs["blessing_text"] = None
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"blessing_text": None})
     _clear_user_state(user_id)  # Clear any editing state
     send_message(chat_id, "✅ הברכה נמחקה")
 
@@ -762,8 +793,7 @@ def handle_clear_dedication(update: Dict[str, Any]) -> None:
         return
 
     prefs = get_user_prefs(user_id)
-    prefs["dedication_text"] = None
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"dedication_text": None})
     _clear_user_state(user_id)  # Clear any editing state
     send_message(chat_id, "✅ לעילוי נשמת נמחק")
 
@@ -777,8 +807,7 @@ def handle_clear_image(update: Dict[str, Any]) -> None:
 
     prefs = get_user_prefs(user_id)
     if prefs.get("last_image_file_id"):
-        prefs["last_image_file_id"] = None
-        set_user_prefs(user_id, prefs)
+        prefs = update_user_prefs(user_id, {"last_image_file_id": None})
         send_message(chat_id, "✅ התמונה השמורה נמחקה")
     else:
         send_message(chat_id, "ℹ️ אין תמונה שמורה למחיקה")
@@ -827,19 +856,9 @@ def handle_reminder(update: Dict[str, Any]) -> None:
     parts = text.split()
     arg = parts[1].lower() if len(parts) > 1 else None
 
-    prefs = get_user_prefs(user_id)
-    current_state = prefs.get("reminder_enabled", False)
-
-    if arg == "on":
-        new_state = True
-    elif arg == "off":
-        new_state = False
-    else:
-        # Toggle
-        new_state = not current_state
-
-    prefs["reminder_enabled"] = new_state
-    set_user_prefs(user_id, prefs)
+    prefs = mutate_user_prefs(user_id, lambda p: p.update(
+        reminder_enabled=True if arg == "on" else False if arg == "off" else not p.get("reminder_enabled", False)))
+    new_state = prefs["reminder_enabled"]
 
     if new_state:
         send_message(
@@ -945,8 +964,8 @@ def handle_poster(update: Dict[str, Any], force_omer: bool = False) -> None:
             keyboard = _build_shabbat_poster_keyboard()
             send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
 
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+    except ValueError:
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_omer(update: Dict[str, Any]) -> None:
@@ -1035,7 +1054,7 @@ def handle_reset_confirm(chat_id: int, message_id: int, user_id: str) -> None:
 def handle_reset_all_settings(chat_id: int, message_id: int, user_id: str) -> None:
     """Handle general:reset_all callback - reset all settings to defaults."""
     # Reset all preferences to defaults
-    set_user_prefs(user_id, DEFAULT_PREFERENCES.copy())
+    set_user_prefs(user_id, deepcopy(DEFAULT_PREFERENCES))
 
     # Show success message
     edit_message_with_keyboard(
@@ -1283,36 +1302,32 @@ def handle_photo(update: Dict[str, Any]) -> None:
 
     # Handle specific image setting states
     if user_state == "waiting_shabbat_image":
-        prefs["shabbat_image_file_id"] = file_id
-        prefs["last_image_file_id"] = file_id  # Backward compatibility
-        set_user_prefs(user_id, prefs)
+        prefs = update_user_prefs(user_id, {"shabbat_image_file_id": file_id})
+        prefs = update_user_prefs(user_id, {"last_image_file_id": file_id})
         _clear_user_state(user_id)
         send_message(chat_id, "✅ התמונה נשמרה לפוסטרי שבת!")
         return
 
     if user_state == "waiting_omer_image":
-        prefs["omer_image_file_id"] = file_id
-        prefs["last_image_file_id"] = file_id  # Backward compatibility
-        set_user_prefs(user_id, prefs)
+        prefs = update_user_prefs(user_id, {"omer_image_file_id": file_id})
+        prefs = update_user_prefs(user_id, {"last_image_file_id": file_id})
         _clear_user_state(user_id)
         send_message(chat_id, "✅ התמונה נשמרה לפוסטרי עומר!")
         return
 
-    prefs["last_image_file_id"] = file_id  # Backward compatibility
+    prefs = update_user_prefs(user_id, {"last_image_file_id": file_id})
 
     # Outside the Omer period there is only one meaningful destination (Shabbat),
     # so skip the Shabbat/Omer/both choice entirely and save the image directly.
     # The Omer options should not appear at all when it's not the Omer period.
     if not is_omer_period():
-        prefs["shabbat_image_file_id"] = file_id
-        prefs["pending_image_file_id"] = None
-        set_user_prefs(user_id, prefs)
+        prefs = update_user_prefs(user_id, {"shabbat_image_file_id": file_id})
+        prefs = update_user_prefs(user_id, {"pending_image_file_id": None})
         send_message(chat_id, "✅ התמונה נשמרה לפוסטרי שבת!")
         return
 
     # During the Omer period, ask user where to save and offer to generate poster
-    prefs["pending_image_file_id"] = file_id
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"pending_image_file_id": file_id})
 
     keyboard = [
         [{"text": "🕯️ שבת", "callback_data": "photo:shabbat"}],
@@ -1477,32 +1492,16 @@ def handle_callback_query(update: Dict[str, Any]) -> None:
     # Omer counting status check
     elif data == "omer:check_status":
         handle_omer_check_status(chat_id, message_id, user_id)
-    elif data == "omer:mark_counted":
-        # Simple callback without day - calculate day automatically
-        handle_omer_mark_counted_auto(chat_id, user_id)
-    elif data.startswith("omer:mark_counted:"):
-        omer_day = int(data.split(":")[2])
-        handle_omer_mark_counted(chat_id, message_id, user_id, omer_day)
-
-
-def handle_omer_mark_counted_auto(chat_id: int, user_id: str) -> None:
-    """Handle omer:mark_counted callback (without day) - auto-detect omer day and mark counted."""
-    # Get current Omer day using current time in Israel timezone
-    now = datetime.now(ISRAEL_TZ)
-    omer_day = get_omer_day(now)
-
-    if not omer_day or omer_day < 1 or omer_day > 49:
-        send_message(chat_id, "ℹ️ לא בתקופת ספירת העומר כרגע.")
-        return
-
-    # Check if already marked
-    if was_omer_counted(user_id, omer_day):
-        send_message(chat_id, f"כבר סימנת שספרת יום {omer_day} ✅")
-        return
-
-    # Mark as counted
-    mark_omer_counted(user_id, omer_day)
-    send_message(chat_id, f"נרשם! ספרת יום {omer_day} לעומר ✅")
+    elif data.startswith("omer:count:"):
+        context = omer_event_context(_request_time.get())
+        expected = f"omer:count:{context['event_id']}:{context['day']}"
+        if context['day'] is not None and secrets.compare_digest(data.encode(), expected.encode()):
+            mark_omer_counted(user_id, context['event_id'])
+            send_message(chat_id, f"נרשם שספרת את יום {context['day']} לעומר.")
+        else:
+            send_message(chat_id, "הכפתור שייך לספירה אחרת. פתח את התפריט העדכני.")
+    elif data.startswith("omer:mark_counted"):
+        send_message(chat_id, "הכפתור ישן. פתח את התפריט העדכני כדי לסמן ספירה.")
 
 
 def handle_omer_check_status(chat_id: int, message_id: int, user_id: str) -> None:
@@ -1521,28 +1520,15 @@ def handle_omer_check_status(chat_id: int, message_id: int, user_id: str) -> Non
     # Build keyboard with back button (and optional "I counted" button)
     keyboard = []
 
-    if status_info["status"] == "waiting_for_new_day":
+    if status_info["status"] in ("waiting_for_new_day", "not_counted"):
         # Show "I counted" button when user hasn't marked yet
         omer_day = status_info.get("omer_day")
         if omer_day:
-            keyboard.append([{"text": "✅ ספרתי!", "callback_data": f"omer:mark_counted:{omer_day}"}])
+            keyboard.append([{"text": "✅ ספרתי!", "callback_data": f"omer:count:{status_info['event_id']}:{omer_day}"}])
 
     keyboard.append([{"text": "⬅️ חזרה", "callback_data": "back:start"}])
 
     edit_message_with_keyboard(chat_id, message_id, message_text, keyboard, parse_mode="HTML")
-
-
-def handle_omer_mark_counted(chat_id: int, message_id: int, user_id: str, omer_day: int) -> None:
-    """Handle omer:mark_counted callback - mark that user has counted for a specific day."""
-    # Mark the day as counted
-    mark_omer_counted(user_id, omer_day)
-
-    # Show confirmation message
-    confirmation_text = f"✅ מעולה! סימנת שספרת יום {omer_day} לעומר."
-
-    keyboard = [[{"text": "⬅️ חזרה", "callback_data": "back:start"}]]
-
-    edit_message_with_keyboard(chat_id, message_id, confirmation_text, keyboard, parse_mode="HTML")
 
 
 # --- New Menu Handlers ---
@@ -1594,8 +1580,8 @@ def handle_start_poster_shabbat(chat_id: int, user_id: str) -> None:
         keyboard = _build_shabbat_poster_keyboard()
         send_photo_with_keyboard(chat_id, poster_bytes, "🕯️ הפוסטר שלך מוכן! שבת שלום!", keyboard)
 
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+    except ValueError:
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_start_poster_omer(chat_id: int, user_id: str) -> None:
@@ -1632,8 +1618,8 @@ def handle_start_poster_omer(chat_id: int, user_id: str) -> None:
         keyboard = _build_omer_poster_keyboard()
         send_photo_with_keyboard(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!", keyboard)
 
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+    except ValueError:
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_preview_shabbat(chat_id: int, user_id: str) -> None:
@@ -1671,8 +1657,8 @@ def handle_preview_shabbat(chat_id: int, user_id: str) -> None:
         poster_bytes = build_poster_from_payload(payload)
         send_photo(chat_id, poster_bytes, "👆 כך ייראה פוסטר השבת שלך עם ההגדרות הנוכחיות")
 
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הדוגמה: {str(e)}")
+    except ValueError:
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_preview_omer(chat_id: int, user_id: str) -> None:
@@ -1712,8 +1698,8 @@ def handle_preview_omer(chat_id: int, user_id: str) -> None:
         poster_bytes = build_poster_from_payload(payload)
         send_photo(chat_id, poster_bytes, "👆 כך ייראה פוסטר העומר שלך עם ההגדרות הנוכחיות")
 
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הדוגמה: {str(e)}")
+    except ValueError:
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_show_saved_image(chat_id: int, user_id: str) -> None:
@@ -1731,7 +1717,7 @@ def handle_show_saved_image(chat_id: int, user_id: str) -> None:
             "caption": "📸 התמונה השמורה שלך",
             "reply_markup": {"inline_keyboard": keyboard},
         }
-        requests.post(url, json=payload, timeout=30)
+        _telegram_result(requests.post(url, json=payload, timeout=30))
     else:
         send_message(chat_id, "ℹ️ אין תמונה שמורה. שלח תמונה כדי לשמור.")
 
@@ -1804,7 +1790,7 @@ def handle_shabbat_show_image(chat_id: int, user_id: str) -> None:
             "caption": "📸 תמונת שבת שמורה",
             "reply_markup": {"inline_keyboard": keyboard},
         }
-        requests.post(url, json=payload, timeout=30)
+        _telegram_result(requests.post(url, json=payload, timeout=30))
     else:
         send_message(chat_id, "ℹ️ אין תמונת שבת שמורה.")
 
@@ -1812,9 +1798,8 @@ def handle_shabbat_show_image(chat_id: int, user_id: str) -> None:
 def handle_shabbat_clear_image(chat_id: int, message_id: int, user_id: str) -> None:
     """Clear the saved Shabbat image."""
     prefs = get_user_prefs(user_id)
-    prefs["shabbat_image_file_id"] = None
-    prefs["last_image_file_id"] = None
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"shabbat_image_file_id": None})
+    prefs = update_user_prefs(user_id, {"last_image_file_id": None})
     handle_shabbat_settings(chat_id, message_id, user_id)
 
 
@@ -1851,7 +1836,7 @@ def handle_omer_show_image(chat_id: int, user_id: str) -> None:
             "caption": "📸 תמונת עומר שמורה",
             "reply_markup": {"inline_keyboard": keyboard},
         }
-        requests.post(url, json=payload, timeout=30)
+        _telegram_result(requests.post(url, json=payload, timeout=30))
     else:
         send_message(chat_id, "ℹ️ אין תמונת עומר שמורה.")
 
@@ -1859,18 +1844,16 @@ def handle_omer_show_image(chat_id: int, user_id: str) -> None:
 def handle_omer_clear_image(chat_id: int, message_id: int, user_id: str) -> None:
     """Clear the saved Omer image."""
     prefs = get_user_prefs(user_id)
-    prefs["omer_image_file_id"] = None
-    prefs["last_image_file_id"] = None
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"omer_image_file_id": None})
+    prefs = update_user_prefs(user_id, {"last_image_file_id": None})
     handle_new_omer_settings(chat_id, message_id, user_id)
 
 
 def handle_shabbat_reset_image(chat_id: int, message_id: int, user_id: str) -> None:
     """Reset to default Shabbat image (delete saved image)."""
     prefs = get_user_prefs(user_id)
-    prefs["shabbat_image_file_id"] = None
-    prefs["last_image_file_id"] = None
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"shabbat_image_file_id": None})
+    prefs = update_user_prefs(user_id, {"last_image_file_id": None})
     _clear_user_state(user_id)
     handle_shabbat_settings(chat_id, message_id, user_id)
 
@@ -1878,38 +1861,26 @@ def handle_shabbat_reset_image(chat_id: int, message_id: int, user_id: str) -> N
 def handle_omer_reset_image(chat_id: int, message_id: int, user_id: str) -> None:
     """Reset to default Omer image (delete saved image)."""
     prefs = get_user_prefs(user_id)
-    prefs["omer_image_file_id"] = None
-    prefs["last_image_file_id"] = None
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"omer_image_file_id": None})
+    prefs = update_user_prefs(user_id, {"last_image_file_id": None})
     _clear_user_state(user_id)
     handle_new_omer_settings(chat_id, message_id, user_id)
 
 
 def handle_photo_destination(chat_id: int, message_id: int, user_id: str, destination: str) -> None:
     """Handle photo destination selection after user sends a photo."""
-    prefs = get_user_prefs(user_id)
-    pending_file_id = prefs.get("pending_image_file_id")
-
-    if not pending_file_id:
-        send_message(chat_id, "❌ לא נמצאה תמונה. נסה שוב.")
+    if destination not in ("shabbat", "omer", "both"):
         return
-
-    if destination == "shabbat":
-        prefs["shabbat_image_file_id"] = pending_file_id
-        prefs["pending_image_file_id"] = None
-        set_user_prefs(user_id, prefs)
-        send_message(chat_id, "✅ התמונה נשמרה לפוסטרי שבת!")
-    elif destination == "omer":
-        prefs["omer_image_file_id"] = pending_file_id
-        prefs["pending_image_file_id"] = None
-        set_user_prefs(user_id, prefs)
-        send_message(chat_id, "✅ התמונה נשמרה לפוסטרי עומר!")
-    elif destination == "both":
-        prefs["shabbat_image_file_id"] = pending_file_id
-        prefs["omer_image_file_id"] = pending_file_id
-        prefs["pending_image_file_id"] = None
-        set_user_prefs(user_id, prefs)
-        send_message(chat_id, "✅ התמונה נשמרה לכל הפוסטרים!")
+    def assign(prefs):
+        pending = prefs.get("pending_image_file_id")
+        if pending:
+            if destination in ("shabbat", "both"):
+                prefs["shabbat_image_file_id"] = pending
+            if destination in ("omer", "both"):
+                prefs["omer_image_file_id"] = pending
+            prefs["pending_image_file_id"] = None
+    mutate_user_prefs(user_id, assign)
+    send_message(chat_id, "התמונה נשמרה ליעד שנבחר, אם הייתה תמונה ממתינה.")
 
 
 def handle_edit_cities(chat_id: int, message_id: int, user_id: str) -> None:
@@ -1953,25 +1924,23 @@ def handle_city_toggle(
     chat_id: int, message_id: int, user_id: str, city_name: str, context: str = "0"
 ) -> None:
     """Toggle city selection."""
-    prefs = get_user_prefs(user_id)
-    current_cities = prefs.get("cities", [])
-    current_names = [
-        c.get("name", c) if isinstance(c, dict) else c for c in current_cities
-    ]
-
-    if city_name in current_names:
-        # Remove city
-        prefs["cities"] = [
-            c
-            for c in current_cities
-            if (c.get("name", c) if isinstance(c, dict) else c) != city_name
-        ]
-    else:
-        # Add city with appropriate offset
-        offset = SPECIAL_OFFSET_CITIES.get(city_name, DEFAULT_CANDLE_OFFSET)
-        prefs["cities"].append({"name": city_name, "candle_offset": offset})
-
-    set_user_prefs(user_id, prefs)
+    if city_name not in CITY_BY_NAME:
+        return
+    def toggle(prefs):
+        cities = prefs.get("cities", [])
+        names = [c.get("name") if isinstance(c, dict) else c for c in cities]
+        if city_name in names:
+            prefs["cities"] = [c for c in cities if (c.get("name") if isinstance(c, dict) else c) != city_name]
+        elif len(cities) < MAX_POSTER_CITIES:
+            offset = SPECIAL_OFFSET_CITIES.get(city_name, DEFAULT_CANDLE_OFFSET)
+            prefs["cities"] = cities + [{"name": city_name, "candle_offset": offset}]
+        else:
+            raise BotPreferenceLimit('too many cities')
+    try:
+        prefs = mutate_user_prefs(user_id, toggle)
+    except BotPreferenceLimit:
+        send_message(chat_id, f'אפשר לבחור עד {MAX_POSTER_CITIES} ערים. הסר עיר קיימת לפני הוספת עיר חדשה.')
+        return
 
     # Refresh keyboard based on context
     if context == "search":
@@ -2003,9 +1972,9 @@ def handle_edit_date(chat_id: int, message_id: int, user_id: str) -> None:
 
 def handle_date_select(chat_id: int, message_id: int, user_id: str, date_format: str) -> None:
     """Select date format."""
-    prefs = get_user_prefs(user_id)
-    prefs["date_format"] = date_format
-    set_user_prefs(user_id, prefs)
+    if date_format not in DATE_FORMAT_LABELS:
+        return
+    prefs = update_user_prefs(user_id, {"date_format": date_format})
 
     # Show updated keyboard
     keyboard = _build_date_format_keyboard(date_format)
@@ -2029,8 +1998,7 @@ def handle_edit_text(chat_id: int, message_id: int, user_id: str, field: str) ->
 def handle_clear_image_callback(chat_id: int, message_id: int, user_id: str) -> None:
     """Handle clear:image callback - clear saved image and refresh settings."""
     prefs = get_user_prefs(user_id)
-    prefs["last_image_file_id"] = None
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"last_image_file_id": None})
 
     # Show updated settings without saved image button
     settings_text = format_settings(prefs)
@@ -2046,10 +2014,8 @@ def handle_toggle_mode(chat_id: int, message_id: int, user_id: str) -> None:
     prefs = get_user_prefs(user_id)
 
     # Toggle the mode
-    current_mode = prefs.get("poster_mode", "shabbat")
-    new_mode = "shabbat" if current_mode == "omer" else "omer"
-    prefs["poster_mode"] = new_mode
-    set_user_prefs(user_id, prefs)
+    prefs = mutate_user_prefs(user_id, lambda p: p.update(poster_mode="shabbat" if p.get("poster_mode") == "omer" else "omer"))
+    new_mode = prefs["poster_mode"]
 
     # Refresh settings display
     settings_text = format_settings(prefs)
@@ -2066,10 +2032,8 @@ def handle_toggle_reminder(chat_id: int, message_id: int, user_id: str) -> None:
     prefs = get_user_prefs(user_id)
 
     # Toggle the reminder
-    current_state = prefs.get("reminder_enabled", False)
-    new_state = not current_state
-    prefs["reminder_enabled"] = new_state
-    set_user_prefs(user_id, prefs)
+    prefs = mutate_user_prefs(user_id, lambda p: p.update(reminder_enabled=not p.get("reminder_enabled", False)))
+    new_state = prefs["reminder_enabled"]
 
     # Refresh omer settings display
     handle_new_omer_settings(chat_id, message_id, user_id)
@@ -2080,10 +2044,8 @@ def handle_toggle_omer_reminder_main(chat_id: int, user_id: str) -> None:
     prefs = get_user_prefs(user_id)
 
     # Toggle the reminder
-    current_state = prefs.get("reminder_enabled", False)
-    new_state = not current_state
-    prefs["reminder_enabled"] = new_state
-    set_user_prefs(user_id, prefs)
+    prefs = mutate_user_prefs(user_id, lambda p: p.update(reminder_enabled=not p.get("reminder_enabled", False)))
+    new_state = prefs["reminder_enabled"]
 
     # Refresh main menu (not omer settings)
     handle_back_to_start(chat_id, user_id)
@@ -2094,10 +2056,8 @@ def handle_toggle_shabbat_reminder(chat_id: int, message_id: int, user_id: str) 
     prefs = get_user_prefs(user_id)
 
     # Toggle the Shabbat reminder
-    current_state = prefs.get("shabbat_reminder_enabled", False)
-    new_state = not current_state
-    prefs["shabbat_reminder_enabled"] = new_state
-    set_user_prefs(user_id, prefs)
+    prefs = mutate_user_prefs(user_id, lambda p: p.update(shabbat_reminder_enabled=not p.get("shabbat_reminder_enabled", False)))
+    new_state = prefs["shabbat_reminder_enabled"]
 
     # Refresh shabbat settings display
     handle_shabbat_settings(chat_id, message_id, user_id)
@@ -2133,8 +2093,7 @@ def handle_set_nusach(chat_id: int, message_id: int, user_id: str, nusach: str) 
         return
 
     prefs = get_user_prefs(user_id)
-    prefs["nusach"] = nusach
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"nusach": nusach})
 
     # Return to omer settings view
     handle_new_omer_settings(chat_id, message_id, user_id)
@@ -2148,10 +2107,8 @@ def handle_omer_toggle_reminder(chat_id: int, message_id: int, user_id: str) -> 
     prefs = get_user_prefs(user_id)
 
     # Toggle the reminder
-    current_state = prefs.get("reminder_enabled", False)
-    new_state = not current_state
-    prefs["reminder_enabled"] = new_state
-    set_user_prefs(user_id, prefs)
+    prefs = mutate_user_prefs(user_id, lambda p: p.update(reminder_enabled=not p.get("reminder_enabled", False)))
+    new_state = prefs["reminder_enabled"]
 
     # Refresh Omer settings display
     settings_text = format_omer_settings(prefs)
@@ -2168,8 +2125,7 @@ def handle_omer_set_type(chat_id: int, message_id: int, user_id: str, reminder_t
         return
 
     prefs = get_user_prefs(user_id)
-    prefs["reminder_type"] = reminder_type
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"reminder_type": reminder_type})
 
     # Refresh Omer settings display
     settings_text = format_omer_settings(prefs)
@@ -2210,8 +2166,7 @@ def handle_omer_set_nusach(chat_id: int, message_id: int, user_id: str, nusach: 
         return
 
     prefs = get_user_prefs(user_id)
-    prefs["nusach"] = nusach
-    set_user_prefs(user_id, prefs)
+    prefs = update_user_prefs(user_id, {"nusach": nusach})
 
     # Return to Omer settings view
     settings_text = format_omer_settings(prefs)
@@ -2262,7 +2217,7 @@ def handle_start_settings(chat_id: int, user_id: str) -> None:
 
 def handle_start_reset(chat_id: int, user_id: str) -> None:
     """Handle start:reset callback - reset to default settings."""
-    set_user_prefs(user_id, DEFAULT_PREFERENCES.copy())
+    set_user_prefs(user_id, deepcopy(DEFAULT_PREFERENCES))
     send_message(chat_id, "✅ ההגדרות אופסו לברירת מחדל.")
 
 
@@ -2327,8 +2282,8 @@ def handle_start_poster(chat_id: int, user_id: str) -> None:
             keyboard = _build_shabbat_poster_keyboard()
             send_photo_with_keyboard(chat_id, poster_bytes, caption, keyboard)
 
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+    except ValueError:
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_start_omer_settings(chat_id: int, user_id: str) -> None:
@@ -2413,8 +2368,8 @@ def handle_start_omer_poster(chat_id: int, user_id: str) -> None:
         keyboard = _build_omer_poster_keyboard()
         send_photo_with_keyboard(chat_id, poster_bytes, "🔢 פוסטר ספירת העומר שלך מוכן!", keyboard)
 
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הפוסטר: {str(e)}")
+    except ValueError:
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_back_to_start(chat_id: int, user_id: str) -> None:
@@ -2532,8 +2487,8 @@ def handle_show_preview(chat_id: int, user_id: str) -> None:
         else:
             caption = "👆 כך ייראה הפוסטר שלך עם ההגדרות הנוכחיות"
         send_photo(chat_id, poster_bytes, caption)
-    except Exception as e:
-        send_message(chat_id, f"❌ שגיאה ביצירת הדוגמה: {str(e)}")
+    except ValueError:
+        send_message(chat_id, POSTER_CORRECTION_MESSAGE)
 
 
 def handle_text_message(update: Dict[str, Any]) -> None:
@@ -2565,11 +2520,15 @@ def handle_text_message(update: Dict[str, Any]) -> None:
     # Handle editing blessing/dedication
     if state and state.startswith("editing_"):
         field = state.replace("editing_", "")  # "blessing" or "dedication"
+        if field not in ('blessing', 'dedication'):
+            return
+        if len(text) > MAX_POSTER_TEXT_LENGTH:
+            send_message(chat_id, f'אפשר לשמור עד {MAX_POSTER_TEXT_LENGTH} תווים. קצר את הטקסט ושלח שוב. הטקסט הקודם נשמר.')
+            return
 
         # Save the text
         prefs = get_user_prefs(user_id)
-        prefs[f"{field}_text"] = text
-        set_user_prefs(user_id, prefs)
+        prefs = update_user_prefs(user_id, {f"{field}_text": text})
 
         # Clear state
         _clear_user_state(user_id)
@@ -2600,10 +2559,100 @@ def handle_text_message(update: Dict[str, Any]) -> None:
     send_message_with_keyboard(chat_id, help_text, keyboard, parse_mode="HTML")
 
 
+
+@contextmanager
+def user_processing(user_id):
+    """Serialize user actions, opt-outs, deletion and scheduled sends."""
+    key = f"zmunah:delivery:{user_id}:processing"
+    token = acquire_claim(key)
+    if token is None:
+        raise RuntimeError("user processing is busy")
+    try:
+        yield
+    finally:
+        release_claim(key, token)
+
+
+def _validate_update(update):
+    if not isinstance(update, dict) or type(update.get('update_id')) is not int or update['update_id'] < 0:
+        raise ValueError('invalid update')
+    callback = update.get('callback_query')
+    if callback is not None and not isinstance(callback, dict):
+        raise ValueError('invalid callback')
+    message = callback.get('message') if callback is not None else update.get('message')
+    if message is None:
+        return None  # Valid unsupported Telegram update type.
+    if not isinstance(message, dict):
+        raise ValueError('invalid message')
+    user = callback.get('from') if callback is not None else message.get('from')
+    chat = message.get('chat')
+    if not isinstance(user, dict) or not isinstance(chat, dict):
+        raise ValueError('invalid actor')
+    user_id = user.get('id')
+    if type(user_id) is not int or user_id <= 0 or type(chat.get('id')) is not int:
+        raise ValueError('invalid actor')
+    if chat.get('type') != 'private' or chat['id'] != user_id:
+        return None
+    if 'text' in message and not isinstance(message['text'], str):
+        raise ValueError('invalid text')
+    if 'photo' in message and (not isinstance(message['photo'], list) or any(not isinstance(p, dict) or not isinstance(p.get('file_id'), str) for p in message['photo'])):
+        raise ValueError('invalid photo')
+    if callback is not None:
+        if not isinstance(callback.get('data'), str) or not isinstance(callback.get('id'), str):
+            raise ValueError('invalid callback')
+        data = callback['data']
+        if len(data.encode()) > 64:
+            raise ValueError('invalid callback')
+        if data.startswith('cities:page:') and not re.fullmatch(r'cities:page:[0-9]{1,4}', data):
+            raise ValueError('invalid callback')
+        if data.startswith('city:') and not re.fullmatch(r'city:[^:]+:(?:search|[0-9]{1,4})', data):
+            raise ValueError('invalid callback')
+    return str(user_id)
+
+
 def process_update(update: Dict[str, Any]) -> None:
+    """Validate private ownership, claim once, retry transient processing failures."""
+    user_id = _validate_update(update)
+    if user_id is None:
+        return
+    message_text = update.get('message', {}).get('text', '')
+    command = message_text.split()[0].lower() if message_text.strip() else ''
+    private_flow = command in ('/privacy', '/export', '/delete_my_data') or update.get('callback_query', {}).get('data', '').startswith('privacy:')
+    # Keep only a non-user-linked, bounded replay receipt after personal deletion.
+    digest = hashlib.sha256(str(update['update_id']).encode()).hexdigest()
+    success_key = f"zmunah:update_receipt:{digest}"
+    key = f"zmunah:delivery:{user_id}:update:{update['update_id']}"
+    with user_processing(user_id):
+        token = acquire_claim(key, success_key=success_key)
+        if token is None:
+            if claim_completed(key, success_key=success_key):
+                return
+            raise RuntimeError('update processing is busy')
+        try:
+            pending = get_pending_deletion(user_id)
+            if pending and update.get('callback_query', {}).get('data') != 'privacy:delete:' + pending['nonce']:
+                raise RuntimeError('confirmed deletion is pending')
+            if not consume_update_budget(user_id, key + ':budget'):
+                raise UpdateRateLimited('update quota exceeded')
+            time_token = _request_time.set(datetime.now(ISRAEL_TZ))
+            try:
+                with nullcontext() if private_flow else preference_operation(user_id, update["update_id"]):
+                    cleanup_keys = _route_update(update) or ()
+            finally:
+                _request_time.reset(time_token)
+            if not complete_claim(key, token, success_key=success_key, cleanup_keys=cleanup_keys):
+                raise RuntimeError('update lease expired')
+        except Exception:
+            release_claim(key, token)
+            raise
+
+
+def _route_update(update: Dict[str, Any]) -> None:
     """Process a Telegram update and route to appropriate handler."""
     # Check for callback query first (inline keyboard button press)
     if "callback_query" in update:
+        if update["callback_query"]["data"].startswith("privacy:"):
+            return handle_privacy_confirmation(update)
         handle_callback_query(update)
         return
 
@@ -2613,6 +2662,8 @@ def process_update(update: Dict[str, Any]) -> None:
     text = message.get("text", "")
     if text.startswith("/"):
         command = text.split()[0].lower()
+        if command in ("/privacy", "/export", "/delete_my_data"):
+            return handle_privacy_command(update, command)
         if command == "/start":
             handle_start(update)
         elif command == "/poster":
@@ -2666,6 +2717,9 @@ def set_bot_commands() -> Dict[str, Any]:
     """
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setMyCommands"
     commands = [
+        {"command": "privacy", "description": "פרטיות ושימוש במידע"},
+        {"command": "export", "description": "יצוא המידע שלי"},
+        {"command": "delete_my_data", "description": "מחיקת המידע שלי"},
         {"command": "start", "description": "התחל מחדש"},
         {"command": "poster", "description": "📸 צור פוסטר שבת/עומר"},
         {"command": "omer", "description": "🔢 צור פוסטר ספירת העומר"},
@@ -2677,5 +2731,74 @@ def set_bot_commands() -> Dict[str, Any]:
     ]
     payload = {"commands": commands}
     response = requests.post(url, json=payload, timeout=30)
-    return response.json()
+    return _telegram_result(response)
 
+
+
+def handle_privacy_command(update, command):
+    user_id = get_user_id(update)
+    chat_id = get_chat_id(update)
+    if command == '/privacy':
+        send_message(chat_id,
+            "הבוט שומר הגדרות, מזהי תמונות בטלגרם, מצב שיחה זמני וסימוני תזכורות וספירה. "
+            "הפקודה /export מאפשרת לקבל עותק פרטי. הפקודה /delete_my_data מוחקת את המידע השמור ומפסיקה תזכורות לאחר אישור. "
+            "המחיקה אינה מוחקת עותקים בטלגרם. נשמרת קבלת מניעת הפעלה חוזרת ללא מזהה משתמש למשך שבעה ימים. "
+            f"פרטים: {WEB_APP_URL.rstrip('/')}/privacy.html", parse_mode=None)
+        return
+    action = 'delete' if command == '/delete_my_data' else 'export'
+    nonce = secrets.token_hex(12)
+    get_redis_client().set(f'zmunah:privacy:{user_id}:{action}', nonce, ex=600)
+    text = ("לאשר מחיקת כל המידע השמור והפסקת תזכורות? המחיקה אינה מוחקת את עותקי טלגרם."
+            if action == 'delete' else "לאשר שליחת המידע השמור שלך כמסמך פרטי בשיחה זו?")
+    keyboard = [[{'text': 'אני מאשר', 'callback_data': f'privacy:{action}:{nonce}'}],
+                [{'text': 'ביטול', 'callback_data': f'privacy:cancel:{nonce}'}]]
+    send_message_with_keyboard(chat_id, text, keyboard)
+
+
+def handle_privacy_confirmation(update):
+    user_id = get_user_id(update)
+    chat_id = get_chat_id(update)
+    callback = update['callback_query']
+    parts = callback['data'].split(':')
+    if len(parts) != 3 or parts[1] not in ('export', 'delete', 'cancel'):
+        return
+    action, nonce = parts[1:]
+    if not re.fullmatch(r'[0-9a-f]{24}', nonce):
+        return
+    client = get_redis_client()
+    if action == 'cancel':
+        for kind in ('export', 'delete'):
+            key = f'zmunah:privacy:{user_id}:{kind}'
+            expected = client.get(key)
+            if expected and secrets.compare_digest(expected, nonce):
+                client.delete(key)
+        send_message(chat_id, 'הפעולה בוטלה.')
+        return
+    key = f'zmunah:privacy:{user_id}:{action}'
+    pending = get_pending_deletion(user_id) if action == 'delete' else None
+    expected = pending['nonce'] if pending else client.get(key)
+    if not expected or not secrets.compare_digest(expected, nonce):
+        send_message(chat_id, 'האישור פג תוקף או אינו מתאים. התחל שוב מהפקודה.')
+        return
+    if action == 'export':
+        document = json.dumps(export_user_data(user_id), ensure_ascii=False, indent=2).encode('utf-8')
+        # In-memory export only. No temporary document can remain on disk.
+        url = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument'
+        with requests.post(url, data={'chat_id': chat_id},
+                           files={'document': ('my-data.json', document, 'application/json')}, timeout=(3, 30)) as response:
+            _telegram_result(response)
+        client.delete(key)
+    else:
+        pending_key = f'zmunah:privacy:{user_id}:delete_pending'
+        if pending is None:
+            client.set(pending_key, json.dumps({'nonce': nonce, 'update_id': update['update_id']}), ex=DONE_TTL, nx=True)
+        # Durable confirmed proof survives nonce expiry, cleanup failure and send failure.
+        update_user_prefs(user_id, {'reminder_enabled': False, 'shabbat_reminder_enabled': False})
+        delete_user_data(user_id, preserve_keys=(
+            f'zmunah:delivery:{user_id}:processing',
+            f'zmunah:delivery:{user_id}:update:{update["update_id"]}',
+            pending_key,
+        ))
+        send_message(chat_id, 'המידע השמור נמחק והתזכורות הופסקו. עותקים בטלגרם אינם נמחקים.')
+        # Removed atomically with the global success receipt by process_update.
+        return (pending_key,)

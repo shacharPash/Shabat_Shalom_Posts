@@ -1,0 +1,2 @@
+@font-face { font-family: Heebo; src: url('/fonts/Heebo.ttf') format('truetype'); font-weight:100 900; font-display:swap; }
+body {font-family:Heebo, sans-serif; background:#f7f5ef; color:#242a31; line-height:1.85; margin:0; padding:24px;} main {max-width:780px; margin:auto; padding:32px; background:#fff; border-radius:16px;} h1,h2 {line-height:1.4;} h2 {margin-top:32px;} a {color:#174d9a;} a:focus-visible {outline:3px solid #2764d7;} li {margin-bottom:8px;} @media(max-width:600px) {body{padding:12px;} main{padding:20px;}}

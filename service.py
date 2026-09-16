@@ -1,40 +1,18 @@
 import html
 import os
-from typing import Any, Dict
-from datetime import date, timedelta
 
-from fastapi import FastAPI, Body
-from fastapi.responses import Response, HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 
 from api.poster import build_poster_from_payload
-from api.upcoming_events import get_upcoming_events
-from cities import get_cities_list, build_city_lookup, map_city_payload
-from make_shabbat_posts import find_next_sequence
-from hebcal_api import get_parsha_from_hebcal
-from translations import YOMTOV_TRANSLATIONS
+from cities import get_cities_list
+from poster_http import create_poster_response, register_public_routes
 
 
 app = FastAPI()
 
-# Mount static files directory
-static_dir = os.path.join(os.path.dirname(__file__), "public", "static")
-if os.path.isdir(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-
-# Favicon route at root level (browsers look for /favicon.ico)
-@app.get("/favicon.ico")
-async def favicon():
-    favicon_path = os.path.join(static_dir, "favicon.ico")
-    if os.path.isfile(favicon_path):
-        return FileResponse(favicon_path, media_type="image/x-icon")
-    return Response(status_code=404)
-
-
 # Load cities once at startup (cached internally)
 GEOJSON_CITIES = get_cities_list()
-CITY_BY_NAME = build_city_lookup(GEOJSON_CITIES)
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -53,38 +31,9 @@ async def index():
     return html_template.replace("CITY_CHECKBOXES_PLACEHOLDER", city_checkboxes)
 
 
-
-
 @app.post("/poster")
-async def create_poster(payload: Dict[str, Any] = Body(default={})):
-    """
-    FastAPI endpoint that:
-    - Receives JSON payload
-    - Uses build_poster_from_payload to generate a PNG or GIF
-    - Returns image with appropriate content type
-
-    If payload contains 'cities' as a list of city objects (with name and candle_offset),
-    maps them to full city objects with coordinates from GeoJSON.
-    """
-    if payload is None:
-        payload = {}
-
-    # Map city names to full city objects with coordinates
-    map_city_payload(payload, CITY_BY_NAME)
-
-    poster_bytes = build_poster_from_payload(payload)
-
-    # Detect output format from magic bytes
-    # GIF starts with "GIF87a" or "GIF89a", PNG starts with \x89PNG
-    if poster_bytes[:6] in (b'GIF87a', b'GIF89a'):
-        media_type = "image/gif"
-    else:
-        media_type = "image/png"
-
-    return Response(content=poster_bytes, media_type=media_type)
+async def create_poster(request: Request):
+    return await create_poster_response(request, build_poster_from_payload)
 
 
-@app.get("/upcoming-events")
-async def upcoming_events_endpoint():
-    """Get upcoming Shabbat/holiday events for one year ahead."""
-    return get_upcoming_events()
+register_public_routes(app)
