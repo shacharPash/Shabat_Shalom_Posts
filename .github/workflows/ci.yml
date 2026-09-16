@@ -21,7 +21,7 @@ jobs:
           python-version-file: .python-version
           cache: pip
           cache-dependency-path: requirements-dev.txt
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Install isolated Redis test prerequisite
