@@ -12,7 +12,7 @@ This is a reviewable procedure, not a record of production changes. Complete che
 - Restrict actual Telegram, Redis, webhook and cron credentials to production. The current verified configuration includes production, preview and development; isolation is not already complete. Changes affect future deployments. Retire old credential-bearing previews and verify fork/preview protection. Use dummy/absent secrets and disposable Redis for preview/development.
 - Set the canonical `WEB_APP_URL`. Check webhook registration `secret_token` against `TELEGRAM_WEBHOOK_SECRET`, and GitHub/production `CRON_SECRET` equality without logging values. Existing secret names alone do not establish a match.
 - Run Python 3.12 / Node 22 full tests, Ruff, mypy, dependency consistency and both dependency audits. Review CI on the exact release revision, then a Linux/Vercel build. Local macOS results do not prove that build.
-- Exercise a synthetic poster with keyboard city selection/reorder and crop, plus square/portrait Shabbat/Omer and bounded GIF output. Check Hebcal credit and watermark at full size, public legal pages, local fonts and no analytics network scripts.
+- Exercise a synthetic poster with keyboard city selection/reorder and crop, plus square/portrait Shabbat/Omer and bounded GIF output. Check that Hebcal credit is retained in export metadata and the footer, without a strip drawn over the image, and that optional branding still works, public legal pages, local fonts and no analytics network scripts.
 - Record a successful isolated backup/restore rehearsal. Confirm deletion handling and provider backup expiry policy before real data backups are relied upon.
 
 ## Backup and restore rehearsal

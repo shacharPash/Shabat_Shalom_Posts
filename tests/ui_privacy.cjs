@@ -85,3 +85,41 @@ isOpen=true;
 context.closeCityPicker();
 assert.equal(focusCalls, 1);
 console.log('Picker close preserves ordering focus: passed');
+
+// Old Omer links must not strand users in a blocked, out-of-season form.
+let restoredMode;
+context.setMode = mode => { restoredMode = mode; };
+context.window.location.search = '?mode=omer';
+context.isOmerPeriodAvailable = false;
+context.loadFromUrlParams();
+assert.equal(restoredMode, 'shabbat');
+context.isOmerPeriodAvailable = true;
+context.loadFromUrlParams();
+assert.equal(restoredMode, 'omer');
+console.log('Seasonal mode restoration: passed');
+
+// The existing drag handle also supports keyboard reordering and keeps focus.
+let focusedCity, reorderAnnouncement = {textContent:''};
+context.document.getElementById = () => reorderAnnouncement;
+context.renderCityList = () => {
+  context.selectedCitiesList = {children: context.orderedSelectedCities.map(name => ({
+    querySelector: () => ({focus: () => { focusedCity = name; }})
+  }))};
+};
+vm.runInContext(source('moveCity', '    // Drag & drop functionality'), context);
+context.orderedSelectedCities = ['ירושלים', 'חיפה', 'באר שבע'];
+context.moveCity('ירושלים', -1);
+assert.equal(focusedCity, undefined, 'boundary key must not steal focus');
+context.moveCity('ירושלים', 1);
+assert.equal(context.orderedSelectedCities.join(','), 'חיפה,ירושלים,באר שבע');
+assert.equal(focusedCity, 'ירושלים');
+assert.equal(reorderAnnouncement.textContent, 'ירושלים, מיקום 2 מתוך 3');
+// Touch drag changes the array without recreating the keyboard handler.
+context.orderedSelectedCities = ['באר שבע', 'ירושלים', 'חיפה'];
+context.moveCity('חיפה', -1);
+assert.equal(context.orderedSelectedCities.join(','), 'באר שבע,חיפה,ירושלים');
+assert.equal(focusedCity, 'חיפה');
+context.moveCity('ירושלים', 1);
+context.moveCity('עיר חסרה', 1);
+assert.equal(context.orderedSelectedCities.join(','), 'באר שבע,חיפה,ירושלים');
+console.log('Keyboard reorder, boundaries, focus and touch-order synchronization: passed');

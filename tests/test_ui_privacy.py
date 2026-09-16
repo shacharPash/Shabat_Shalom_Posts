@@ -17,30 +17,23 @@ def test_settings_link_node_regressions():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_attribution_has_readable_contrast_without_moving_watermark():
-    from image_utils import add_calendar_attribution
+def test_png_metadata_preserves_pixels_without_copying_upload_text():
+    from image_utils import CALENDAR_ATTRIBUTION, encode_poster_png
     for color in ('white', 'black'):
         original = Image.new('RGB', (1080, 1080), color)
-        result = add_calendar_attribution(original)
-        assert ImageChops.difference(original, result).getbbox()
-        # Attribution occupies only the top-left margin, leaving branding untouched.
-        assert ImageChops.difference(original.crop((950, 950, 1080, 1080)), result.crop((950, 950, 1080, 1080))).getbbox() is None
-        assert len(result.crop((8, 8, 650, 40)).getcolors(100000)) > 2
+        original.info['private-upload-note'] = 'must not be exported'
+        with Image.open(io.BytesIO(encode_poster_png(original))) as result:
+            assert ImageChops.difference(original, result).getbbox() is None
+            assert result.info['Description'] == CALENDAR_ATTRIBUTION
+            assert 'private-upload-note' not in result.info
 
 
 @pytest.mark.parametrize('mode', ['shabbat', 'omer'])
 @pytest.mark.parametrize('animated', [False, True])
-def test_exported_poster_attributes_each_frame(monkeypatch, mode, animated):
+def test_exported_poster_has_metadata_credit_and_clean_image(mode, animated):
     import base64
-    import make_shabbat_posts
-    import image_utils
+    from image_utils import CALENDAR_ATTRIBUTION
     from api.poster import build_poster_from_payload
-    observed = []
-    real = image_utils.add_calendar_attribution
-    def record(img):
-        observed.append(img.size)
-        return real(img)
-    monkeypatch.setattr(make_shabbat_posts, 'add_calendar_attribution', record)
     source = io.BytesIO()
     frames = [Image.new('RGB', (100, 100), c) for c in ('navy', 'green')]
     if animated:
@@ -54,11 +47,14 @@ def test_exported_poster_attributes_each_frame(monkeypatch, mode, animated):
     with Image.open(io.BytesIO(result)) as poster:
         count = getattr(poster, 'n_frames', 1)
         assert count == (2 if animated and mode == 'shabbat' else 1)
-        assert len(observed) == count
+        credit = poster.info.get('Description') or poster.info['comment'].decode()
+        assert credit == CALENDAR_ATTRIBUTION
         for index in range(count):
             poster.seek(index)
-            area = poster.convert('RGB').crop((8, 8, 650, 40))
-            assert len(area.getcolors(100000)) > 2
+            pixels = poster.convert('RGB')
+            # A solid background must have no text or black strip in its top margin.
+            for y in range(8, 40):
+                assert len(pixels.crop((8, y, 650, y + 1)).getcolors(10000)) == 1
 
 
 @pytest.mark.parametrize('path', ['privacy.html', 'terms.html', 'fonts/Heebo.ttf', 'fonts/Heebo-OFL.txt', 'fonts/Alef-OFL.txt'])
@@ -75,7 +71,7 @@ def test_sharing_copy_has_readable_theme_contrast():
     """New explanatory text must not fall back to black in dark mode."""
     import re
     html = (ROOT / 'api/template.html').read_text()
-    rule = re.search(r'\.media-limits, \.share-details\s*\{([^}]+)\}', html).group(1)
+    rule = re.search(r'\.share-details\s*\{([^}]+)\}', html).group(1)
     foreground_var = re.search(r'color:\s*var\((--[\w-]+)\)', rule).group(1)
     def luminance(color):
         channels = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]

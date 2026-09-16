@@ -4,7 +4,7 @@ The code-license decision is pending. No blanket license is granted to third-par
 
 ## Hebcal calendar data
 
-Parsha data is from [Hebcal developer APIs](https://www.hebcal.com/home/developer-apis), under [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/). The service selects Israel readings (`i=on`), translates/adapts labels and composes the data into posters. Local `parsha_data.json` contains validated 2024-2040 readings. The interface, terms and every rendered PNG/GIF frame retain credit. Calendar-time calculations also use JewCal and Astral; credit does not imply Hebcal endorsement.
+Parsha data is from [Hebcal developer APIs](https://www.hebcal.com/home/developer-apis), under [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/). The service selects Israel readings (`i=on`), translates/adapts labels and composes the data into posters. Local `parsha_data.json` contains validated 2024-2040 readings. Credit is available in the interface and terms, and embedded in PNG Description metadata and GIF comments. It is not drawn over the poster pixels. Platforms can strip metadata; source attribution can accompany a published poster in its caption or a source link, as explained in the terms. Calendar-time calculations also use JewCal and Astral; credit does not imply Hebcal endorsement.
 
 ## Fonts
 
