@@ -10,6 +10,6 @@ fastapi==0.141.1
 starlette==1.6.0
 # Starlette 1.6.0 still uses an alias deprecated in AnyIO 4.15.
 # Recheck with the next released fix for upstream Starlette issue 3497.
-anyio==4.14.2
+anyio==4.15.1
 uvicorn[standard]~=0.41.0
 redis~=5.0.0
