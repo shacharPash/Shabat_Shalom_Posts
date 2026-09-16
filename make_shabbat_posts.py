@@ -9,7 +9,6 @@ calculations and PIL for image generation.
 import argparse
 import os
 from datetime import datetime, date, timedelta
-from io import BytesIO
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 # Import Omer utilities
@@ -56,6 +55,7 @@ from image_utils import (
     _fit_background_flexible,
     assemble_gif,
     draw_text_with_stroke,
+    encode_poster_png,
     extract_gif_frames,
     extract_video_frames,
     fit_background,
@@ -67,7 +67,6 @@ from image_utils import (
     is_video_file,
     load_font,
     overlay_watermark,
-    add_calendar_attribution,
 )
 
 # Type aliases for clarity
@@ -635,7 +634,7 @@ def compose_poster(
         )
 
     # Do NOT save to disk here anymore
-    return add_calendar_attribution(img)
+    return img
 
 
 def compose_omer_poster(
@@ -843,7 +842,7 @@ def compose_omer_poster(
             opacity=WATERMARK_OPACITY
         )
 
-    return add_calendar_attribution(img)
+    return img
 
 
 # ========= MAIN =========
@@ -973,10 +972,8 @@ def generate_poster(
             nusach=nusach,
         )
 
-        # Save to BytesIO buffer as PNG and return bytes
-        buffer = BytesIO()
-        img.save(buffer, format="PNG", optimize=True)
-        return buffer.getvalue()
+        # Encode PNG with source credit in metadata
+        return encode_poster_png(img)
 
     # === SHABBAT/YOM TOV MODE ===
     # Find the next event sequence (ignore event_type and event_name here,
@@ -1121,10 +1118,8 @@ def generate_poster(
         show_watermark=show_watermark,
     )
 
-    # Save to BytesIO buffer as PNG and return bytes
-    buffer = BytesIO()
-    img.save(buffer, format="PNG", optimize=True)
-    return buffer.getvalue()
+    # Encode PNG with source credit in metadata
+    return encode_poster_png(img)
 
 
 def main():

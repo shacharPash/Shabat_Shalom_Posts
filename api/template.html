@@ -25,14 +25,26 @@
 
   <style>
     @font-face { font-family: Heebo; src: url('/fonts/Heebo.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
-    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #2764d7; outline-offset: 3px; }
-    .city-move { padding: 6px; font: inherit; border-radius: 6px; cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid #2764d7; outline-offset: 3px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
     .city-picker-item { width: 100%; text-align: right; font: inherit; color: inherit; background: transparent; border: 0; }
-    .crop-keyboard { margin-top: 12px; padding: 12px; border: 1px solid #888; border-radius: 8px; color: var(--text-secondary); }
-    .crop-keyboard label { display: block; margin-top: 8px; }
+    .crop-keyboard { margin-top: 12px; color: var(--text-secondary); font-size: 13px; }
+    .crop-keyboard summary, .share-details summary, .source-credit summary { cursor: pointer; padding-block: 8px; }
+    .crop-controls { padding: 4px 12px 12px; border: 1px solid var(--divider-color); border-radius: 8px; }
+    .crop-keyboard label { display: block; margin-top: 12px; font-size: 13px; font-weight: 500; }
     .crop-keyboard input { width: 100%; direction: ltr; }
-    .release-links { margin-top: 16px; line-height: 1.9; }
-    .media-limits, .share-details { font-size: .875rem; line-height: 1.7; color: var(--text-secondary); }
+    .crop-keyboard select { width: 100%; font: inherit; color: var(--text-primary); background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; }
+    .crop-keyboard [hidden] { display: none; }
+    .release-links { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 16px; }
+    .release-links a { padding-block: 8px; }
+    .share-details { margin-top: 4px; font-size: .875rem; line-height: 1.7; color: var(--text-secondary); }
+    .share-details summary { text-align: center; font-size: 12px; }
+    .share-details label { display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 500; margin-top: 12px; }
+    .share-details input { accent-color: var(--input-border-focus); }
+    .share-details p { margin: 8px 0; font-size: 12px; }
+    .source-credit { max-width: 340px; margin: 4px auto 16px; font-size: 11px; line-height: 1.8; }
+    .source-credit summary { width: fit-content; margin-inline: auto; }
+    .source-credit p { margin: 4px 0; }
 
     :root {
       /* Light mode colors */
@@ -100,6 +112,7 @@
     .header {
       text-align: center;
       position: relative;
+      margin-bottom: 24px;
     }
     .theme-toggle {
       position: absolute;
@@ -930,10 +943,11 @@
     /* ===== Floating Preview Panel ===== */
     .floating-preview-panel {
       position: fixed;
+      visibility: hidden;
       top: 50%;
       right: -420px;
       transform: translateY(-50%);
-      width: 380px;
+      width: min(380px, 100vw);
       max-height: 80vh;
       background: var(--container-bg);
       border-radius: 16px 0 0 16px;
@@ -944,6 +958,7 @@
     }
     .floating-preview-panel.show {
       right: 0;
+      visibility: visible;
     }
     .floating-preview-header {
       display: flex;
@@ -1756,6 +1771,13 @@
       color: var(--text-tertiary);
       font-size: 16px;
       padding: 4px;
+      width: 32px;
+      min-height: 40px;
+      flex-shrink: 0;
+      background: none;
+      border: 0;
+      border-radius: 6px;
+      font-family: inherit;
       user-select: none;
       -webkit-user-select: none;
       touch-action: none; /* Prevent browser scroll on touch */
@@ -1774,6 +1796,8 @@
     }
     .city-row-name {
       flex: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
       font-size: 14px;
       font-weight: 500;
       color: var(--text-primary);
@@ -2033,12 +2057,13 @@
     .city-counter {
       font-weight: 400;
       font-size: 13px;
-      color: #3949ab;
+      color: var(--text-secondary);
     }
     .city-counter.at-limit {
       color: #e53935;
       font-weight: 600;
     }
+    [data-theme="dark"] .city-counter.at-limit { color: #ff8a80; }
     /* Custom city section */
     .custom-city-section {
       margin-top: 16px;
@@ -2465,13 +2490,6 @@
       background: rgba(76, 175, 80, 0.15);
       color: #81c784;
     }
-    .copy-link-hint {
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--text-secondary);
-      text-align: center;
-      transition: color 0.3s ease;
-    }
     .url-params-notice {
       margin-top: 16px;
       padding: 12px 16px;
@@ -2566,6 +2584,22 @@
         transition-duration: 0.01ms !important;
       }
     }
+    @media (max-width: 768px) {
+      .floating-preview-btn, [data-theme="dark"] .floating-preview-btn {
+        position: static;
+        justify-content: center;
+        width: 100%;
+        margin-bottom: 12px;
+        border: 1px solid var(--button-border);
+        border-radius: 12px;
+        background: var(--button-bg);
+        color: var(--text-secondary);
+        box-shadow: none;
+        transform: none;
+        font-weight: 500;
+      }
+      .floating-preview-btn:focus-visible { outline-color: var(--input-border-focus); }
+    }
     @media (max-width: 480px) {
       body {
         padding: 12px;
@@ -2578,8 +2612,12 @@
         font-size: 24px;
       }
       .logo {
-        font-size: 40px;
+        font-size: 0;
       }
+      .logo-img { width: 160px; }
+      .city-row { gap: 6px; padding: 8px; }
+      .city-offset { gap: 4px; }
+      .city-offset .candle-icon { display: none; }
       .preview-header {
         flex-direction: column;
         gap: 12px;
@@ -3258,7 +3296,7 @@
 <body>
   <div class="container">
     <div class="header">
-      <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode" title="החלף מצב תצוגה">
+      <button id="themeToggle" class="theme-toggle" aria-label="החלפת מצב תצוגה" title="החלף מצב תצוגה">
         <span id="themeIcon">🌙</span>
       </button>
       <div class="logo"><img src="/watermark.png" alt="לוגו" class="logo-img" /></div>
@@ -3272,17 +3310,11 @@
       <!-- Kept for backwards compatibility but hidden via CSS -->
     </div>
 
-    <!-- Floating Preview Button -->
-    <button type="button" class="floating-preview-btn" id="floatingPreviewBtn" title="תצוגה מקדימה">
-      <span class="preview-btn-icon">👁️</span>
-      <span class="preview-btn-text">תצוגה מקדימה</span>
-    </button>
-
     <!-- Floating Preview Panel -->
-    <div class="floating-preview-panel" id="floatingPreviewPanel">
+    <div class="floating-preview-panel" id="floatingPreviewPanel" role="dialog" aria-modal="true" aria-label="תצוגה מקדימה">
       <div class="floating-preview-header">
         <span>👁️ תצוגה מקדימה</span>
-        <button type="button" class="close-preview-btn" id="closePreviewBtn">✕</button>
+        <button type="button" class="close-preview-btn" id="closePreviewBtn" aria-label="סגירת תצוגה מקדימה">✕</button>
       </div>
       <div class="floating-preview-content">
         <!-- Aspect Ratio Selector -->
@@ -3465,13 +3497,13 @@
         <div class="step-number" id="imageStepNumber">1</div>
         <div class="step-info">
           <div class="step-title" id="imageStepTitle">תמונת רקע</div>
-          <div class="step-subtitle" id="imageStepSubtitle">לא חובה - יש תמונת ברירת מחדל יפה</div>
+          <div class="step-subtitle" id="imageStepSubtitle">אפשר גם להשתמש ברקע המוכן</div>
         </div>
       </div>
       <div class="step-content">
         <div class="form-group">
           <div class="file-upload-wrapper">
-            <input type="file" id="imageFile" class="file-input-hidden" accept="image/jpeg,image/png,image/webp,image/gif" aria-describedby="mediaLimits" multiple />
+            <input type="file" id="imageFile" class="file-input-hidden" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="בחירת תמונות רקע" multiple />
             <button type="button" id="fileUploadBtn" class="file-upload-btn">
               <span>📷</span> העלה תמונה
             </button>
@@ -3480,17 +3512,17 @@
               <button type="button" class="clear-file" id="clearFileBtn" title="הסר קובץ">✕</button>
             </div>
           </div>
-          <p id="mediaLimits" class="media-limits">אפשר להעלות תמונות JPEG, PNG או WebP רגילות, או הנפשת GIF. עד 3 MiB לקובץ, 20 מיליון פיקסלים ועד 12,000 פיקסלים לצלע. בהנפשה: עד 30 פריימים ועד 40 מיליון פיקסלים בסך הכול. בפוסטר עומר מתקבלת תמונה קבועה גם מקובץ מונפש. סרטונים אינם נתמכים. קובץ פלט גדול מדי יצריך תמונה קטנה יותר.</p>
-          <fieldset id="cropKeyboard" class="crop-keyboard" hidden>
-            <legend>כיוון חיתוך במקלדת</legend>
+          <details id="cropKeyboard" class="crop-keyboard" hidden>
+            <summary>מיקום התמונה</summary>
+            <div class="crop-controls">
             <label for="cropImageSelect">התמונה לכיוון</label>
             <select id="cropImageSelect"></select>
             <label for="cropHorizontal">מיקום אופקי: משמאל לימין</label>
             <input id="cropHorizontal" type="range" min="0" max="100" value="50" step="1" />
             <label for="cropVertical">מיקום אנכי: מלמעלה למטה</label>
             <input id="cropVertical" type="range" min="0" max="100" value="50" step="1" />
-            <p>השתמשו בחצים להזזה ובמקשי הבית והסוף לקצוות. השינוי נראה בתצוגה המקדימה ומשפיע על התמונה שנוצרת.</p>
-          </fieldset>
+            </div>
+          </details>
           <!-- Image crop toggle button - hidden, crop done in preview -->
           <button type="button" id="cropToggleBtn" class="crop-toggle-btn" style="display: none !important;">✂️ התאם חיתוך תמונה</button>
           <!-- Image crop preview - hidden, crop done in preview -->
@@ -3561,6 +3593,8 @@
           <div class="cities-section">
             <!-- Selected cities list (drag & drop) -->
             <div class="selected-cities-list" id="selectedCitiesList"></div>
+            <span id="cityReorderHint" class="sr-only">לשינוי הסדר, גררו את הידית או השתמשו בחצים למעלה ולמטה במקלדת.</span>
+            <span id="cityReorderStatus" class="sr-only" role="status" aria-live="polite"></span>
 
             <!-- Default offset info -->
             <div class="offset-default-info">
@@ -3709,6 +3743,10 @@ CITY_CHECKBOXES_PLACEHOLDER
         </div>
       </div>
       <div class="step-content">
+        <button type="button" class="floating-preview-btn" id="floatingPreviewBtn" title="תצוגה מקדימה">
+          <span class="preview-btn-icon" aria-hidden="true">👁️</span>
+          <span class="preview-btn-text">תצוגה מקדימה</span>
+        </button>
         <button id="generateBtn" class="btn-generate">
           <span class="btn-text">✨ צור זְמוּנָה!</span>
           <div class="spinner"></div>
@@ -3716,16 +3754,16 @@ CITY_CHECKBOXES_PLACEHOLDER
       </div>
     </div>
 
-    <div class="share-details">
-      <p>הקישור שומר מצב שבת או עומר, ערים רגילות והסדר שלהן בשבת, ונוסח בעומר. תמונות, חיתוך, תאריכים, ערים מותאמות, דקות לפני השקיעה ועיצוב אינם נשמרים בקישור.</p>
-      <label><input type="checkbox" id="shareIncludeTexts" /> לכלול גם את טקסט הברכה וההקדשה בקישור</label>
-      <p>כל מי שמקבל את הקישור יכול לקרוא את הטקסט שנכלל בו. הקישור עשוי להישמר גם בהיסטוריית הדפדפן ובמערכות האירוח.</p>
-    </div>
     <button type="button" id="copyLinkBtn" class="btn-copy-link">
-      <span id="copyLinkIcon">💾</span>
-      <span id="copyLinkText">העתקת קישור להגדרות</span>
+      <span id="copyLinkIcon">📋</span>
+      <span id="copyLinkText">העתקת קישור לפעם הבאה</span>
     </button>
-    <div class="copy-link-hint" id="copyLinkHint">רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎</div>
+    <details class="share-details">
+      <summary>מה נשמר בקישור?</summary>
+      <p id="copyLinkHint">הערים והסדר שלהן נשמרים בקישור. תמונות, תאריכים, ערים מותאמות, דקות לפני השקיעה ועיצוב אינם נשמרים.</p>
+      <label><input type="checkbox" id="shareIncludeTexts" aria-describedby="sharePrivacyHint" /> לכלול גם ברכה והקדשה</label>
+      <p id="sharePrivacyHint">הטקסט יהיה גלוי לכל מי שיקבל את הקישור ועשוי להישמר בהיסטוריית הדפדפן ובמערכות האירוח.</p>
+    </details>
 
     <div id="urlParamsNotice" class="url-params-notice">
       ⚠️ הטופס מולא אוטומטית מהקישור
@@ -3759,17 +3797,19 @@ CITY_CHECKBOXES_PLACEHOLDER
       </button>
     </div>
 
-    <div class="footer">
-      <div class="release-links">
-        <a href="/privacy.html">פרטיות</a> · <a href="/terms.html">תנאי שימוש</a><br>
-        נתוני פרשות מאת <a href="https://www.hebcal.com/home/developer-apis" rel="noreferrer">Hebcal</a>, ברישיון <a href="https://creativecommons.org/licenses/by/4.0/" rel="noreferrer">CC BY 4.0</a>. הנתונים עובדו לתצוגה בעברית ולפוסטר.<br>
-        הלוח לפי מנהג ישראל. תזכורות העומר לפי שעון ישראל וצאת הכוכבים בירושלים.
-      </div>
+    <footer class="footer">
+      <nav class="release-links" aria-label="מידע על האתר">
+        <a href="/privacy.html">פרטיות</a><a href="/terms.html">תנאי שימוש</a>
+      </nav>
+      <details class="source-credit">
+        <summary>נתוני פרשות: Hebcal</summary>
+        <p>נתוני הפרשות מאת <a href="https://www.hebcal.com/home/developer-apis" rel="noreferrer">Hebcal.com</a>, ברישיון <a href="https://creativecommons.org/licenses/by/4.0/" rel="noreferrer">CC BY 4.0</a>. עובדו לתצוגה בעברית ולפוסטר לפי מנהג ישראל. <a href="/terms.html#sources">מידע על המקורות</a></p>
+      </details>
       🕯️ לזכר <a href="https://www.izkor.gov.il/%D7%90%D7%95%D7%A8%D7%99%20%D7%9E%D7%A9%D7%94%20%D7%91%D7%95%D7%A8%D7%A0%D7%A9%D7%98%D7%99%D7%99%D7%9F/en_afdfb0c864fda6c94fb84ac656761710" target="_blank" rel="noopener noreferrer">אורי בורנשטיין</a> הי״ד
       <div class="share-invite">
         אהבתם? מוזמנים <a href="https://wa.me/?text=%D7%92%D7%99%D7%9C%D7%99%D7%AA%D7%99%20%D7%90%D7%AA%D7%A8%20%D7%9E%D7%93%D7%94%D7%99%D7%9D%20%D7%9C%D7%99%D7%A6%D7%99%D7%A8%D7%AA%20%D7%96%D7%9E%D7%95%D7%A0%D7%95%D7%AA%20%D7%9C%D7%A9%D7%91%D7%AA%20%E2%9C%A1%EF%B8%8F%0Ahttps://shabat-posts.vercel.app" target="_blank" rel="noopener noreferrer">לשתף עם חברים ומשפחה</a> 💬
       </div>
-    </div>
+    </footer>
   </div>
 
   <script>
@@ -4670,6 +4710,8 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Mode selector button group handlers
     function setMode(mode, skipSave = false) {
+      // Old Omer links remain usable outside the season by opening the regular form.
+      if (mode === 'omer' && !isOmerPeriodAvailable) mode = 'shabbat';
       omerModeEnabled = (mode === 'omer');
       omerModeToggle.checked = omerModeEnabled; // Keep hidden checkbox in sync
 
@@ -4730,11 +4772,11 @@ CITY_CHECKBOXES_PLACEHOLDER
         if (omerModeEnabled) {
           imageStepNumber.textContent = '3';
           imageStepTitle.textContent = 'בחירת תמונת רקע';
-          imageStepSubtitle.textContent = 'לא חובה - אפשר להישאר עם תמונת ברירת מחדל';
+          imageStepSubtitle.textContent = 'אפשר גם להשתמש ברקע המוכן';
         } else {
           imageStepNumber.textContent = '1';
           imageStepTitle.textContent = 'תמונת רקע';
-          imageStepSubtitle.textContent = 'לא חובה - יש תמונת ברירת מחדל יפה';
+          imageStepSubtitle.textContent = 'אפשר גם להשתמש ברקע המוכן';
         }
       }
       if (omerCustomizationStep) {
@@ -4773,9 +4815,9 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Update the "save link" hint text based on mode
       if (copyLinkHint) {
         if (omerModeEnabled) {
-          copyLinkHint.innerHTML = 'רוצים לשמור את ההגדרות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎';
+          copyLinkHint.textContent = 'הקישור שומר את מצב ספירת העומר והנוסח. תמונות, תאריכים ועיצוב אינם נשמרים.';
         } else {
-          copyLinkHint.innerHTML = 'רוצים לשמור את ההגדרות גם לחגים ולשבתות הבאות?<br>שמרו את הקישור והכנסו דרכו בפעם הבאה 📎';
+          copyLinkHint.textContent = 'הערים והסדר שלהן נשמרים בקישור. תמונות, תאריכים, ערים מותאמות, דקות לפני השקיעה ועיצוב אינם נשמרים.';
         }
       }
 
@@ -5231,6 +5273,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     function openPreview() {
       floatingPreviewPanel.classList.add('show');
       previewOverlay.classList.add('show');
+      closePreviewBtn.focus();
 
       // Handle Omer mode preview - instant, no server call
       if (omerModeEnabled) {
@@ -5245,6 +5288,7 @@ CITY_CHECKBOXES_PLACEHOLDER
     function closePreview() {
       floatingPreviewPanel.classList.remove('show');
       previewOverlay.classList.remove('show');
+      floatingPreviewBtn.focus({preventScroll: true});
     }
 
     if (floatingPreviewBtn) {
@@ -5257,10 +5301,22 @@ CITY_CHECKBOXES_PLACEHOLDER
       previewOverlay.addEventListener('click', closePreview);
     }
 
-    // Close preview on Escape key
+    // Keep keyboard focus in the preview until it is closed.
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && floatingPreviewPanel.classList.contains('show')) {
+      if (!floatingPreviewPanel.classList.contains('show')) return;
+      if (e.key === 'Escape') {
         closePreview();
+      } else if (e.key === 'Tab') {
+        const controls = [...floatingPreviewPanel.querySelectorAll('button, input, select, a[href], [tabindex="0"]')]
+          .filter(el => !el.disabled && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+        const first = controls[0], last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     });
 
@@ -5776,14 +5832,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         e.stopPropagation();
 
         // Close the preview panel
-        const floatingPreviewPanel = document.getElementById('floatingPreviewPanel');
-        const previewOverlay = document.getElementById('previewOverlay');
-        if (floatingPreviewPanel) {
-          floatingPreviewPanel.classList.remove('show');
-        }
-        if (previewOverlay) {
-          previewOverlay.classList.remove('show');
-        }
+        closePreview();
 
         // Scroll to cities step
         const citiesStep = document.getElementById('citiesStep');
@@ -5839,7 +5888,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       // Render city rows in the user's preferred order
       selectedCitiesList.replaceChildren();
-      orderedSelectedCities.forEach((name, index) => {
+      orderedSelectedCities.forEach(name => {
         const opt = findCityOption(name);
         const displayName = opt ? opt.querySelector('.city-name').textContent : name;
         const gridOffset = opt ? (opt.querySelector('.candle-offset')?.value ?? 20) : 20;
@@ -5848,10 +5897,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         row.className = 'city-row';
         row.dataset.name = name;
         row.draggable = true;
-        row.innerHTML = `<span class="drag-handle" aria-hidden="true">☰</span>
+        row.innerHTML = `<button type="button" class="drag-handle" aria-describedby="cityReorderHint" aria-keyshortcuts="ArrowUp ArrowDown">☰</button>
           <span class="city-row-name"></span>
-          <button type="button" class="city-move city-up">↑</button>
-          <button type="button" class="city-move city-down">↓</button>
           <div class="city-offset"><span class="candle-icon" aria-hidden="true">🕯️</span>
             <input type="number" class="candle-offset" min="0" max="60" />
             <span class="offset-label">דק'</span></div>
@@ -5861,19 +5908,13 @@ CITY_CHECKBOXES_PLACEHOLDER
         offsetInput.value = offset;
         offsetInput.setAttribute('aria-label', `דקות לפני השקיעה בעיר ${displayName}`);
         row.querySelector('.city-remove').setAttribute('aria-label', `הסרת העיר ${displayName}`);
-        for (const [selector, delta, label] of [['.city-up', -1, 'העלאת העיר'], ['.city-down', 1, 'הורדת העיר']]) {
-          const move = row.querySelector(selector);
-          move.setAttribute('aria-label', `${label} ${displayName}`);
-          move.disabled = index + delta < 0 || index + delta >= orderedSelectedCities.length;
-          move.addEventListener('click', () => {
-            const target = index + delta;
-            [orderedSelectedCities[index], orderedSelectedCities[target]] = [orderedSelectedCities[target], orderedSelectedCities[index]];
-            renderCityList();
-            const moved = selectedCitiesList.children[target];
-            const sameControl = moved.querySelector(selector);
-            (sameControl.disabled ? moved.querySelector(delta < 0 ? '.city-down' : '.city-up') : sameControl).focus();
-          });
-        }
+        const handle = row.querySelector('.drag-handle');
+        handle.setAttribute('aria-label', `שינוי המיקום של ${displayName}`);
+        handle.addEventListener('keydown', event => {
+          if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+          event.preventDefault();
+          moveCity(name, event.key === 'ArrowUp' ? -1 : 1);
+        });
         selectedCitiesList.appendChild(row);
       });
 
@@ -5912,6 +5953,18 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       // Update live preview when cities change
       updateLivePreview();
+    }
+
+    function moveCity(name, delta) {
+      // Resolve the index now, including after a touch reorder without a rerender.
+      const index = orderedSelectedCities.indexOf(name);
+      const target = index + delta;
+      if (index < 0 || target < 0 || target >= orderedSelectedCities.length) return;
+      orderedSelectedCities.splice(index, 1);
+      orderedSelectedCities.splice(target, 0, name);
+      renderCityList();
+      selectedCitiesList.children[target].querySelector('.drag-handle').focus();
+      document.getElementById('cityReorderStatus').textContent = `${name}, מיקום ${target + 1} מתוך ${orderedSelectedCities.length}`;
     }
 
     // Drag & drop functionality
@@ -6131,7 +6184,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         setTimeout(() => {
           copyLinkBtn.classList.remove("copied");
           copyLinkIcon.textContent = "📋";
-          copyLinkText.textContent = "שמור קישור לפעם הבאה";
+          copyLinkText.textContent = "העתקת קישור לפעם הבאה";
         }, 2000);
       } catch (err) {
         // Fallback for older browsers
@@ -6147,7 +6200,7 @@ CITY_CHECKBOXES_PLACEHOLDER
         setTimeout(() => {
           copyLinkBtn.classList.remove("copied");
           copyLinkIcon.textContent = "📋";
-          copyLinkText.textContent = "שמור קישור לפעם הבאה";
+          copyLinkText.textContent = "העתקת קישור לפעם הבאה";
         }, 2000);
       }
     });
@@ -6163,15 +6216,7 @@ CITY_CHECKBOXES_PLACEHOLDER
       // Load mode from URL (omer or shabbat) - URL takes precedence over localStorage
       const modeParam = urlParams.get('mode');
       if (modeParam && ['omer', 'shabbat'].includes(modeParam)) {
-        // Only allow Omer mode if Omer period is available
-        if (modeParam === 'omer' && !isOmerPeriodAvailable) {
-          // User arrived with mode=omer but not in Omer period
-          // Show Omer info panel with only the blocked message
-          setMode('omer', true); // skipSave=true since this is from URL
-          // The blocked state is handled by setMode -> updateOmerDisplay -> updateOmerContentVisibility
-        } else {
-          setMode(modeParam, true); // skipSave=true since this is from URL
-        }
+        setMode(modeParam === 'omer' && !isOmerPeriodAvailable ? 'shabbat' : modeParam, true);
         hasParams = true;
       } else {
         // No mode in URL - try to load from localStorage
@@ -6780,9 +6825,11 @@ CITY_CHECKBOXES_PLACEHOLDER
     }
 
     function syncCropControls() {
-      const fieldset = document.getElementById('cropKeyboard');
+      const controls = document.getElementById('cropKeyboard');
       const select = document.getElementById('cropImageSelect');
-      fieldset.hidden = uploadedFiles.length === 0;
+      controls.hidden = uploadedFiles.length === 0;
+      select.hidden = uploadedFiles.length < 2;
+      document.querySelector('label[for="cropImageSelect"]').hidden = select.hidden;
       if (select.options.length !== uploadedFiles.length) {
         select.replaceChildren();
         uploadedFiles.forEach((file, index) => {

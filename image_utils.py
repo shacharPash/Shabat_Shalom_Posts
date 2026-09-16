@@ -12,11 +12,20 @@ This module provides image processing utilities including:
 """
 
 import os
+from io import BytesIO
 from typing import List, Optional, Tuple
 
 import arabic_reshaper
 from bidi.algorithm import get_display
 from PIL import Image, ImageDraw, ImageFont
+from PIL.PngImagePlugin import PngInfo
+
+
+CALENDAR_ATTRIBUTION = (
+    "Parsha data: Hebcal.com (https://www.hebcal.com/home/developer-apis). "
+    "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). "
+    "Adapted for Hebrew poster display."
+)
 
 
 # ========= TEXT HELPERS =========
@@ -343,19 +352,13 @@ def draw_text_with_stroke(draw, xy, text, font, fill, stroke_fill, stroke_width,
     )
 
 
-def add_calendar_attribution(img: Image.Image) -> Image.Image:
-    """Keep calendar credit legible in every export, away from bottom-right branding."""
-    result = img.convert("RGB").copy()
-    draw = ImageDraw.Draw(result)
-    text = "Hebcal.com | CC BY 4.0 | adapted"
-    font = load_font(18)
-    bounds = draw.textbbox((0, 0), text, font=font)
-    width = bounds[2] - bounds[0]
-    height = bounds[3] - bounds[1]
-    x, y = 12, 12
-    draw.rectangle((x - 4, y - 4, x + width + 4, y + height + 4), fill="black")
-    draw.text((x - bounds[0], y - bounds[1]), text, font=font, fill="white")
-    return result
+def encode_poster_png(img: Image.Image) -> bytes:
+    """Keep source credit in export metadata without drawing over the poster."""
+    metadata = PngInfo()
+    metadata.add_itxt("Description", CALENDAR_ATTRIBUTION)
+    buffer = BytesIO()
+    img.save(buffer, format="PNG", optimize=True, pnginfo=metadata)
+    return buffer.getvalue()
 
 
 def overlay_watermark(
@@ -587,7 +590,7 @@ def assemble_gif(
         duration=durations,
         loop=0,  # Infinite loop
         optimize=False,  # Avoid optimization issues with text
+        comment=CALENDAR_ATTRIBUTION.encode("utf-8"),
     )
 
     return output.getvalue()
-
