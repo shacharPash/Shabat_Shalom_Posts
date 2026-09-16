@@ -6110,8 +6110,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         params.set('neshama', neshamaInput.value.trim());
       }
 
-      // Add nusach if not default (only for omer mode)
-      if (omerModeEnabled && currentNusach !== 'sefard') {
+      // Add the current nusach for every newly shared Omer link.
+      if (omerModeEnabled) {
         params.set('nusach', currentNusach);
       }
 

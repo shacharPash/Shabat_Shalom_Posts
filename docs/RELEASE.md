@@ -4,7 +4,7 @@ This is a reviewable procedure, not a record of production changes. Complete che
 
 ## Pre-release gates
 
-- Confirm the owner's code-license choice and copyright wording before public source publication.
+- The owner has authorized hardening pull requests to the existing public repository. That authorization does not grant a new code-reuse license. Choose the code license and copyright wording before a wider public beta or any claim that reuse is permitted.
 - Confirm permission for every bundled photograph, background, icon and watermark in THIRD_PARTY_NOTICES.md. A digest proves file identity, not rights.
 - Configure a direct private contact/reporting channel and update the privacy/security pages. Never solicit private details in public GitHub issues.
 - Verify hosting and database regions, backup locations, access controls, actual logging/retention, processor terms/DPAs and any relevant international transfer terms for the intended audience. Current verified function region is iad1; database and contractual retention are unverified.

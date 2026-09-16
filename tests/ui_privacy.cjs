@@ -24,6 +24,33 @@ const defaultLink = new URL(context.generateShareableUrl());
 assert.equal(defaultLink.searchParams.has('message'), false, 'personal text must be opt-in');
 assert.equal(defaultLink.searchParams.has('neshama'), false);
 assert.equal(defaultLink.searchParams.get('cities'), 'חיפה,ירושלים', 'share must preserve selected order');
+
+// New Omer links must carry an explicit nusach so recipient browser state cannot override it.
+const savedNusachBySharedNusach = {
+  sefard: 'ashkenaz',
+  ashkenaz: 'edot_hamizrach',
+  edot_hamizrach: 'sefard',
+};
+context.omerModeEnabled = true;
+for (const [sharedNusach, savedNusach] of Object.entries(savedNusachBySharedNusach)) {
+  context.currentNusach = sharedNusach;
+  const sharedLink = new URL(context.generateShareableUrl());
+  assert.equal(sharedLink.searchParams.get('nusach'), sharedNusach);
+  context.currentNusach = savedNusach;
+  context.localStorage.getItem = key => key === 'nusach' ? savedNusach : null;
+  context.setNusach = nusach => { context.currentNusach = nusach; };
+  context.window.location.search = sharedLink.search;
+  context.loadFromUrlParams();
+  assert.equal(context.currentNusach, sharedNusach, `${sharedNusach} link must override saved ${savedNusach}`);
+}
+context.currentNusach = 'sefard';
+context.localStorage.getItem = key => key === 'nusach' ? 'ashkenaz' : null;
+context.window.location.search = '?mode=omer';
+context.loadFromUrlParams();
+assert.equal(context.currentNusach, 'ashkenaz', 'legacy link without nusach must retain saved-preference fallback');
+context.omerModeEnabled = false;
+context.localStorage.getItem = () => null;
+context.orderedSelectedCities = ['חיפה', 'ירושלים'];
 context.document.getElementById=()=>({checked:true});
 const included = new URL(context.generateShareableUrl());
 assert.equal(included.searchParams.get('message'), context.messageInput.value);
