@@ -180,13 +180,18 @@ def _fit_background_fixed(
     crop_x, crop_y = crop_position if crop_position else (0.5, 0.5)
     crop_x = max(0.0, min(1.0, crop_x))
     crop_y = max(0.0, min(1.0, crop_y))
-    source_w, source_h = base_w / scale, base_h / scale
+    # Division can overshoot a source edge by a fraction of a pixel (for
+    # example 1080 / (1080 / 844)). Pillow rejects even tiny negative
+    # offsets or boxes extending beyond the image, so clamp both stages.
+    source_w = min(float(img.width), base_w / scale)
+    source_h = min(float(img.height), base_h / scale)
     left = (img.width - source_w) * crop_x
     top = (img.height - source_h) * crop_y
     # Pillow applies the source box during resampling; fractional coordinates
     # also preserve subpixel crop positions on very narrow images.
     return img.resize(size, Image.Resampling.LANCZOS,
-                      box=(left, top, left + source_w, top + source_h))
+                      box=(left, top, min(float(img.width), left + source_w),
+                           min(float(img.height), top + source_h)))
 
 
 # Flexible aspect ratio constraints
