@@ -46,7 +46,7 @@ def register_public_routes(app):
 
     @app.get("/upcoming-events")
     async def upcoming_events():
-        return get_upcoming_events()
+        return JSONResponse(get_upcoming_events(), headers={"Cache-Control": "no-store"})
 
     @app.get("/{asset_path:path}")
     async def public_asset(asset_path: str):

@@ -3968,6 +3968,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     let currentBlobUrls = []; // Array of blob URLs to revoke
     let selectedDates = []; // Array of selected dates
+    let dateSelectionExplicit = false;
     let allEvents = []; // Store all events
     let selectedStartIndex = 0; // Index of the selected start date
     const selectedDateFormat = "both"; // Always use both (Hebrew + Gregorian dates)
@@ -4968,6 +4969,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
     // Select a date from dropdown
     function selectDate(index) {
+      dateSelectionExplicit = true;
       selectedStartIndex = index;
       const event = allEvents[index];
 
@@ -4993,8 +4995,12 @@ CITY_CHECKBOXES_PLACEHOLDER
     // Load upcoming events for date selection
     async function loadUpcomingEvents() {
       try {
-        const resp = await fetch("/upcoming-events");
+        const resp = await fetch("/upcoming-events", { cache: "no-store" });
+        if (!resp.ok) throw new Error("Failed to load upcoming events");
         allEvents = await resp.json();
+        if (!Array.isArray(allEvents) || allEvents.length === 0) {
+          throw new Error("No upcoming events returned");
+        }
 
         // Populate dropdown list
         dateDropdownList.innerHTML = allEvents.map((event, i) => `
@@ -5017,7 +5023,7 @@ CITY_CHECKBOXES_PLACEHOLDER
 
         // First event is selected by default
         selectedStartIndex = 0;
-        selectedDates = [allEvents[0].startDate];
+        updateSelectedDates();
 
         // Add click handlers for dropdown items
         dateDropdownList.querySelectorAll('.date-dropdown-item').forEach((item, index) => {
@@ -7053,8 +7059,8 @@ CITY_CHECKBOXES_PLACEHOLDER
       const uploadedFiles = fileInput.files;
 
       // Determine dates to generate (for Omer mode, we only generate 1 poster)
-      const datesToGenerate = omerModeEnabled ? [""] : (selectedDates.length > 0 ? selectedDates : [""]);
-      const isMultiple = datesToGenerate.length > 1;
+      let datesToGenerate = omerModeEnabled ? [""] : (selectedDates.length > 0 ? selectedDates : [""]);
+      let isMultiple = datesToGenerate.length > 1;
 
       statusEl.textContent = omerModeEnabled
         ? "⏳ יוצר פוסטר ספירת העומר..."
@@ -7069,6 +7075,13 @@ CITY_CHECKBOXES_PLACEHOLDER
 
       try {
         // Convert all uploaded images to base64
+        // A tab may have stayed open across havdalah. Refresh the automatic
+        // next event, while preserving a date the user deliberately selected.
+        if (!omerModeEnabled && !dateSelectionExplicit) {
+          await loadUpcomingEvents();
+          datesToGenerate = selectedDates.length > 0 ? selectedDates : [""];
+          isMultiple = datesToGenerate.length > 1;
+        }
         const imagesBase64 = [];
         if (uploadedFiles && uploadedFiles.length > 0) {
           for (let f = 0; f < uploadedFiles.length; f++) {
