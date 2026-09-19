@@ -56,7 +56,7 @@ def test_upcoming_year_does_not_retry_failed_years_even_after_ttl(monkeypatch):
         @classmethod
         def today(cls):
             return cls(2026, 9, 15)
-    monkeypatch.setattr(upcoming_events, 'date', FixedDate)
+    monkeypatch.setattr(upcoming_events, 'get_effective_start_date', FixedDate.today)
     ticks = iter(range(0, 100000, 70))
     monkeypatch.setattr('time.monotonic', lambda: next(ticks))
     fetch = Mock(side_effect=requests.Timeout)
@@ -71,7 +71,7 @@ def test_upcoming_events_on_leap_day(monkeypatch):
         @classmethod
         def today(cls):
             return cls(2028, 2, 29)
-    monkeypatch.setattr(upcoming_events, 'date', LeapDate)
+    monkeypatch.setattr(upcoming_events, 'get_effective_start_date', LeapDate.today)
     monkeypatch.setattr(hebcal_api.requests, 'get', Mock(side_effect=requests.Timeout))
     events = upcoming_events.get_upcoming_events()
     assert 50 <= len(events) <= 60

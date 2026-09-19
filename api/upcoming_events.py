@@ -5,7 +5,7 @@ Vercel serverless function for getting upcoming Shabbat/holiday events.
 import json
 import os
 import sys
-from datetime import date, timedelta
+from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from http.server import BaseHTTPRequestHandler
 
@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from make_shabbat_posts import find_next_sequence
+from calendar_utils import get_effective_start_date
 from hebcal_api import get_parsha_from_hebcal, hebcal_request_sequence
 from translations import translate_yomtov
 
@@ -21,7 +22,7 @@ from translations import translate_yomtov
 def get_upcoming_events():
     """Get upcoming Shabbat/holiday events for one year ahead."""
     events = []
-    current_date = date.today()
+    current_date = get_effective_start_date()
     # Calculate end date as one year from today
     one_year_ahead = current_date + relativedelta(years=1)
 
@@ -78,7 +79,7 @@ class handler(BaseHTTPRequestHandler):
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Cache-Control", "public, max-age=3600")  # Cache for 1 hour
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(json.dumps(events, ensure_ascii=False).encode("utf-8"))
 

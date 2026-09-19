@@ -10,7 +10,27 @@ from functools import lru_cache
 from typing import Any, Dict, Optional
 
 from jewcal import JewCal
-from jewcal.models.zmanim import Location
+from jewcal.models.zmanim import Location, Zmanim
+
+
+class _CivilDateJewCal(JewCal):
+    """Keep events and solar times on the requested civil date, even tonight.
+
+    JewCal(date, location=...) advances today's date after nightfall. That
+    behavior is useful for a live Hebrew date, but not for cached poster dates.
+    Build its date-only calendar and the public Zmanim model independently.
+    """
+
+    def __init__(self, gregorian_date: date, diaspora: bool, location: Location):
+        super().__init__(gregorian_date=gregorian_date, diaspora=diaspora)
+        self._civil_zmanim = Zmanim(
+            gregorian_date, location,
+            set_hadlokas_haneiros=self.events.action == "Candles",
+        )
+
+    @property
+    def zmanim(self) -> Zmanim:
+        return self._civil_zmanim
 
 
 @lru_cache(maxsize=128)
@@ -57,7 +77,7 @@ def _get_jewcal_with_location_cached(
         hadlokas_haneiros_minutes=candle_offset,
         tzeis_minutes=42
     )
-    return JewCal(gregorian_date=gregorian_date, diaspora=diaspora, location=location)
+    return _CivilDateJewCal(gregorian_date, diaspora, location)
 
 
 def clear_jewcal_cache() -> None:
