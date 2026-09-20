@@ -585,7 +585,10 @@ def compose_poster(
     # כותרות עמודות - ממורכזות (use same font as rows for consistency)
     draw_text_with_stroke(draw, (col_city_x, y), "עיר", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
 
-    if event_type == "yomtov" and ends_on_shabbat:
+    if event_type == "yomtov" and title_event_name == "Yom Kippur":
+        draw_text_with_stroke(draw, (col_candle_x, y), "כניסת הצום", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+        draw_text_with_stroke(draw, (col_hav_x, y), "צאת הצום", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
+    elif event_type == "yomtov" and ends_on_shabbat:
         # Yom Tov connecting to Shabbat - havdalah is actually Shabbat exit
         draw_text_with_stroke(draw, (col_candle_x, y), "הדלקת נרות", city_row_font, fill, stroke, stroke_w, anchor="ma", rtl=True)
         exit_label = "צאת השבת והחג" if yomtov_on_shabbat else "צאת השבת"
