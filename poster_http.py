@@ -18,7 +18,7 @@ async def create_poster_response(request: Request, builder):
                 raise MediaTooLarge()
             body.extend(chunk)
         payload = json.loads(body) if body else {}
-        metadata = {}
+        metadata: dict[str, str] = {}
         poster_bytes = builder(payload, metadata=metadata)
         validate_response_size(poster_bytes)
         media_type = "image/gif" if poster_bytes[:6] in (b"GIF87a", b"GIF89a") else "image/png"
@@ -60,5 +60,4 @@ def register_public_routes(app):
         if not path.is_file():
             return Response(status_code=404)
         return FileResponse(path)
-
 
