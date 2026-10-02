@@ -7170,7 +7170,7 @@ CITY_CHECKBOXES_PLACEHOLDER
           }
 
           const blob = await resp.blob();
-          const title = decodeURIComponent(resp.headers.get("X-Poster-Title") || "")
+          const title = JSON.parse(resp.headers.get("X-Poster-Title") || '""')
             || mainTitleOverride || getDefaultTitleForEvent();
           generatedPosters.push({ blob, date, title });
         }
@@ -7340,4 +7340,5 @@ CITY_CHECKBOXES_PLACEHOLDER
   </script>
 </body>
 </html>
+
 

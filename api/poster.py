@@ -1,5 +1,3 @@
-from urllib.parse import quote
-
 import json
 import os
 import sys
@@ -281,7 +279,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(poster_bytes)))
-            self.send_header("X-Poster-Title", quote(metadata.get("title", "")))
+            self.send_header("X-Poster-Title", json.dumps(metadata.get("title", "")))
             self.send_header("Access-Control-Expose-Headers", "X-Poster-Title")
             self.send_header("Cache-Control", "private, no-store")
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -314,5 +312,6 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
+
 
 

@@ -1,8 +1,8 @@
 """The shared greeting must be the title rendered in the poster."""
+import json
 import shutil
 import subprocess
 from pathlib import Path
-from urllib.parse import unquote
 
 import pytest
 
@@ -31,7 +31,7 @@ def test_vercel_share_title_header(monkeypatch):
     monkeypatch.setattr(poster._rate_limiter, "check", lambda ip: (True, 9))
     status, headers, _ = invoke_vercel(b"{}")
     assert status == 200
-    assert unquote(headers["x-poster-title"]) == "שבת שלום וחג שמח"
+    assert json.loads(headers["x-poster-title"]) == "שבת שלום וחג שמח"
     assert headers["access-control-expose-headers"] == "X-Poster-Title"
 
 
@@ -40,3 +40,4 @@ def test_whatsapp_share_browser_handler():
     if not node:
         pytest.skip("Node.js is required for browser handler checks")
     subprocess.run([node, str(Path(__file__).with_name("whatsapp_share.cjs"))], check=True)
+

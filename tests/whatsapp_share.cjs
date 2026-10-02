@@ -8,6 +8,19 @@ const start = html.indexOf('    whatsappBtn.addEventListener("click"');
 const end = html.indexOf('    // ===== Scroll Indicator', start);
 assert.ok(start >= 0 && end > start);
 
+const titleStart = html.indexOf('          const title = JSON.parse(');
+const titleEnd = html.indexOf('          generatedPosters.push', titleStart);
+assert.ok(titleStart >= 0 && titleEnd > titleStart);
+const readTitle = html.slice(titleStart, titleEnd) + '\nresult = title;';
+for (const title of ['שבת שלום וחג שמח', 'ברכה עם 100% ו-%20', 'ברכה "אישית"\nבשתי שורות']) {
+  const context = {
+    resp: { headers: { get: () => JSON.stringify(title) } },
+    mainTitleOverride: '', getDefaultTitleForEvent: () => 'שבת שלום',
+  };
+  vm.runInNewContext(readTitle, context);
+  assert.equal(context.result, title);
+}
+
 async function check(title, nativeShare, type = 'image/png') {
   let handler, shared, opened;
   const context = {
