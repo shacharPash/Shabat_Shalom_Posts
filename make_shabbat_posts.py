@@ -348,6 +348,7 @@ def compose_poster(
     dedication_text: str | None = None,
     date_format: str = "gregorian",  # "gregorian", "hebrew", or "both"
     show_watermark: bool = True,  # Enable/disable watermark
+    metadata: Optional[Dict[str, str]] = None,
 ) -> Image.Image:
     img = bg_img.copy()
     W, H = img.size
@@ -404,6 +405,9 @@ def compose_poster(
     # Apply main title override if provided
     if week_info.get("main_title_override"):
         title = week_info["main_title_override"]
+
+    if metadata is not None:
+        metadata["title"] = title
 
     # התאמת גודל פונט לכותרת הראשית
     fitted_title_font = get_fitted_font(title, title_font, W - 100, rtl=True)
@@ -866,6 +870,7 @@ def generate_poster(
     omer_date: Optional[date] = None,  # Date for Omer calculation (default: today)
     omer_day: Optional[int] = None,  # Direct Omer day (1-49), overrides date-based calculation
     nusach: str = "sefard",  # Nusach for Omer counting: "sefard", "ashkenaz", or "edot_hamizrach"
+    metadata: Optional[Dict[str, str]] = None,  # Rendered title for sharing
 ) -> bytes:
     """
     Generate a single Shabbat/Yom Tov poster for one background image.
@@ -1068,6 +1073,7 @@ def generate_poster(
                 dedication_text=dedication_text,
                 date_format=date_format,
                 show_watermark=show_watermark,
+                metadata=metadata,
             )
             processed_frames.append(processed_frame)
 
@@ -1099,6 +1105,7 @@ def generate_poster(
                 dedication_text=dedication_text,
                 date_format=date_format,
                 show_watermark=show_watermark,
+                metadata=metadata,
             )
             processed_frames.append(processed_frame)
 
@@ -1119,6 +1126,7 @@ def generate_poster(
         dedication_text=dedication_text,
         date_format=date_format,
         show_watermark=show_watermark,
+        metadata=metadata,
     )
 
     # Encode PNG with source credit in metadata
@@ -1185,3 +1193,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

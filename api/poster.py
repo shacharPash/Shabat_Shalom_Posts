@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 import json
 import os
 import sys
@@ -32,7 +34,7 @@ def _detect_image_suffix(image_data: bytes) -> str:
     return inspect_image(image_data)
 
 
-def build_poster_from_payload(payload: Dict[str, Any], *, allow_local_image=False) -> bytes:
+def build_poster_from_payload(payload: Dict[str, Any], *, allow_local_image=False, metadata=None) -> bytes:
     """Render a poster from validated input. Local files require explicit trust.
 
     Public callers upload base64 images or use the bundled default background.
@@ -62,13 +64,13 @@ def build_poster_from_payload(payload: Dict[str, Any], *, allow_local_image=Fals
         elif payload.get("image") is not None:
             with open(payload["image"], "rb") as source:
                 inspect_image(source.read(MAX_IMAGE_BYTES + 1))
-        return _render_payload(payload)
+        return _render_payload(payload, metadata=metadata)
     finally:
         if temporary_path is not None:
             os.unlink(temporary_path)
 
 
-def _render_payload(payload):
+def _render_payload(payload, metadata=None):
     image_path: Optional[str] = payload.get("image")
     message: Optional[str] = payload.get("message")
     leiluy_neshama: Optional[str] = payload.get("leiluyNeshama")
@@ -206,6 +208,7 @@ def _render_payload(payload):
         omer_date=omer_date,
         omer_day=omer_day_direct,
         nusach=nusach,
+        metadata=metadata,
     )
 
     return poster_bytes
@@ -263,7 +266,8 @@ class handler(BaseHTTPRequestHandler):
             payload = json.loads(body.decode("utf-8")) if body else {}
 
             # Generate poster
-            poster_bytes = build_poster_from_payload(payload)
+            metadata = {}
+            poster_bytes = build_poster_from_payload(payload, metadata=metadata)
             validate_response_size(poster_bytes)
 
             # Detect output format from magic bytes
@@ -277,6 +281,8 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(poster_bytes)))
+            self.send_header("X-Poster-Title", quote(metadata.get("title", "")))
+            self.send_header("Access-Control-Expose-Headers", "X-Poster-Title")
             self.send_header("Cache-Control", "private, no-store")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -308,4 +314,5 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
+
 

@@ -1,5 +1,6 @@
 """Thin HTTP adapters sharing the public poster boundary and local routes."""
 import json
+from urllib.parse import quote
 
 from fastapi import Request
 from fastapi.responses import Response, JSONResponse, FileResponse
@@ -18,10 +19,13 @@ async def create_poster_response(request: Request, builder):
                 raise MediaTooLarge()
             body.extend(chunk)
         payload = json.loads(body) if body else {}
-        poster_bytes = builder(payload)
+        metadata = {}
+        poster_bytes = builder(payload, metadata=metadata)
         validate_response_size(poster_bytes)
         media_type = "image/gif" if poster_bytes[:6] in (b"GIF87a", b"GIF89a") else "image/png"
-        return Response(poster_bytes, media_type=media_type, headers=PRIVATE_HEADERS)
+        return Response(poster_bytes, media_type=media_type, headers={
+            **PRIVATE_HEADERS, "X-Poster-Title": quote(metadata.get("title", "")),
+        })
     except InputError as error:
         return Response(str(error), status_code=error.status_code, headers=PRIVATE_HEADERS)
     except (ValueError, UnicodeError):
@@ -57,3 +61,4 @@ def register_public_routes(app):
         if not path.is_file():
             return Response(status_code=404)
         return FileResponse(path)
+
