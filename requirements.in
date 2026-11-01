@@ -12,4 +12,4 @@ starlette==1.6.0
 # Recheck with the next released fix for upstream Starlette issue 3497.
 anyio==4.14.2
 uvicorn[standard]~=0.41.0
-redis~=5.0.0
+redis~=8.1.0
