@@ -39,51 +39,36 @@ jobs:
       - name: Audit locked runtime and development dependencies
         run: python -m pip_audit --require-hashes --disable-pip -r requirements-dev.txt
 
-  audit-diagnostic:
+  verify-lockfiles:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
-      chunks: ${{ steps.audit.outputs.chunks }}
+      result: ${{ steps.verify.outputs.result }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version-file: .python-version
       - run: python -m pip install --require-hashes -r requirements-dev.txt
-      - id: audit
+      - run: python -m piptools compile --generate-hashes --strip-extras --allow-unsafe --index-url https://pypi.org/simple -o requirements.txt requirements.in
+      - run: python -m piptools compile --generate-hashes --strip-extras --allow-unsafe --index-url https://pypi.org/simple -o requirements-dev.txt requirements-dev.in
+      - id: verify
         shell: python
         run: |
-          import json, os, subprocess, urllib.request
-          from packaging.version import Version
-          result = subprocess.run(["python", "-m", "pip_audit", "--require-hashes", "--disable-pip", "-r", "requirements-dev.txt", "--format", "json"], capture_output=True, text=True)
-          report = json.loads(result.stdout)
-          updates = []
-          for dependency in report["dependencies"]:
-              if not dependency.get("vulns"):
-                  continue
-              fixes = {v for finding in dependency["vulns"] for v in finding.get("fix_versions", [])}
-              if not fixes:
-                  updates.append({"name": dependency["name"], "error": "no fixed version", "vulns": dependency["vulns"]})
-                  continue
-              version = max(fixes, key=Version)
-              if dependency["name"] == "certifi":
-                  version = "2026.10.19"
-              with urllib.request.urlopen("https://pypi.org/pypi/" + dependency["name"] + "/" + version + "/json") as response:
-                  release = json.load(response)
-              updates.append({"name": dependency["name"], "old": dependency["version"], "version": version, "requires_dist": release["info"].get("requires_dist"), "hashes": sorted({f["digests"]["sha256"] for f in release["urls"]})})
-          data = json.dumps(updates, separators=(",", ":"))
-          chunks = [{"index": i // 880, "text": data[i:i+880]} for i in range(0, len(data), 880)]
+          import json, os, subprocess
+          diff = subprocess.run(["git", "diff", "--", "requirements.txt", "requirements-dev.txt"], capture_output=True, text=True).stdout
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write("chunks=" + json.dumps(chunks) + "\n")
-  audit-diagnostic-result:
-    needs: audit-diagnostic
-    strategy:
-      matrix:
-        chunk: ${{ fromJSON(needs.audit-diagnostic.outputs.chunks) }}
-    name: "audit-data-${{ matrix.chunk.index }}:${{ matrix.chunk.text }}"
+              output.write("result=" + ("Lockfiles reproduced by pip-compile" if not diff else diff.replace("\n", " ")[:900]) + "\n")
+          if diff:
+              print(diff)
+              raise SystemExit(1)
+  lockfile-verification-result:
+    if: always()
+    needs: verify-lockfiles
+    name: ${{ needs.verify-lockfiles.outputs.result || 'Lockfile regeneration failed' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - run: echo "Temporary public package metadata diagnostic completed"
+      - run: echo "Temporary lockfile verification completed"
