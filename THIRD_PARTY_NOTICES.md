@@ -66,7 +66,7 @@ Notably `python-bidi` 0.6.11 includes LGPLv3 (`COPYING.LESSER`), the incorporate
 | starlette | 1.6.0 | BSD-3-Clause | `starlette-1.6.0.dist-info/licenses/LICENSE.md` |
 | typing-extensions | 4.16.0 | PSF-2.0 | `typing_extensions-4.16.0.dist-info/licenses/LICENSE` |
 | typing-inspection | 0.4.4 | MIT | `typing_inspection-0.4.4.dist-info/licenses/LICENSE` |
-| urllib3 | 2.7.0 | MIT | `urllib3-2.7.0.dist-info/licenses/LICENSE.txt` |
+| urllib3 | 2.8.0 | MIT | `urllib3-2.8.0.dist-info/licenses/LICENSE.txt` |
 | uvicorn | 0.41.0 | BSD-3-Clause | `uvicorn-0.41.0.dist-info/licenses/LICENSE.md` |
 | uvloop | 0.22.1 | MIT License | `uvloop-0.22.1.dist-info/licenses/LICENSE-APACHE`; `uvloop-0.22.1.dist-info/licenses/LICENSE-MIT` |
 | watchfiles | 1.2.0 | MIT | `watchfiles-1.2.0.dist-info/licenses/LICENSE` |
