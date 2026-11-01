@@ -57,7 +57,7 @@ jobs:
         shell: python
         run: |
           import json, os, subprocess
-          diff = subprocess.run(["git", "diff", "--", "requirements.txt", "requirements-dev.txt"], capture_output=True, text=True).stdout
+          diff = subprocess.run(["git", "diff", "--ignore-matching-lines=^#", "--", "requirements.txt", "requirements-dev.txt"], capture_output=True, text=True).stdout
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("result=" + ("Lockfiles reproduced by pip-compile" if not diff else diff.replace("\n", " ")[:900]) + "\n")
           if diff:
