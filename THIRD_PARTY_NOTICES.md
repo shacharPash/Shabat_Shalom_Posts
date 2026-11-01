@@ -44,7 +44,7 @@ Notably `python-bidi` 0.6.11 includes LGPLv3 (`COPYING.LESSER`), the incorporate
 | anyio | 4.14.2 | MIT | `anyio-4.14.2.dist-info/licenses/LICENSE` |
 | arabic-reshaper | 3.0.1 | MIT | `arabic_reshaper-3.0.1.dist-info/licenses/LICENSE` |
 | astral | 3.2 | Apache-2.0 | `astral-3.2.dist-info/LICENSE` |
-| certifi | 2026.7.22 | MPL-2.0 | `certifi-2026.7.22.dist-info/licenses/LICENSE` |
+| certifi | 2026.10.19 | MPL-2.0 | `certifi-2026.10.19.dist-info/licenses/LICENSE` |
 | charset-normalizer | 3.5.1 | MIT | `charset_normalizer-3.5.1.dist-info/licenses/LICENSE` |
 | click | 8.5.0 | BSD-3-Clause | `click-8.5.0.dist-info/licenses/LICENSE.txt` |
 | fastapi | 0.141.1 | MIT | `fastapi-0.141.1.dist-info/licenses/LICENSE` |
@@ -52,7 +52,7 @@ Notably `python-bidi` 0.6.11 includes LGPLv3 (`COPYING.LESSER`), the incorporate
 | httptools | 0.8.0 | MIT | `httptools-0.8.0.dist-info/licenses/LICENSE`; `httptools-0.8.0.dist-info/licenses/vendor/http-parser/LICENSE-MIT`; `httptools-0.8.0.dist-info/licenses/vendor/llhttp/LICENSE` |
 | idna | 3.19 | BSD-3-Clause | `idna-3.19.dist-info/licenses/LICENSE.md` |
 | jewcal | 0.8.0 | MIT License Copyright (c) 2022 essel-dev Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated  (inspect notices) | `jewcal-0.8.0.dist-info/LICENSE` |
-| pillow | 12.3.0 | MIT-CMU | `pillow-12.3.0.dist-info/licenses/LICENSE` |
+| pillow | 13.0.0 | MIT-CMU | `pillow-13.0.0.dist-info/licenses/LICENSE` |
 | pydantic | 2.13.5 | MIT | `pydantic-2.13.5.dist-info/licenses/LICENSE` |
 | pydantic-core | 2.46.5 | MIT | `pydantic_core-2.46.5.dist-info/licenses/LICENSE` |
 | python-bidi | 0.6.11 | License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL) | `python_bidi-0.6.11.dist-info/licenses/COPYING`; `python_bidi-0.6.11.dist-info/licenses/COPYING.LESSER`; `python_bidi-0.6.11.dist-info/licenses/LICENSE-THIRD-PARTY.yml` |

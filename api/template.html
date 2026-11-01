@@ -7170,7 +7170,9 @@ CITY_CHECKBOXES_PLACEHOLDER
           }
 
           const blob = await resp.blob();
-          generatedPosters.push({ blob, date });
+          const title = JSON.parse(resp.headers.get("X-Poster-Title") || '""')
+            || mainTitleOverride || getDefaultTitleForEvent();
+          generatedPosters.push({ blob, date, title });
         }
 
         // Revoke old blob URLs to free memory
@@ -7277,9 +7279,8 @@ CITY_CHECKBOXES_PLACEHOLDER
         filename = 'omer-poster';
       } else {
         // Regular Shabbat/Holiday mode
-        const eventName = selectedEventName.textContent || 'שבת';
-        message = `שבת שלום! 🕯️\n${eventName}\n\nנוצר באמצעות: https://shabat-posts.vercel.app/`;
-        shareTitle = 'שבת שלום';
+        shareTitle = generatedPosters[0].title;
+        message = `${shareTitle} 🕯️\n\nנוצר באמצעות: https://shabat-posts.vercel.app/`;
         filename = 'shabbat-poster';
       }
 
@@ -7339,3 +7340,5 @@ CITY_CHECKBOXES_PLACEHOLDER
   </script>
 </body>
 </html>
+
+
