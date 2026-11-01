@@ -45,6 +45,7 @@ jobs:
       contents: read
     outputs:
       summary: ${{ steps.audit.outputs.summary }}
+      certifi: ${{ steps.certifi.outputs.summary }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -58,11 +59,20 @@ jobs:
           result = subprocess.run(["python", "-m", "pip_audit", "--require-hashes", "--disable-pip", "-r", "requirements-dev.txt", "--format", "json"], capture_output=True, text=True)
           try:
               report = json.loads(result.stdout)
-              affected = [{"name": d["name"], "version": d.get("version"), "vulns": d.get("vulns"), "skip_reason": d.get("skip_reason")} for d in report["dependencies"] if d.get("vulns") or d.get("skip_reason")]
+              affected = [{"name": d["name"], "version": d.get("version"), "vulns": [{"id": v["id"], "fix": v.get("fix_versions")} for v in d.get("vulns", [])], "skip_reason": d.get("skip_reason")} for d in report["dependencies"] if d.get("vulns") or d.get("skip_reason")]
               summary = json.dumps(affected, ensure_ascii=True)
           except (ValueError, KeyError):
               summary = result.stdout
           summary = ("exit=" + str(result.returncode) + " " + summary + " " + result.stderr).replace("\n", " ").replace("\r", " ")[:3000]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("summary=" + summary + "\n")
+      - id: certifi
+        shell: python
+        run: |
+          import json, os, urllib.request
+          with urllib.request.urlopen("https://pypi.org/pypi/certifi/2026.10.19/json") as response:
+              data = json.load(response)
+          summary = json.dumps({f["filename"]: f["digests"]["sha256"] for f in data["urls"]})
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("summary=" + summary + "\n")
   audit-diagnostic-result:
@@ -73,3 +83,12 @@ jobs:
       contents: read
     steps:
       - run: echo "Temporary audit diagnostic completed"
+
+  certifi-diagnostic-result:
+    needs: audit-diagnostic
+    name: ${{ needs.audit-diagnostic.outputs.certifi }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - run: echo "Temporary package hash diagnostic completed"
